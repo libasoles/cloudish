@@ -1,0 +1,9 @@
+{
+  "style": "default",
+  "rsc": false,
+  "tsx": true,
+  "aliases": {
+    "@/components": "./src/components",
+    "@/lib/utils": "./src/lib/utils"
+  }
+}
