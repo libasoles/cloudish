@@ -2,6 +2,17 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Architecture and Agent Rules
+
+- **IMPORTANT:** Before making any code changes or proposing new features, you MUST read and strictly follow the definitions and patterns established in `agents.md`.
+- All agent logic, base prompts, and response structures must align with the standards defined in `agents.md`.
+- Consistency with the existing agent architecture is a top priority.
+
+## Development Patterns
+
+- Follow the coding style used in the existing codebase.
+- Refer to `agents.md` for specific naming conventions and class structures.
+
 ## Commands
 
 ```bash
@@ -12,17 +23,3 @@ npm run preview   # Serve the dist/ build locally
 ```
 
 No test runner is configured.
-
-## Architecture
-
-This is a single-component POC for [React Flow](https://reactflow.dev/) (`@xyflow/react`). All logic lives in `src/App.tsx`.
-
-**State management** uses the `@xyflow/react` built-in hooks:
-
-
-- `useNodesState` / `useEdgesState` — own the node and edge arrays and expose change handlers
-- `addEdge` — utility to append a new edge on user-initiated connections via `onConnect`
-
-**Rendering**: `<ReactFlow>` takes `nodes`, `edges`, and three event handlers (`onNodesChange`, `onEdgesChange`, `onConnect`). The canvas fills the full viewport via an inline `100vw × 100vh` div.
-
-**Styling**: `src/index.css` defines a CSS custom-property design system (colors, typography, shadows) with automatic dark-mode via `@media (prefers-color-scheme: dark)`. The React Flow stylesheet is imported directly in `App.tsx` from `@xyflow/react/dist/style.css`.
