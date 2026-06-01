@@ -22,7 +22,7 @@ export default function AwsServiceNode({
         selected ? "border-blue-500 shadow-md" : "border-gray-200",
       )}
     >
-      <Handle type="target" position={Position.Top} />
+      <Handle type="target" position={Position.Left} />
       <AwsServiceIcon
         slug={data.slug}
         category={data.category}
@@ -32,7 +32,7 @@ export default function AwsServiceNode({
       <span className="text-xs font-medium text-gray-700 text-center leading-tight max-w-20 truncate">
         {data.name}
       </span>
-      <Handle type="source" position={Position.Bottom} />
+      <Handle type="source" position={Position.Right} />
     </div>
   );
 }
