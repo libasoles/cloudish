@@ -218,7 +218,7 @@ export default function Canvas() {
               id: nodeId,
               type: "user",
               ...parentedPosition,
-              data: { label: "User" },
+              data: { label: t.user },
             },
           ]);
         });
@@ -299,7 +299,7 @@ export default function Canvas() {
         ]);
       });
     },
-    [reactFlowInstance, setNodes, t.public],
+    [reactFlowInstance, setNodes, t.public, t.user],
   );
 
   const syncNodeSubnet = useCallback(

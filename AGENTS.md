@@ -25,6 +25,15 @@ Prefer atomized React/JavaScript modules over large files:
 - Do not call `setState` synchronously inside `useEffect` to derive state from props, state, or render-time calculations. Prefer computing derived values during render, or update related state in the event handler that caused the change.
 - Effects should synchronize with external systems, subscriptions, timers, browser APIs, or imperative libraries. If an effect only mirrors React state into more React state, redesign the state shape first.
 
+## Internationalization (i18n)
+
+This project supports two languages: **English (EN)** and **Spanish (ES)**.
+
+- All user-visible text strings must be added to `src/i18n.ts` in **both** `en` and `es` locale objects.
+- Never hardcode UI text in components — always reference a key from `i18n.ts`.
+- When adding a new feature or UI element that contains any text, provide both the English and Spanish translations before considering the task complete.
+- Key naming: use camelCase, grouped by feature (e.g., `sidebarSearch`, `canvasDropHint`).
+
 ## Before Commit
 
 - Run `npm run lint` before committing changes.

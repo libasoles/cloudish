@@ -17,6 +17,7 @@ export default function App() {
           dragAndDrop: t.dragAndDrop,
           dragSubnet: t.dragSubnet,
           subnet: t.subnet,
+          user: t.user,
           dragService: t.dragService,
         }}
       />
