@@ -1,5 +1,10 @@
 import type { Rect } from "@xyflow/react";
-import type { AppNode, FlowPosition, NetworkContainerNodeData } from "@/types/flow";
+import type {
+  AppNode,
+  FlowPosition,
+  NetworkContainerNodeData,
+  NetworkContainerType,
+} from "@/types/flow";
 
 export const CONTAINER_WIDTH = 320;
 export const CONTAINER_HEIGHT = 220;
@@ -48,6 +53,11 @@ export function isAzNode(node: AppNode) {
     isNetworkContainerNode(node) &&
     (node.data as NetworkContainerNodeData).containerType === "az"
   );
+}
+
+export function getNetworkContainerType(node: AppNode) {
+  if (!isNetworkContainerNode(node)) return null;
+  return (node.data as NetworkContainerNodeData).containerType;
 }
 
 export function orderNodesForSubflows(nodes: AppNode[]) {
@@ -172,10 +182,10 @@ export function getParentedPosition(
   };
 }
 
-const REGION_HEADER_H = 28;
-const AZ_PAD = 8;
-const VPC_PAD = 12;
-const SUBNET_PAD = 8;
+const REGION_HEADER_H = 36;
+const AZ_PAD = 12;
+const VPC_PAD = 18;
+const SUBNET_PAD = 12;
 
 export function buildAzNodes(
   parentId: string,
@@ -404,4 +414,60 @@ export function redistributeVpcNodes(
       style: { ...n.style, width: vpcW, height: vpcH },
     };
   });
+}
+
+export function redistributeNestedContainerNodes(nodes: AppNode[]): AppNode[] {
+  let result = nodes;
+
+  const redistributeSubnetsForAzs = () => {
+    const resultById = new Map(result.map((node) => [node.id, node]));
+    const azNodes = result.filter(isAzNode);
+
+    for (const az of azNodes) {
+      const currentAz = resultById.get(az.id);
+      if (!currentAz) continue;
+      const { width, height } = getNodeSize(currentAz);
+      result = redistributeSubnetNodes(currentAz.id, width, height, result);
+    }
+  };
+
+  const regionNodes = result.filter(isRegionNode);
+  for (const region of regionNodes) {
+    const { width, height } = getNodeSize(region);
+    result = redistributeVpcNodes(region.id, width, height, result);
+  }
+
+  const vpcNodes = result.filter(isVpcNode);
+  for (const vpc of vpcNodes) {
+    const currentVpc = result.find((node) => node.id === vpc.id);
+    if (!currentVpc) continue;
+    const { width, height } = getNodeSize(currentVpc);
+    result = redistributeAzNodes(currentVpc.id, width, height, result);
+  }
+
+  redistributeSubnetsForAzs();
+
+  return result;
+}
+
+export function redistributeChildContainers(
+  parentId: string,
+  childType: NetworkContainerType,
+  nodes: AppNode[],
+): AppNode[] {
+  const parent = nodes.find((node) => node.id === parentId);
+  if (!parent) return nodes;
+
+  const { width, height } = getNodeSize(parent);
+  let result = nodes;
+
+  if (childType === "vpc") {
+    result = redistributeVpcNodes(parentId, width, height, result);
+  } else if (childType === "az") {
+    result = redistributeAzNodes(parentId, width, height, result);
+  } else if (childType === "subnet") {
+    result = redistributeSubnetNodes(parentId, width, height, result);
+  }
+
+  return redistributeNestedContainerNodes(result);
 }

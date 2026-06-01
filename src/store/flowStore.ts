@@ -6,19 +6,21 @@ import {
 } from "@xyflow/react";
 import { create } from "zustand";
 import { initialNodes, initialEdges } from "@/data/initial-flow";
-import type { AppNode, AppEdge } from "@/types/flow";
+import type { AppNode, AppEdge, ContainerDropPreview } from "@/types/flow";
 
 type FlowStore = {
   nodes: AppNode[];
   edges: AppEdge[];
   inspectorOpen: boolean;
   dropTargetNodeId: string | null;
+  dropPreview: ContainerDropPreview | null;
   setNodes: (updater: AppNode[] | ((prev: AppNode[]) => AppNode[])) => void;
   onNodesChange: (changes: NodeChange<AppNode>[]) => void;
   setEdges: (updater: AppEdge[] | ((prev: AppEdge[]) => AppEdge[])) => void;
   onEdgesChange: (changes: EdgeChange[]) => void;
   setInspectorOpen: (updater: boolean | ((prev: boolean) => boolean)) => void;
   setDropTargetNodeId: (id: string | null) => void;
+  setDropPreview: (preview: ContainerDropPreview | null) => void;
   toggleAzSync: (azId: string, synced: boolean) => void;
 };
 
@@ -51,6 +53,8 @@ export const useFlowStore = create<FlowStore>()((set) => ({
 
   dropTargetNodeId: null,
   setDropTargetNodeId: (id) => set({ dropTargetNodeId: id }),
+  dropPreview: null,
+  setDropPreview: (preview) => set({ dropPreview: preview }),
 
   toggleAzSync: (azId, synced) =>
     set((s) => {

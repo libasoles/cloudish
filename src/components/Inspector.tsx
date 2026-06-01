@@ -13,6 +13,7 @@ import {
   type AwsServiceNodeType,
   type AwsServiceNodeData,
 } from "@/components/AwsServiceNode";
+import ChildCountSlider from "@/components/ChildCountSlider";
 import EdgeArrowDirectionOption from "@/components/EdgeArrowDirectionOption";
 import { getNodeFields } from "@/data/aws-service-fields";
 import {
@@ -531,60 +532,29 @@ export default function Inspector() {
                   </SelectContent>
                 </Select>
               </label>
-              <label className="grid gap-2 text-sm font-medium text-foreground">
-                {t.numberOfVPCs}
-                <Input
-                  type="number"
-                  min={0}
-                  max={6}
-                  value={String(childVpcCount)}
-                  onChange={(event) => {
-                    const value = Math.max(
-                      0,
-                      Math.min(6, parseInt(event.target.value) || 0),
-                    );
-                    onNumberOfVPCsChange(selectedNode.id, value);
-                  }}
-                />
-              </label>
+              <ChildCountSlider
+                label={t.numberOfVPCs}
+                value={childVpcCount}
+                onChange={(value) => onNumberOfVPCsChange(selectedNode.id, value)}
+              />
             </div>
           ) : selectedNode && selectedIsVpc ? (
             <div className="space-y-4 text-sm">
-              <label className="grid gap-2 text-sm font-medium text-foreground">
-                {t.numberOfAZs}
-                <Input
-                  type="number"
-                  min={0}
-                  max={6}
-                  value={String(childAzCount)}
-                  onChange={(event) => {
-                    const value = Math.max(
-                      0,
-                      Math.min(6, parseInt(event.target.value) || 0),
-                    );
-                    onNumberOfAZsChange(selectedNode.id, value);
-                  }}
-                />
-              </label>
+              <ChildCountSlider
+                label={t.numberOfAZs}
+                value={childAzCount}
+                onChange={(value) => onNumberOfAZsChange(selectedNode.id, value)}
+              />
             </div>
           ) : selectedNode && selectedIsAz ? (
             <div className="space-y-4 text-sm">
-              <label className="grid gap-2 text-sm font-medium text-foreground">
-                {t.numberOfSubnets}
-                <Input
-                  type="number"
-                  min={0}
-                  max={6}
-                  value={String(childSubnetCount)}
-                  onChange={(event) => {
-                    const value = Math.max(
-                      0,
-                      Math.min(6, parseInt(event.target.value) || 0),
-                    );
-                    onNumberOfSubnetsChange(selectedNode.id, value);
-                  }}
-                />
-              </label>
+              <ChildCountSlider
+                label={t.numberOfSubnets}
+                value={childSubnetCount}
+                onChange={(value) =>
+                  onNumberOfSubnetsChange(selectedNode.id, value)
+                }
+              />
             </div>
           ) : selectedNode && selectedHasFields ? (
             <div className="space-y-4">

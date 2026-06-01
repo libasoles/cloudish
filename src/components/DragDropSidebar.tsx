@@ -42,16 +42,25 @@ type DragDropSidebarProps = {
     dragService: (serviceName: string) => string;
   };
   onToolClick?: (tool: DragTool) => void;
+  onToolDragStart?: (tool: DragTool) => void;
+  onToolDragEnd?: () => void;
 };
 
-function setDragPayload(event: DragEvent<HTMLButtonElement>, tool: DragTool) {
+function setDragPayload(
+  event: DragEvent<HTMLButtonElement>,
+  tool: DragTool,
+  onToolDragStart?: (tool: DragTool) => void,
+) {
   event.dataTransfer.setData(DND_MIME_TYPE, encodeDragTool(tool));
   event.dataTransfer.effectAllowed = "move";
+  onToolDragStart?.(tool);
 }
 
 export default function DragDropSidebar({
   labels,
   onToolClick,
+  onToolDragStart,
+  onToolDragEnd,
 }: DragDropSidebarProps) {
   return (
     <aside className="flex h-full w-24 shrink-0 flex-col border-r border-border bg-background">
@@ -62,7 +71,10 @@ export default function DragDropSidebar({
         <button
           type="button"
           draggable
-          onDragStart={(event) => setDragPayload(event, { type: "user" })}
+          onDragStart={(event) =>
+            setDragPayload(event, { type: "user" }, onToolDragStart)
+          }
+          onDragEnd={onToolDragEnd}
           onClick={() => onToolClick?.({ type: "user" })}
           className="flex w-full flex-col items-center gap-1 rounded-md border border-transparent px-1 py-2 text-center text-[11px] font-medium leading-tight text-foreground transition hover:border-border hover:bg-accent"
           aria-label={`Drag ${labels.user}`}
@@ -74,7 +86,10 @@ export default function DragDropSidebar({
         <button
           type="button"
           draggable
-          onDragStart={(event) => setDragPayload(event, { type: "region" })}
+          onDragStart={(event) =>
+            setDragPayload(event, { type: "region" }, onToolDragStart)
+          }
+          onDragEnd={onToolDragEnd}
           onClick={() => onToolClick?.({ type: "region" })}
           className="flex w-full flex-col items-center gap-1 rounded-md border border-border bg-card px-1 py-2 text-center text-[11px] font-medium leading-tight text-card-foreground shadow-sm transition hover:border-primary hover:bg-accent"
           aria-label={labels.dragRegion}
@@ -88,11 +103,16 @@ export default function DragDropSidebar({
             type="button"
             draggable
             onDragStart={(event) =>
-              setDragPayload(event, {
-                type: AWS_SERVICE_NODE_TYPE,
-                serviceId: vpcService.id,
-              })
+              setDragPayload(
+                event,
+                {
+                  type: AWS_SERVICE_NODE_TYPE,
+                  serviceId: vpcService.id,
+                },
+                onToolDragStart,
+              )
             }
+            onDragEnd={onToolDragEnd}
             onClick={() =>
               onToolClick?.({
                 type: AWS_SERVICE_NODE_TYPE,
@@ -115,7 +135,10 @@ export default function DragDropSidebar({
         <button
           type="button"
           draggable
-          onDragStart={(event) => setDragPayload(event, { type: "container" })}
+          onDragStart={(event) =>
+            setDragPayload(event, { type: "container" }, onToolDragStart)
+          }
+          onDragEnd={onToolDragEnd}
           onClick={() => onToolClick?.({ type: "container" })}
           className="flex w-full flex-col items-center gap-1 rounded-md border border-border bg-card px-1 py-2 text-center text-[11px] font-medium leading-tight text-card-foreground shadow-sm transition hover:border-primary hover:bg-accent"
           aria-label={labels.dragSubnet}
@@ -130,11 +153,16 @@ export default function DragDropSidebar({
             type="button"
             draggable
             onDragStart={(event) =>
-              setDragPayload(event, {
-                type: AWS_SERVICE_NODE_TYPE,
-                serviceId: service.id,
-              })
+              setDragPayload(
+                event,
+                {
+                  type: AWS_SERVICE_NODE_TYPE,
+                  serviceId: service.id,
+                },
+                onToolDragStart,
+              )
             }
+            onDragEnd={onToolDragEnd}
             onClick={() =>
               onToolClick?.({
                 type: AWS_SERVICE_NODE_TYPE,

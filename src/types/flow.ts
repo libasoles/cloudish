@@ -9,6 +9,11 @@ export type SubnetType = "Public" | "Private";
 
 export type NetworkContainerType = "subnet" | "vpc" | "region" | "az";
 
+export type ContainerDropPreview = {
+  parentId: string;
+  childType: NetworkContainerType;
+};
+
 export type NetworkContainerNodeData = {
   containerType: NetworkContainerType;
   label: string;

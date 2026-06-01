@@ -32,9 +32,6 @@ import { useFlowStore } from "@/store/flowStore";
 import {
   isNetworkContainerNode,
   isRegionNode,
-  isVpcNode,
-  isAzNode,
-  isSubnetNode,
   orderNodesForSubflows,
   getNodeRect,
   getNodeSize,
@@ -45,6 +42,8 @@ import {
   mirrorNodeToSiblingAzs,
   redistributeSubnetNodes,
   redistributeVpcNodes,
+  redistributeChildContainers,
+  getNetworkContainerType,
   REGION_STYLE,
   REGION_WIDTH,
   REGION_HEIGHT,
@@ -88,6 +87,7 @@ export default function Canvas() {
     setInspectorOpen,
     dropTargetNodeId,
     setDropTargetNodeId,
+    setDropPreview,
   } = useFlowStore();
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance<
     AppNode,
@@ -97,6 +97,7 @@ export default function Canvas() {
   const subnetIdRef = useRef(1);
   const serviceIdRef = useRef(1);
   const pulseIdRef = useRef(1);
+  const activeDragToolRef = useRef<DragTool | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const handleInit = useCallback(
@@ -120,10 +121,91 @@ export default function Canvas() {
     [setEdges],
   );
 
-  const onDragOver = useCallback((event: DragEvent) => {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = "move";
-  }, []);
+  const onDragOver = useCallback(
+    (event: DragEvent) => {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "move";
+
+      const droppedTool =
+        decodeDragTool(event.dataTransfer.getData(DND_MIME_TYPE)) ??
+        activeDragToolRef.current;
+
+      if (!droppedTool || !reactFlowInstance) {
+        setDropTargetNodeId(null);
+        setDropPreview(null);
+        return;
+      }
+
+      const position = reactFlowInstance.screenToFlowPosition({
+        x: event.clientX,
+        y: event.clientY,
+      });
+      const { nodes: currentNodes } = useFlowStore.getState();
+      const nodesById = new Map(currentNodes.map((node) => [node.id, node]));
+
+      if (
+        droppedTool.type === AWS_SERVICE_NODE_TYPE &&
+        droppedTool.serviceId === VPC_SERVICE_ID
+      ) {
+        const vpcPosition = {
+          x: position.x - VPC_WIDTH / 2,
+          y: position.y - VPC_HEIGHT / 2,
+        };
+        const target = findIntersectingContainer(
+          { ...vpcPosition, width: VPC_WIDTH, height: VPC_HEIGHT },
+          currentNodes,
+          nodesById,
+          {
+            id: "drop-preview-vpc",
+            type: "networkContainer",
+            position: vpcPosition,
+            data: { containerType: "vpc", label: "VPC" },
+          },
+        );
+
+        setDropTargetNodeId(target?.id ?? null);
+        setDropPreview(target ? { parentId: target.id, childType: "vpc" } : null);
+        return;
+      }
+
+      if (droppedTool.type === "container") {
+        const subnetPosition = {
+          x: position.x - CONTAINER_WIDTH / 2,
+          y: position.y - CONTAINER_HEIGHT / 2,
+        };
+        const target = findIntersectingContainer(
+          {
+            ...subnetPosition,
+            width: CONTAINER_WIDTH,
+            height: CONTAINER_HEIGHT,
+          },
+          currentNodes,
+          nodesById,
+          {
+            id: "drop-preview-subnet",
+            type: "networkContainer",
+            position: subnetPosition,
+            data: { containerType: "subnet", label: t.subnet },
+          },
+        );
+
+        setDropTargetNodeId(target?.id ?? null);
+        setDropPreview(
+          target ? { parentId: target.id, childType: "subnet" } : null,
+        );
+        return;
+      }
+
+      setDropTargetNodeId(null);
+      setDropPreview(null);
+    },
+    [
+      reactFlowInstance,
+      setDropPreview,
+      setDropTargetNodeId,
+      t.subnet,
+    ],
+  );
 
   const addToolAtPosition = useCallback(
     (
@@ -392,10 +474,13 @@ export default function Canvas() {
   const onDrop = useCallback(
     (event: DragEvent) => {
       event.preventDefault();
+      activeDragToolRef.current = null;
+      setDropTargetNodeId(null);
+      setDropPreview(null);
 
-      const droppedTool = decodeDragTool(
-        event.dataTransfer.getData(DND_MIME_TYPE),
-      );
+      const droppedTool =
+        decodeDragTool(event.dataTransfer.getData(DND_MIME_TYPE)) ??
+        activeDragToolRef.current;
       if (!droppedTool || !reactFlowInstance) {
         return;
       }
@@ -408,8 +493,18 @@ export default function Canvas() {
         }),
       );
     },
-    [addToolAtPosition, reactFlowInstance],
+    [addToolAtPosition, reactFlowInstance, setDropPreview, setDropTargetNodeId],
   );
+
+  const handleToolDragStart = useCallback((tool: DragTool) => {
+    activeDragToolRef.current = tool;
+  }, []);
+
+  const handleToolDragEnd = useCallback(() => {
+    activeDragToolRef.current = null;
+    setDropTargetNodeId(null);
+    setDropPreview(null);
+  }, [setDropPreview, setDropTargetNodeId]);
 
   const addToolAtViewportCenter = useCallback(
     (tool: DragTool) => {
@@ -532,21 +627,15 @@ export default function Canvas() {
           const reparentedNode = updates.get(draggedNodeId);
           const oldParentId = draggedNode.parentId;
           const newParentId = reparentedNode?.parentId;
-          const resultById = new Map(result.map((n) => [n.id, n]));
+          const childType = getNetworkContainerType(draggedNode);
 
           const parentsToRedistribute = new Set<string>();
           if (newParentId) parentsToRedistribute.add(newParentId);
           if (oldParentId && oldParentId !== newParentId) parentsToRedistribute.add(oldParentId);
 
-          for (const parentId of parentsToRedistribute) {
-            const parent = resultById.get(parentId);
-            if (!parent) continue;
-            const { width: pw, height: ph } = getNodeSize(parent);
-
-            if (isSubnetNode(draggedNode) && (isVpcNode(parent) || isAzNode(parent))) {
-              result = redistributeSubnetNodes(parentId, pw, ph, result);
-            } else if (isVpcNode(draggedNode) && isRegionNode(parent)) {
-              result = redistributeVpcNodes(parentId, pw, ph, result);
+          if (childType) {
+            for (const parentId of parentsToRedistribute) {
+              result = redistributeChildContainers(parentId, childType, result);
             }
           }
         }
@@ -561,6 +650,7 @@ export default function Canvas() {
     (_event, node) => {
       if (!isNetworkContainerNode(node)) {
         if (dropTargetNodeId !== null) setDropTargetNodeId(null);
+        setDropPreview(null);
         return;
       }
 
@@ -569,18 +659,22 @@ export default function Canvas() {
       const nodeRect = getNodeRect(node, nodesById);
       const containerNodes = currentNodes.filter(isNetworkContainerNode);
       const target = findIntersectingContainer(nodeRect, containerNodes, nodesById, node);
+      const childType = getNetworkContainerType(node);
+      const isNewParent = target && target.id !== node.parentId;
 
-      setDropTargetNodeId(target?.id ?? null);
+      setDropTargetNodeId(isNewParent ? target.id : null);
+      setDropPreview(isNewParent && childType ? { parentId: target.id, childType } : null);
     },
-    [dropTargetNodeId, setDropTargetNodeId],
+    [dropTargetNodeId, setDropPreview, setDropTargetNodeId],
   );
 
   const onNodeDragStop: OnNodeDrag<AppNode> = useCallback(
     (_event, node) => {
       setDropTargetNodeId(null);
+      setDropPreview(null);
       syncNodeSubnet(node.id);
     },
-    [syncNodeSubnet, setDropTargetNodeId],
+    [syncNodeSubnet, setDropPreview, setDropTargetNodeId],
   );
 
   return (
@@ -596,6 +690,8 @@ export default function Canvas() {
           dragService: t.dragService,
         }}
         onToolClick={addToolAtViewportCenter}
+        onToolDragStart={handleToolDragStart}
+        onToolDragEnd={handleToolDragEnd}
       />
       <div ref={containerRef} style={{ flex: 1, position: "relative" }}>
         <ReactFlow

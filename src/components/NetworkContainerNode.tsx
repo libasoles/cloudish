@@ -11,7 +11,10 @@ import {
   redistributeSubnetNodes,
   isAzNode,
 } from "@/lib/graph-utils";
-import type { NetworkContainerNodeData } from "@/types/flow";
+import type {
+  NetworkContainerNodeData,
+  NetworkContainerType,
+} from "@/types/flow";
 
 export type NetworkContainerNodeType = Node<
   NetworkContainerNodeData,
@@ -21,17 +24,66 @@ export type NetworkContainerNodeType = Node<
 const MIN_CONTAINER_WIDTH = 220;
 const MIN_CONTAINER_HEIGHT = 140;
 
+function DropPreviewLayout({
+  childType,
+  count,
+}: {
+  childType: NetworkContainerType;
+  count: number;
+}) {
+  const isColumnLayout = childType === "vpc" || childType === "az";
+  const previewCount = Math.max(1, count);
+
+  return (
+    <div
+      className="pointer-events-none absolute inset-x-3 bottom-3 top-9 z-0"
+      style={{
+        display: "grid",
+        gap: childType === "vpc" ? 18 : 12,
+        gridTemplateColumns: isColumnLayout
+          ? `repeat(${previewCount}, minmax(0, 1fr))`
+          : undefined,
+        gridTemplateRows: !isColumnLayout
+          ? `repeat(${previewCount}, minmax(0, 1fr))`
+          : undefined,
+      }}
+    >
+      {Array.from({ length: previewCount }, (_, index) => (
+        <div
+          key={index}
+          className={cn(
+            "rounded-md border border-emerald-300/55 bg-emerald-300/10",
+            index === previewCount - 1 &&
+              "border-dashed bg-emerald-300/20 shadow-[0_0_18px_rgb(52_211_153_/_0.18)]",
+          )}
+        />
+      ))}
+    </div>
+  );
+}
+
 export default function NetworkContainerNode({
   id,
   data,
   selected,
 }: NodeProps<NetworkContainerNodeType>) {
-  const { setNodes, dropTargetNodeId, toggleAzSync } = useFlowStore();
+  const { nodes, setNodes, dropTargetNodeId, dropPreview, toggleAzSync } =
+    useFlowStore();
   const isVpc = data.containerType === "vpc";
   const isRegion = data.containerType === "region";
   const isAz = data.containerType === "az";
   const isPrivateSubnet = data.subnetType === "Private";
   const isDropTarget = dropTargetNodeId === id;
+  const previewChildType =
+    dropPreview?.parentId === id ? dropPreview.childType : null;
+  const previewChildCount = previewChildType
+    ? nodes.filter(
+        (node) =>
+          node.parentId === id &&
+          (node.data as { containerType?: NetworkContainerType }).containerType ===
+            previewChildType,
+      ).length + 1
+    : 0;
 
   const handleResize = (
     _: unknown,
@@ -71,6 +123,12 @@ export default function NetworkContainerNode({
         data.pulseKey && "node-click-pulse",
       )}
     >
+      {previewChildType && (
+        <DropPreviewLayout
+          childType={previewChildType}
+          count={previewChildCount}
+        />
+      )}
       {!isAz && (
         <NodeResizer
           minWidth={MIN_CONTAINER_WIDTH}
@@ -101,7 +159,7 @@ export default function NetworkContainerNode({
       )}
       <div
         className={cn(
-          "absolute left-3 top-0 -translate-y-1/2 flex items-center gap-1.5 rounded border px-2 py-0.5 text-[11px] font-semibold leading-none shadow-sm",
+          "absolute left-3 top-0 -translate-y-1/2 flex items-center gap-1.5 rounded border px-2.5 py-1 text-xs font-semibold leading-none shadow-sm",
           isVpc
             ? "border-amber-400/60 bg-background text-amber-200"
             : isRegion
