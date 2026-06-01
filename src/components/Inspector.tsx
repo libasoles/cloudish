@@ -21,7 +21,11 @@ import {
   setEdgeArrowDirection,
   type EdgeArrowDirection,
 } from "@/lib/edge-tools";
-import type { SubnetNodeData, SubnetType, NetworkContainerNodeData } from "@/types/flow";
+import type {
+  SubnetNodeData,
+  SubnetType,
+  NetworkContainerNodeData,
+} from "@/types/flow";
 import { UI_TEXT, getBrowserLocale, getLocalizedField } from "@/i18n";
 import { useFlowStore } from "@/store/flowStore";
 import {
@@ -42,15 +46,13 @@ import {
   getFieldValue,
   type FieldValue,
 } from "@/lib/node-utils";
-import {
-  updateSyncedEdgeGroup,
-  updateSyncedNodeGroup,
-} from "@/lib/az-sync";
+import { updateSyncedEdgeGroup, updateSyncedNodeGroup } from "@/lib/az-sync";
 
 export default function Inspector() {
   const locale = getBrowserLocale();
   const t = UI_TEXT[locale];
-  const { nodes, edges, inspectorOpen, setNodes, setEdges, commitGraphChange } = useFlowStore();
+  const { nodes, edges, inspectorOpen, setNodes, setEdges, commitGraphChange } =
+    useFlowStore();
 
   const onSubnetTypeChange = useCallback(
     (nodeId: string, subnetType: SubnetType) => {
@@ -89,7 +91,8 @@ export default function Inspector() {
                   ...node.data,
                   label: `${t.region} ${region}`,
                   fields: {
-                    ...(node.data as { fields?: Record<string, unknown> }).fields,
+                    ...(node.data as { fields?: Record<string, unknown> })
+                      .fields,
                     region,
                   },
                 },
@@ -116,7 +119,11 @@ export default function Inspector() {
 
         const withoutVpcs = prevNodes.filter(
           (n) =>
-            !(n.parentId === region.id && isVpcNode(n) && n.draggable === false),
+            !(
+              n.parentId === region.id &&
+              isVpcNode(n) &&
+              n.draggable === false
+            ),
         );
 
         const removedVpcIds = new Set(managedVpcs.map((n) => n.id));
@@ -160,7 +167,10 @@ export default function Inspector() {
         }
 
         const vpcNodes = buildVpcNodes(region.id, regionW, regionH, count);
-        return { nodes: orderNodesForSubflows([...withUpdatedRegion, ...vpcNodes]), edges };
+        return {
+          nodes: orderNodesForSubflows([...withUpdatedRegion, ...vpcNodes]),
+          edges,
+        };
       });
     },
     [commitGraphChange],
@@ -179,7 +189,8 @@ export default function Inspector() {
         );
 
         const withoutAzs = prevNodes.filter(
-          (n) => !(n.parentId === vpc.id && isAzNode(n) && n.draggable === false),
+          (n) =>
+            !(n.parentId === vpc.id && isAzNode(n) && n.draggable === false),
         );
 
         const removedAzIds = new Set(managedAzs.map((n) => n.id));
@@ -223,7 +234,10 @@ export default function Inspector() {
         }
 
         const azNodes = buildAzNodes(vpc.id, vpcW, vpcH, count);
-        return { nodes: orderNodesForSubflows([...withUpdatedVpc, ...azNodes]), edges };
+        return {
+          nodes: orderNodesForSubflows([...withUpdatedVpc, ...azNodes]),
+          edges,
+        };
       });
     },
     [commitGraphChange],
@@ -238,11 +252,13 @@ export default function Inspector() {
         const { width: azW, height: azH } = getNodeSize(az);
 
         const managedSubnets = prevNodes.filter(
-          (n) => n.parentId === az.id && isSubnetNode(n) && n.draggable === false,
+          (n) =>
+            n.parentId === az.id && isSubnetNode(n) && n.draggable === false,
         );
 
         const withoutSubnets = prevNodes.filter(
-          (n) => !(n.parentId === az.id && isSubnetNode(n) && n.draggable === false),
+          (n) =>
+            !(n.parentId === az.id && isSubnetNode(n) && n.draggable === false),
         );
 
         const removedSubnetIds = new Set(managedSubnets.map((n) => n.id));
@@ -251,7 +267,10 @@ export default function Inspector() {
 
         const reParentedNodes = withoutSubnets.map((n) => {
           if (!n.parentId || !removedSubnetIds.has(n.parentId)) return n;
-          const subnetAbsPos = getAbsolutePosition(nodesById.get(n.parentId)!, nodesById);
+          const subnetAbsPos = getAbsolutePosition(
+            nodesById.get(n.parentId)!,
+            nodesById,
+          );
           return {
             ...n,
             parentId: az.id,
@@ -273,7 +292,9 @@ export default function Inspector() {
           },
         };
 
-        const withUpdatedAz = reParentedNodes.map((n) => (n.id === az.id ? updatedAz : n));
+        const withUpdatedAz = reParentedNodes.map((n) =>
+          n.id === az.id ? updatedAz : n,
+        );
 
         if (count <= 0) {
           return { nodes: withUpdatedAz, edges };
@@ -286,7 +307,10 @@ export default function Inspector() {
           count,
           t.subnetLabel,
         );
-        return { nodes: orderNodesForSubflows([...withUpdatedAz, ...subnetNodes]), edges };
+        return {
+          nodes: orderNodesForSubflows([...withUpdatedAz, ...subnetNodes]),
+          edges,
+        };
       });
     },
     [commitGraphChange, t.subnetLabel],
@@ -314,7 +338,8 @@ export default function Inspector() {
     [setNodes],
   );
 
-  const onEdgeLabelChange = useCallback((edgeId: string, label: string) => {
+  const onEdgeLabelChange = useCallback(
+    (edgeId: string, label: string) => {
       setEdges((edges) =>
         updateSyncedEdgeGroup(edgeId, edges, (edge) => ({ ...edge, label })),
       );
@@ -396,12 +421,13 @@ export default function Inspector() {
     : 0;
 
   const childSubnetCount = selectedNode
-    ? nodes.filter((n) => n.parentId === selectedNode.id && isSubnetNode(n)).length
+    ? nodes.filter((n) => n.parentId === selectedNode.id && isSubnetNode(n))
+        .length
     : 0;
 
   return (
     <Card className="flex h-full w-72 flex-col rounded-none border-y-0 border-r-0">
-      <CardHeader>
+      <CardHeader className="px-4">
         <CardTitle className="text-sm font-medium">
           {!selectedNode && selectedEdge ? (
             <>
@@ -411,10 +437,14 @@ export default function Inspector() {
                 {selectedEdge.source} → {selectedEdge.target}
               </span>
             </>
-          ) : selectedNode || selectedEdge ? selectedLabel : t.noNodeSelected}
+          ) : selectedNode || selectedEdge ? (
+            selectedLabel
+          ) : (
+            t.noNodeSelected
+          )}
         </CardTitle>
       </CardHeader>
-      <CardContent className="flex flex-1 flex-col overflow-hidden">
+      <CardContent className="flex flex-1 flex-col overflow-hidden px-4">
         <div className="flex-1 overflow-y-auto px-0.5">
           {!selectedNode && selectedEdge ? (
             <div className="space-y-4 text-sm">
@@ -442,7 +472,9 @@ export default function Inspector() {
                     <SelectValue>
                       <EdgeArrowDirectionOption
                         direction={selectedEdgeArrowDirection}
-                        label={edgeArrowDirectionLabels[selectedEdgeArrowDirection]}
+                        label={
+                          edgeArrowDirectionLabels[selectedEdgeArrowDirection]
+                        }
                       />
                     </SelectValue>
                   </SelectTrigger>
@@ -504,11 +536,15 @@ export default function Inspector() {
                 {t.region}
                 <Select
                   value={
-                    ((selectedNode.data as Partial<NetworkContainerNodeData> & {
-                      fields?: Record<string, unknown>;
-                    })?.fields?.region as string) ?? "us-east-1"
+                    ((
+                      selectedNode.data as Partial<NetworkContainerNodeData> & {
+                        fields?: Record<string, unknown>;
+                      }
+                    )?.fields?.region as string) ?? "us-east-1"
                   }
-                  onValueChange={(value) => onRegionChange(selectedNode.id, value)}
+                  onValueChange={(value) =>
+                    onRegionChange(selectedNode.id, value)
+                  }
                 >
                   <SelectTrigger className="font-normal">
                     <SelectValue />
@@ -522,9 +558,7 @@ export default function Inspector() {
                       US West (N. California)
                     </SelectItem>
                     <SelectItem value="us-west-2">US West (Oregon)</SelectItem>
-                    <SelectItem value="eu-west-1">
-                      Europe (Ireland)
-                    </SelectItem>
+                    <SelectItem value="eu-west-1">Europe (Ireland)</SelectItem>
                     <SelectItem value="eu-west-2">Europe (London)</SelectItem>
                     <SelectItem value="eu-central-1">
                       Europe (Frankfurt)
@@ -547,7 +581,9 @@ export default function Inspector() {
               <ChildCountSlider
                 label={t.numberOfVPCs}
                 value={childVpcCount}
-                onChange={(value) => onNumberOfVPCsChange(selectedNode.id, value)}
+                onChange={(value) =>
+                  onNumberOfVPCsChange(selectedNode.id, value)
+                }
               />
             </div>
           ) : selectedNode && selectedIsVpc ? (
@@ -555,7 +591,9 @@ export default function Inspector() {
               <ChildCountSlider
                 label={t.numberOfAZs}
                 value={childAzCount}
-                onChange={(value) => onNumberOfAZsChange(selectedNode.id, value)}
+                onChange={(value) =>
+                  onNumberOfAZsChange(selectedNode.id, value)
+                }
               />
             </div>
           ) : selectedNode && selectedIsAz ? (

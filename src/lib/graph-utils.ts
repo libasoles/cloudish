@@ -76,8 +76,8 @@ export function orderNodesForSubflows(nodes: AppNode[]) {
 export function getNodeSize(node: AppNode) {
   const style = node.style as { width?: number; height?: number } | undefined;
   return {
-    width: node.measured?.width ?? node.width ?? style?.width ?? DEFAULT_NODE_WIDTH,
-    height: node.measured?.height ?? node.height ?? style?.height ?? DEFAULT_NODE_HEIGHT,
+    width: node.width ?? style?.width ?? node.measured?.width ?? DEFAULT_NODE_WIDTH,
+    height: node.height ?? style?.height ?? node.measured?.height ?? DEFAULT_NODE_HEIGHT,
   };
 }
 

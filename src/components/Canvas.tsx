@@ -534,17 +534,23 @@ export default function Canvas() {
   );
 
   const syncNodeSubnet = useCallback(
-    (draggedNodeId: string) => {
+    (draggedNodeIds: string[]) => {
       setNodes((nodes) => {
         const nodesById = new Map(nodes.map((node) => [node.id, node]));
-        const draggedNode = nodesById.get(draggedNodeId);
+        const draggedNodes = draggedNodeIds
+          .map((draggedNodeId) => nodesById.get(draggedNodeId))
+          .filter((node): node is AppNode => Boolean(node));
 
-        if (!draggedNode) {
+        if (!draggedNodes.length) {
           return nodes;
         }
 
         const containerNodes = nodes.filter(isNetworkContainerNode);
         const updates = new Map<string, AppNode>();
+        const reparentedContainers = new Map<
+          string,
+          { oldParentId?: string; childType: ReturnType<typeof getNetworkContainerType> }
+        >();
 
         function getUpdatedNode(node: AppNode) {
           return updates.get(node.id) ?? node;
@@ -599,46 +605,44 @@ export default function Canvas() {
           });
         }
 
-        if (isNetworkContainerNode(draggedNode)) {
-          // Re-parent the dragged container to its new ancestor
+        draggedNodes.forEach((draggedNode) => {
+          if (isNetworkContainerNode(draggedNode)) {
+            // Re-parent the dragged container to its new ancestor.
+            updateContainerForNode(draggedNode);
+
+            reparentedContainers.set(draggedNode.id, {
+              oldParentId: draggedNode.parentId,
+              childType: getNetworkContainerType(draggedNode),
+            });
+
+            const draggedContainerRect = getNodeRect(draggedNode, nodesById);
+
+            nodes.forEach((node) => {
+              // Skip the dragged container and other containers - only absorb service/user nodes.
+              if (node.id === draggedNode.id || isNetworkContainerNode(node)) {
+                return;
+              }
+
+              const currentNode = getUpdatedNode(node);
+              const nodeRect = getNodeRect(currentNode, nodesById);
+
+              if (isRectIntersecting(nodeRect, draggedContainerRect)) {
+                updateContainerForNode(currentNode, draggedNode);
+              }
+            });
+            return;
+          }
+
           updateContainerForNode(draggedNode);
-
-          const draggedContainerRect = getNodeRect(draggedNode, nodesById);
-
-          nodes.forEach((node) => {
-            // Skip the dragged container and other containers - only absorb service/user nodes
-            if (node.id === draggedNode.id || isNetworkContainerNode(node)) {
-              return;
-            }
-
-            const currentNode = getUpdatedNode(node);
-            const nodeRect = getNodeRect(currentNode, nodesById);
-
-            if (isRectIntersecting(nodeRect, draggedContainerRect)) {
-              updateContainerForNode(currentNode, draggedNode);
-            }
-          });
-        } else {
-          updateContainerForNode(draggedNode);
-        }
-
-        if (updates.size === 0) {
-          return isNetworkContainerNode(draggedNode)
-            ? nodes
-            : syncNodeGroupPosition(draggedNodeId, nodes);
-        }
+        });
 
         let result = orderNodesForSubflows(
           nodes.map((node) => updates.get(node.id) ?? node),
         );
 
-        // After reparenting a container, redistribute its siblings in new and old parent
-        if (isNetworkContainerNode(draggedNode)) {
-          const reparentedNode = updates.get(draggedNodeId);
-          const oldParentId = draggedNode.parentId;
-          const newParentId = reparentedNode?.parentId;
-          const childType = getNetworkContainerType(draggedNode);
-
+        // After reparenting containers, redistribute their siblings in new and old parents.
+        for (const [draggedNodeId, { oldParentId, childType }] of reparentedContainers) {
+          const newParentId = updates.get(draggedNodeId)?.parentId;
           const parentsToRedistribute = new Set<string>();
           if (newParentId) parentsToRedistribute.add(newParentId);
           if (oldParentId && oldParentId !== newParentId) parentsToRedistribute.add(oldParentId);
@@ -650,9 +654,13 @@ export default function Canvas() {
           }
         }
 
-        return isNetworkContainerNode(draggedNode)
-          ? result
-          : syncNodeGroupPosition(draggedNodeId, result);
+        return draggedNodes.reduce(
+          (currentNodes, draggedNode) =>
+            isNetworkContainerNode(draggedNode)
+              ? currentNodes
+              : syncNodeGroupPosition(draggedNode.id, currentNodes),
+          result,
+        );
       });
     },
     [setNodes],
@@ -681,10 +689,14 @@ export default function Canvas() {
   );
 
   const onNodeDragStop: OnNodeDrag<AppNode> = useCallback(
-    (_event, node) => {
+    (_event, node, draggedNodes) => {
       setDropTargetNodeId(null);
       setDropPreview(null);
-      syncNodeSubnet(node.id);
+      syncNodeSubnet(
+        draggedNodes.length
+          ? draggedNodes.map((draggedNode) => draggedNode.id)
+          : [node.id],
+      );
     },
     [syncNodeSubnet, setDropPreview, setDropTargetNodeId],
   );
