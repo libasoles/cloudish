@@ -1,11 +1,27 @@
 import { useCallback, useRef, useState, type DragEvent } from "react";
 import {
-  ReactFlow, addEdge, useNodesState, useEdgesState,
-  Controls, MiniMap, Background, BackgroundVariant, Panel, type Edge, type OnConnect, type Node, type NodeTypes, type OnNodeDrag, type ReactFlowInstance, type Rect,
+  ReactFlow,
+  addEdge,
+  useNodesState,
+  useEdgesState,
+  Controls,
+  MiniMap,
+  Background,
+  BackgroundVariant,
+  Panel,
+  type Edge,
+  type OnConnect,
+  type Node,
+  type NodeTypes,
+  type OnNodeDrag,
+  type ReactFlowInstance,
+  type Rect,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -14,9 +30,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Container, PanelRightClose, PanelRightOpen } from "lucide-react";
-import AwsServiceNode, { type AwsServiceNodeType, type AwsServiceNodeData } from "@/components/AwsServiceNode";
+import AwsServiceNode, {
+  type AwsServiceNodeType,
+  type AwsServiceNodeData,
+} from "@/components/AwsServiceNode";
 import ServiceSearch from "@/components/ServiceSearch";
-import { AWS_CATEGORIES } from "@/data/aws-services";
+import { AWS_CATEGORIES, AWS_SERVICES } from "@/data/aws-services";
+import {
+  AWS_SERVICE_FIELDS,
+  type ServiceField,
+} from "@/data/aws-service-fields";
 
 const nodeTypes: NodeTypes = {
   awsService: AwsServiceNode,
@@ -33,6 +56,7 @@ type FlowPosition = {
   x: number;
   y: number;
 };
+type FieldValue = string | boolean | number;
 
 const CONTAINER_NODE_TYPE = "container";
 const CONTAINER_WIDTH = 320;
@@ -118,6 +142,26 @@ function isRectIntersecting(a: Rect, b: Rect) {
   );
 }
 
+function getServiceId(node: AwsServiceNodeType) {
+  return node.data.serviceId ?? node.id;
+}
+
+function getServiceDescription(node: AwsServiceNodeType) {
+  const serviceId = getServiceId(node);
+  const service = AWS_SERVICES.find(
+    (service) => service.id === serviceId || service.slug === node.data.slug,
+  );
+
+  return node.data.description ?? service?.description ?? "";
+}
+
+function getFieldValue(
+  data: AwsServiceNodeData,
+  field: ServiceField,
+): FieldValue {
+  return data.fields?.[field.key] ?? field.defaultValue ?? "";
+}
+
 const initialNodes: AppNode[] = [
   {
     id: "route53",
@@ -127,6 +171,7 @@ const initialNodes: AppNode[] = [
       name: "Route 53",
       slug: "aws-amazon-route-53",
       category: AWS_CATEGORIES.NETWORKING,
+      serviceId: "route53",
     },
   },
   {
@@ -137,6 +182,7 @@ const initialNodes: AppNode[] = [
       name: "WAF",
       slug: "aws-aws-waf",
       category: AWS_CATEGORIES.SECURITY,
+      serviceId: "waf",
     },
   },
   {
@@ -147,6 +193,7 @@ const initialNodes: AppNode[] = [
       name: "CloudFront",
       slug: "aws-amazon-cloudfront",
       category: AWS_CATEGORIES.NETWORKING,
+      serviceId: "cloudfront",
     },
   },
   {
@@ -157,6 +204,7 @@ const initialNodes: AppNode[] = [
       name: "ACM",
       slug: "aws-aws-certificate-manager",
       category: AWS_CATEGORIES.SECURITY,
+      serviceId: "acm",
     },
   },
   {
@@ -167,13 +215,29 @@ const initialNodes: AppNode[] = [
       name: "S3",
       slug: "aws-amazon-simple-storage-service",
       category: AWS_CATEGORIES.STORAGE,
+      serviceId: "s3",
     },
   },
 ];
 const initialEdges: AppEdge[] = [
-  { id: "route53-cloudfront", source: "route53", target: "cloudfront", label: "DNS" },
-  { id: "waf-cloudfront", source: "waf", target: "cloudfront", label: "protects" },
-  { id: "acm-cloudfront", source: "acm", target: "cloudfront", label: "TLS cert" },
+  {
+    id: "route53-cloudfront",
+    source: "route53",
+    target: "cloudfront",
+    label: "DNS",
+  },
+  {
+    id: "waf-cloudfront",
+    source: "waf",
+    target: "cloudfront",
+    label: "protects",
+  },
+  {
+    id: "acm-cloudfront",
+    source: "acm",
+    target: "cloudfront",
+    label: "TLS cert",
+  },
   { id: "cloudfront-s3", source: "cloudfront", target: "s3", label: "origin" },
 ];
 
@@ -181,8 +245,10 @@ export default function App() {
   const [nodes, setNodes, onNodesChange] = useNodesState<AppNode>(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<AppEdge>(initialEdges);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [reactFlowInstance, setReactFlowInstance] =
-    useState<ReactFlowInstance<AppNode, AppEdge> | null>(null);
+  const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance<
+    AppNode,
+    AppEdge
+  > | null>(null);
   const containerIdRef = useRef(1);
 
   const onConnect: OnConnect = useCallback(
@@ -190,10 +256,13 @@ export default function App() {
     [setEdges],
   );
 
-  const onContainerDragStart = useCallback((event: DragEvent<HTMLButtonElement>) => {
-    event.dataTransfer.setData("application/reactflow", CONTAINER_NODE_TYPE);
-    event.dataTransfer.effectAllowed = "move";
-  }, []);
+  const onContainerDragStart = useCallback(
+    (event: DragEvent<HTMLButtonElement>) => {
+      event.dataTransfer.setData("application/reactflow", CONTAINER_NODE_TYPE);
+      event.dataTransfer.effectAllowed = "move";
+    },
+    [],
+  );
 
   const onDragOver = useCallback((event: DragEvent) => {
     event.preventDefault();
@@ -378,25 +447,68 @@ export default function App() {
     [setNodes],
   );
 
+  const onServiceFieldChange = useCallback(
+    (nodeId: string, fieldKey: string, value: FieldValue) => {
+      setNodes((nodes) =>
+        nodes.map((node) => {
+          if (node.id !== nodeId || node.type !== "awsService") {
+            return node;
+          }
+
+          const data = node.data as AwsServiceNodeData;
+
+          return {
+            ...node,
+            data: {
+              ...data,
+              fields: {
+                ...data.fields,
+                [fieldKey]: value,
+              },
+            },
+          };
+        }),
+      );
+    },
+    [setNodes],
+  );
+
   const selectedNode = nodes.find((n) => n.selected);
   const selectedIsSubnet = selectedNode?.type === "group";
+  const selectedAwsNode =
+    selectedNode?.type === "awsService"
+      ? (selectedNode as AwsServiceNodeType)
+      : null;
+  const selectedAwsFields = selectedAwsNode
+    ? (AWS_SERVICE_FIELDS[getServiceId(selectedAwsNode)] ?? [])
+    : [];
+  const selectedHasFields = selectedAwsFields.length > 0;
+  const selectedAwsDescription = selectedAwsNode
+    ? getServiceDescription(selectedAwsNode)
+    : "";
 
   const selectedLabel =
-    selectedNode?.type === 'awsService'
+    selectedNode?.type === "awsService"
       ? (selectedNode.data as AwsServiceNodeData).name
       : selectedIsSubnet
         ? "Subnet"
-      : String((selectedNode?.data as { label?: unknown })?.label ?? '');
+        : String((selectedNode?.data as { label?: unknown })?.label ?? "");
 
   return (
     <div style={{ display: "flex", width: "100vw", height: "100vh" }}>
       <div style={{ flex: 1, position: "relative" }}>
         <ReactFlow
-          nodes={nodes} edges={edges}
-          onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
-          onConnect={onConnect} onDragOver={onDragOver} onDrop={onDrop}
-          onInit={setReactFlowInstance} onNodeDragStop={onNodeDragStop}
-          nodeTypes={nodeTypes} fitView
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          onDragOver={onDragOver}
+          onDrop={onDrop}
+          onInit={setReactFlowInstance}
+          onNodeDragStop={onNodeDragStop}
+          nodeTypes={nodeTypes}
+          fitView
         >
           <Panel position="top-left">
             <div className="mt-2 flex items-center gap-1 rounded-lg border border-gray-200 bg-white p-1 shadow-md">
@@ -419,7 +531,8 @@ export default function App() {
         </ReactFlow>
         <div className="absolute top-2 right-2 z-10">
           <Button
-            variant="outline" size="icon"
+            variant="outline"
+            size="icon"
             onClick={() => setSidebarOpen((v) => !v)}
             aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
           >
@@ -429,55 +542,156 @@ export default function App() {
       </div>
 
       {sidebarOpen && (
-        <Card className="w-72 rounded-none border-y-0 border-r-0 flex flex-col">
+        <Card className="flex h-full w-72 flex-col rounded-none border-y-0 border-r-0">
           <CardHeader>
             <CardTitle className="text-sm font-medium">
               {selectedNode ? selectedLabel : "No node selected"}
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            {selectedNode && selectedIsSubnet ? (
-              <div className="space-y-4 text-sm">
-                <div className="text-muted-foreground">
+          <CardContent className="flex flex-1 flex-col overflow-hidden">
+            <div className="flex-1 overflow-y-auto">
+              {selectedNode && selectedIsSubnet ? (
+                <div className="space-y-4 text-sm">
+                  <label className="grid gap-2 text-sm font-medium text-foreground">
+                    Type
+                    <Select
+                      value={
+                        ((selectedNode.data as Partial<SubnetNodeData>)
+                          .subnetType ?? "Public") as SubnetType
+                      }
+                      onValueChange={(value) =>
+                        onSubnetTypeChange(selectedNode.id, value as SubnetType)
+                      }
+                    >
+                      <SelectTrigger className="font-normal">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Public">Public</SelectItem>
+                        <SelectItem value="Private">Private</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </label>
+                </div>
+              ) : selectedAwsNode && selectedHasFields ? (
+                <div className="space-y-4">
+                  {selectedAwsFields.map((field) => {
+                    const value = getFieldValue(selectedAwsNode.data, field);
+
+                    if (field.type === "select") {
+                      return (
+                        <label
+                          key={field.key}
+                          className="grid gap-2 text-sm font-medium text-foreground"
+                        >
+                          {field.label}
+                          <Select
+                            value={String(value)}
+                            onValueChange={(nextValue) =>
+                              onServiceFieldChange(
+                                selectedAwsNode.id,
+                                field.key,
+                                nextValue,
+                              )
+                            }
+                          >
+                            <SelectTrigger className="font-normal">
+                              <SelectValue placeholder={field.placeholder} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {(field.options ?? []).map((option) => (
+                                <SelectItem
+                                  key={option.value}
+                                  value={option.value}
+                                >
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </label>
+                      );
+                    }
+
+                    if (field.type === "boolean") {
+                      return (
+                        <label
+                          key={field.key}
+                          className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground"
+                        >
+                          <span>{field.label}</span>
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 rounded border-input accent-primary"
+                            checked={Boolean(value)}
+                            onChange={(event) =>
+                              onServiceFieldChange(
+                                selectedAwsNode.id,
+                                field.key,
+                                event.target.checked,
+                              )
+                            }
+                          />
+                        </label>
+                      );
+                    }
+
+                    return (
+                      <label
+                        key={field.key}
+                        className="grid gap-2 text-sm font-medium text-foreground"
+                      >
+                        {field.label}
+                        <Input
+                          type={field.type === "number" ? "number" : "text"}
+                          value={String(value)}
+                          placeholder={field.placeholder}
+                          onChange={(event) => {
+                            const nextValue =
+                              field.type === "number"
+                                ? event.target.value === ""
+                                  ? ""
+                                  : Number(event.target.value)
+                                : event.target.value;
+
+                            onServiceFieldChange(
+                              selectedAwsNode.id,
+                              field.key,
+                              nextValue,
+                            );
+                          }}
+                        />
+                      </label>
+                    );
+                  })}
+                </div>
+              ) : selectedNode ? (
+                <div className="space-y-4 text-sm text-muted-foreground">
+                  {selectedAwsNode && (
+                    <Alert>
+                      <AlertTitle>Coming Soon</AlertTitle>
+                      <AlertDescription>
+                        Configuration fields for this service are not available
+                        yet.
+                      </AlertDescription>
+                    </Alert>
+                  )}
                   <p>ID: {selectedNode.id}</p>
                   <p>
                     Position: ({Math.round(selectedNode.position.x)},{" "}
                     {Math.round(selectedNode.position.y)})
                   </p>
                 </div>
-                <label className="grid gap-2 text-sm font-medium text-foreground">
-                  Type
-                  <Select
-                    value={
-                      ((selectedNode.data as Partial<SubnetNodeData>).subnetType ??
-                        "Public") as SubnetType
-                    }
-                    onValueChange={(value) =>
-                      onSubnetTypeChange(selectedNode.id, value as SubnetType)
-                    }
-                  >
-                    <SelectTrigger className="font-normal">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Public">Public</SelectItem>
-                      <SelectItem value="Private">Private</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </label>
-              </div>
-            ) : selectedNode ? (
-              <div className="text-sm text-muted-foreground">
-                <p>ID: {selectedNode.id}</p>
-                <p>
-                  Position: ({Math.round(selectedNode.position.x)},{" "}
-                  {Math.round(selectedNode.position.y)})
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Click a node to see its details.
                 </p>
+              )}
+            </div>
+            {selectedAwsNode && selectedAwsDescription && (
+              <div className="mt-4 border-t border-border pt-4 text-sm leading-5 text-muted-foreground">
+                {selectedAwsDescription}
               </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                Click a node to see its details.
-              </p>
             )}
           </CardContent>
         </Card>

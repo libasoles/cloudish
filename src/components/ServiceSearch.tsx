@@ -52,6 +52,8 @@ export default function ServiceSearch() {
         name: service.name,
         slug: service.slug,
         category: service.category,
+        serviceId: service.id,
+        description: service.description,
       },
     });
     setQuery('');

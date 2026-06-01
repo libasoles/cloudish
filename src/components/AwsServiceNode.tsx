@@ -7,6 +7,9 @@ export type AwsServiceNodeData = {
   name: string;
   slug: string;
   category: AwsCategory;
+  serviceId?: string;
+  description?: string;
+  fields?: Record<string, string | boolean | number>;
 };
 
 export type AwsServiceNodeType = Node<AwsServiceNodeData, "awsService">;
