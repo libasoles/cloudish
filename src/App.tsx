@@ -31,6 +31,7 @@ import AwsServiceNode, {
   type AwsServiceNodeType,
   type AwsServiceNodeData,
 } from "@/components/AwsServiceNode";
+import EdgeArrowDirectionOption from "@/components/EdgeArrowDirectionOption";
 import NetworkContainerNode from "@/components/NetworkContainerNode";
 import DragDropSidebar from "@/components/DragDropSidebar";
 import ServiceSearch from "@/components/ServiceSearch";
@@ -45,6 +46,11 @@ import {
   DND_MIME_TYPE,
   decodeDragTool,
 } from "@/lib/drag-tools";
+import {
+  getEdgeArrowDirection,
+  setEdgeArrowDirection,
+  type EdgeArrowDirection,
+} from "@/lib/edge-tools";
 import type {
   AppEdge,
   AppNode,
@@ -193,7 +199,10 @@ function getServiceId(node: AwsServiceNodeType) {
   return node.data.serviceId ?? node.id;
 }
 
-function getServiceDescription(node: AwsServiceNodeType, locale: ReturnType<typeof getBrowserLocale>) {
+function getServiceDescription(
+  node: AwsServiceNodeType,
+  locale: ReturnType<typeof getBrowserLocale>,
+) {
   const serviceId = getServiceId(node);
   const service = AWS_SERVICES.find(
     (service) => service.id === serviceId || service.slug === node.data.slug,
@@ -269,7 +278,9 @@ export default function App() {
     (event: DragEvent) => {
       event.preventDefault();
 
-      const droppedTool = decodeDragTool(event.dataTransfer.getData(DND_MIME_TYPE));
+      const droppedTool = decodeDragTool(
+        event.dataTransfer.getData(DND_MIME_TYPE),
+      );
       if (!droppedTool || !reactFlowInstance) {
         return;
       }
@@ -460,7 +471,10 @@ export default function App() {
           return updates.get(node.id) ?? node;
         }
 
-        function updateContainerForNode(node: AppNode, forcedContainer?: AppNode) {
+        function updateContainerForNode(
+          node: AppNode,
+          forcedContainer?: AppNode,
+        ) {
           if (isVpcNode(node)) {
             return;
           }
@@ -495,7 +509,10 @@ export default function App() {
             return;
           }
 
-          const containerPosition = getAbsolutePosition(containerNode, nodesById);
+          const containerPosition = getAbsolutePosition(
+            containerNode,
+            nodesById,
+          );
 
           updates.set(node.id, {
             ...node,
@@ -591,7 +608,37 @@ export default function App() {
     [setNodes],
   );
 
+  const onEdgeLabelChange = useCallback(
+    (edgeId: string, label: string) => {
+      setEdges((edges) =>
+        edges.map((edge) => (edge.id === edgeId ? { ...edge, label } : edge)),
+      );
+    },
+    [setEdges],
+  );
+
+  const onEdgeArrowDirectionChange = useCallback(
+    (edgeId: string, direction: EdgeArrowDirection) => {
+      setEdges((edges) =>
+        edges.map((edge) =>
+          edge.id === edgeId ? setEdgeArrowDirection(edge, direction) : edge,
+        ),
+      );
+    },
+    [setEdges],
+  );
+
   const selectedNode = nodes.find((n) => n.selected);
+  const selectedEdge = edges.find((edge) => edge.selected);
+  const selectedEdgeArrowDirection = selectedEdge
+    ? getEdgeArrowDirection(selectedEdge)
+    : "none";
+  const edgeArrowDirectionLabels: Record<EdgeArrowDirection, string> = {
+    none: t.noArrows,
+    source: t.sourceArrow,
+    target: t.targetArrow,
+    both: t.bothArrows,
+  };
   const selectedIsSubnet = selectedNode ? isSubnetNode(selectedNode) : false;
   const selectedAwsNode =
     selectedNode?.type === "awsService"
@@ -610,7 +657,11 @@ export default function App() {
       ? (selectedNode.data as AwsServiceNodeData).name
       : selectedIsSubnet
         ? t.subnet
-        : String((selectedNode?.data as { label?: unknown })?.label ?? "");
+        : selectedNode
+          ? String((selectedNode.data as { label?: unknown })?.label ?? "")
+          : selectedEdge
+            ? `${t.edge}: ${selectedEdge.source} -> ${selectedEdge.target}`
+            : "";
 
   return (
     <div
@@ -662,12 +713,79 @@ export default function App() {
         <Card className="flex h-full w-72 flex-col rounded-none border-y-0 border-r-0">
           <CardHeader>
             <CardTitle className="text-sm font-medium">
-              {selectedNode ? selectedLabel : t.noNodeSelected}
+              {selectedNode || selectedEdge ? selectedLabel : t.noNodeSelected}
             </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-1 flex-col overflow-hidden">
             <div className="flex-1 overflow-y-auto">
-              {selectedNode && selectedIsSubnet ? (
+              {!selectedNode && selectedEdge ? (
+                <div className="space-y-4 text-sm">
+                  <label className="grid gap-2 text-sm font-medium text-foreground">
+                    {t.label}
+                    <Input
+                      value={String(selectedEdge.label ?? "")}
+                      onChange={(event) =>
+                        onEdgeLabelChange(selectedEdge.id, event.target.value)
+                      }
+                    />
+                  </label>
+                  <label className="grid gap-2 text-sm font-medium text-foreground">
+                    {t.arrowDirection}
+                    <Select
+                      value={selectedEdgeArrowDirection}
+                      onValueChange={(value) =>
+                        onEdgeArrowDirectionChange(
+                          selectedEdge.id,
+                          value as EdgeArrowDirection,
+                        )
+                      }
+                    >
+                      <SelectTrigger className="font-normal">
+                        <SelectValue>
+                          <EdgeArrowDirectionOption
+                            direction={selectedEdgeArrowDirection}
+                            label={
+                              edgeArrowDirectionLabels[
+                                selectedEdgeArrowDirection
+                              ]
+                            }
+                          />
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">
+                          <EdgeArrowDirectionOption
+                            direction="none"
+                            label={t.noArrows}
+                          />
+                        </SelectItem>
+                        <SelectItem value="source">
+                          <EdgeArrowDirectionOption
+                            direction="source"
+                            label={t.sourceArrow}
+                          />
+                        </SelectItem>
+                        <SelectItem value="target">
+                          <EdgeArrowDirectionOption
+                            direction="target"
+                            label={t.targetArrow}
+                          />
+                        </SelectItem>
+                        <SelectItem value="both">
+                          <EdgeArrowDirectionOption
+                            direction="both"
+                            label={t.bothArrows}
+                          />
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </label>
+                  <div className="space-y-2 text-muted-foreground">
+                    <p>ID: {selectedEdge.id}</p>
+                    <p>{`${selectedEdge.source} -> ${selectedEdge.target}`}</p>
+                  </div>
+                </div>
+              ) : selectedNode && selectedIsSubnet ? (
                 <div className="space-y-4 text-sm">
                   <label className="grid gap-2 text-sm font-medium text-foreground">
                     {t.type}
@@ -718,7 +836,9 @@ export default function App() {
                             }
                           >
                             <SelectTrigger className="font-normal">
-                              <SelectValue placeholder={localizedField.placeholder} />
+                              <SelectValue
+                                placeholder={localizedField.placeholder}
+                              />
                             </SelectTrigger>
                             <SelectContent>
                               {(localizedField.options ?? []).map((option) => (
@@ -792,9 +912,7 @@ export default function App() {
                   {selectedAwsNode && (
                     <Alert>
                       <AlertTitle>{t.comingSoon}</AlertTitle>
-                      <AlertDescription>
-                        {t.fieldsUnavailable}
-                      </AlertDescription>
+                      <AlertDescription>{t.fieldsUnavailable}</AlertDescription>
                     </Alert>
                   )}
                   <p>ID: {selectedNode.id}</p>
