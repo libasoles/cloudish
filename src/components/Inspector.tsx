@@ -50,7 +50,7 @@ import {
 export default function Inspector() {
   const locale = getBrowserLocale();
   const t = UI_TEXT[locale];
-  const { nodes, edges, inspectorOpen, setNodes, setEdges } = useFlowStore();
+  const { nodes, edges, inspectorOpen, setNodes, setEdges, commitGraphChange } = useFlowStore();
 
   const onSubnetTypeChange = useCallback(
     (nodeId: string, subnetType: SubnetType) => {
@@ -103,9 +103,9 @@ export default function Inspector() {
 
   const onNumberOfVPCsChange = useCallback(
     (nodeId: string, count: number) => {
-      setNodes((prevNodes) => {
+      commitGraphChange(({ nodes: prevNodes, edges }) => {
         const region = prevNodes.find((n) => n.id === nodeId);
-        if (!region) return prevNodes;
+        if (!region) return { nodes: prevNodes, edges };
 
         const { width: regionW, height: regionH } = getNodeSize(region);
 
@@ -156,21 +156,21 @@ export default function Inspector() {
         );
 
         if (count <= 0) {
-          return withUpdatedRegion;
+          return { nodes: withUpdatedRegion, edges };
         }
 
         const vpcNodes = buildVpcNodes(region.id, regionW, regionH, count);
-        return orderNodesForSubflows([...withUpdatedRegion, ...vpcNodes]);
+        return { nodes: orderNodesForSubflows([...withUpdatedRegion, ...vpcNodes]), edges };
       });
     },
-    [setNodes],
+    [commitGraphChange],
   );
 
   const onNumberOfAZsChange = useCallback(
     (nodeId: string, count: number) => {
-      setNodes((prevNodes) => {
+      commitGraphChange(({ nodes: prevNodes, edges }) => {
         const vpc = prevNodes.find((n) => n.id === nodeId);
-        if (!vpc) return prevNodes;
+        if (!vpc) return { nodes: prevNodes, edges };
 
         const { width: vpcW, height: vpcH } = getNodeSize(vpc);
 
@@ -219,21 +219,21 @@ export default function Inspector() {
         );
 
         if (count <= 0) {
-          return withUpdatedVpc;
+          return { nodes: withUpdatedVpc, edges };
         }
 
         const azNodes = buildAzNodes(vpc.id, vpcW, vpcH, count);
-        return orderNodesForSubflows([...withUpdatedVpc, ...azNodes]);
+        return { nodes: orderNodesForSubflows([...withUpdatedVpc, ...azNodes]), edges };
       });
     },
-    [setNodes],
+    [commitGraphChange],
   );
 
   const onNumberOfSubnetsChange = useCallback(
     (nodeId: string, count: number) => {
-      setNodes((prevNodes) => {
+      commitGraphChange(({ nodes: prevNodes, edges }) => {
         const az = prevNodes.find((n) => n.id === nodeId);
-        if (!az) return prevNodes;
+        if (!az) return { nodes: prevNodes, edges };
 
         const { width: azW, height: azH } = getNodeSize(az);
 
@@ -276,7 +276,7 @@ export default function Inspector() {
         const withUpdatedAz = reParentedNodes.map((n) => (n.id === az.id ? updatedAz : n));
 
         if (count <= 0) {
-          return withUpdatedAz;
+          return { nodes: withUpdatedAz, edges };
         }
 
         const subnetNodes = buildSubnetNodes(
@@ -286,10 +286,10 @@ export default function Inspector() {
           count,
           t.subnetLabel,
         );
-        return orderNodesForSubflows([...withUpdatedAz, ...subnetNodes]);
+        return { nodes: orderNodesForSubflows([...withUpdatedAz, ...subnetNodes]), edges };
       });
     },
-    [setNodes, t.subnetLabel],
+    [commitGraphChange, t.subnetLabel],
   );
 
   const onServiceFieldChange = useCallback(
@@ -675,11 +675,6 @@ export default function Inspector() {
                   <AlertDescription>{t.fieldsUnavailable}</AlertDescription>
                 </Alert>
               )}
-              <p>ID: {selectedNode.id}</p>
-              <p>
-                {t.position}: ({Math.round(selectedNode.position.x)},{" "}
-                {Math.round(selectedNode.position.y)})
-              </p>
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">

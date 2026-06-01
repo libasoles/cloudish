@@ -13,6 +13,8 @@ import {
   type Locale,
 } from '@/i18n';
 import { CONTAINER_WIDTH, CONTAINER_HEIGHT } from '@/lib/graph-utils';
+import { useFlowStore } from '@/store/flowStore';
+import { getAwsServiceNodeData } from '@/lib/node-utils';
 
 const VPC_SERVICE_ID = 'vpc';
 
@@ -46,7 +48,8 @@ export default function ServiceSearch() {
   const [open, setOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const { addNodes, screenToFlowPosition, setNodes } = useReactFlow<AppNode>();
+  const { screenToFlowPosition } = useReactFlow<AppNode>();
+  const commitGraphChange = useFlowStore((s) => s.commitGraphChange);
 
   const results = getSearchResults(query, locale);
 
@@ -81,19 +84,16 @@ export default function ServiceSearch() {
         },
       };
 
-      setNodes((nodes) => [vpcNode, ...nodes]);
+      commitGraphChange(({ nodes, edges }) => ({ nodes: [vpcNode, ...nodes], edges }));
     } else {
-      addNodes({
+      const serviceNode: AppNode = {
         id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         type: 'awsService',
         position,
-        data: {
-          name: service.name,
-          slug: service.slug,
-          category: service.category,
-          serviceId: service.id,
-        },
-      });
+        data: getAwsServiceNodeData(service),
+      };
+
+      commitGraphChange(({ nodes, edges }) => ({ nodes: [...nodes, serviceNode], edges }));
     }
 
     setQuery('');

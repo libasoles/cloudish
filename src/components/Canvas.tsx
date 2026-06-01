@@ -86,7 +86,7 @@ export default function Canvas() {
     onNodesChange,
     onEdgesChange,
     setNodes,
-    setEdges,
+    commitGraphChange,
     inspectorOpen,
     setInspectorOpen,
     dropTargetNodeId,
@@ -132,12 +132,12 @@ export default function Canvas() {
         style: EDGE_STYLE,
       };
 
-      setEdges((edges) => {
-        const { nodes: currentNodes } = useFlowStore.getState();
-        return addEdgeWithAzSync(edge, currentNodes, edges);
-      });
+      commitGraphChange(({ nodes: n, edges }) => ({
+        nodes: n,
+        edges: addEdgeWithAzSync(edge, n, edges),
+      }));
     },
-    [setEdges],
+    [commitGraphChange],
   );
 
   const onDragOver = useCallback(
@@ -256,7 +256,7 @@ export default function Canvas() {
           };
           const vpcId = `vpc-${containerNumber}`;
 
-          setNodes((nodes) => {
+          commitGraphChange(({ nodes, edges }) => {
             const nodesById = new Map(nodes.map((node) => [node.id, node]));
 
             // Check if VPC is dropped inside a Region
@@ -308,9 +308,9 @@ export default function Canvas() {
 
             if (parentRegion) {
               const { width: rw, height: rh } = getNodeSize(parentRegion);
-              return redistributeVpcNodes(parentRegion.id, rw, rh, allNodes);
+              return { nodes: redistributeVpcNodes(parentRegion.id, rw, rh, allNodes), edges };
             }
-            return allNodes;
+            return { nodes: allNodes, edges };
           });
           return;
         }
@@ -321,7 +321,7 @@ export default function Canvas() {
           y: position.y - SERVICE_DROP_OFFSET.y,
         };
 
-        setNodes((nodes) => {
+        commitGraphChange(({ nodes, edges }) => {
           const parentedPosition = getParentedPosition(
             nodePosition,
             { width: DEFAULT_NODE_WIDTH, height: DEFAULT_NODE_HEIGHT },
@@ -335,7 +335,7 @@ export default function Canvas() {
             data: { ...getAwsServiceNodeData(service), ...pulseData },
           };
 
-          return addNodeWithAzSync(newNode, nodes);
+          return { nodes: addNodeWithAzSync(newNode, nodes), edges };
         });
         return;
       }
@@ -346,7 +346,7 @@ export default function Canvas() {
           x: position.x - SERVICE_DROP_OFFSET.x,
           y: position.y - SERVICE_DROP_OFFSET.y,
         };
-        setNodes((nodes) => {
+        commitGraphChange(({ nodes, edges }) => {
           const parentedPosition = getParentedPosition(
             nodePosition,
             { width: DEFAULT_NODE_WIDTH, height: DEFAULT_NODE_HEIGHT },
@@ -360,7 +360,7 @@ export default function Canvas() {
             data: { label: t.user, fields: { label: t.user }, ...pulseData },
           };
 
-          return addNodeWithAzSync(newNode, nodes);
+          return { nodes: addNodeWithAzSync(newNode, nodes), edges };
         });
         return;
       }
@@ -373,8 +373,8 @@ export default function Canvas() {
         };
         const regionId = `region-${containerNumber}`;
 
-        setNodes((nodes) => {
-          return orderNodesForSubflows([
+        commitGraphChange(({ nodes, edges }) => ({
+          nodes: orderNodesForSubflows([
             ...nodes,
             {
               id: regionId,
@@ -388,8 +388,9 @@ export default function Canvas() {
               },
               style: REGION_STYLE,
             },
-          ]);
-        });
+          ]),
+          edges,
+        }));
         return;
       }
 
@@ -406,7 +407,7 @@ export default function Canvas() {
       };
       const subnetId = `container-${containerNumber}`;
 
-      setNodes((nodes) => {
+      commitGraphChange(({ nodes, edges }) => {
         const nodesById = new Map(nodes.map((node) => [node.id, node]));
         const parentVpc = findIntersectingContainer(
           subnetRect,
@@ -470,12 +471,12 @@ export default function Canvas() {
 
         if (parentVpc) {
           const { width: pw, height: ph } = getNodeSize(parentVpc);
-          return redistributeSubnetNodes(parentVpc.id, pw, ph, allNodes);
+          return { nodes: redistributeSubnetNodes(parentVpc.id, pw, ph, allNodes), edges };
         }
-        return allNodes;
+        return { nodes: allNodes, edges };
       });
     },
-    [setNodes, t],
+    [commitGraphChange, t],
   );
 
   const onDrop = useCallback(
