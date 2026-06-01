@@ -6,7 +6,9 @@
       "Bash(git reset *)",
       "Bash(git commit -m ' *)",
       "Bash(curl -s http://localhost:5174/)",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Bash(node -e ' *)",
+      "Bash(pkill -f \"vite --port 5199\")"
     ]
   }
 }

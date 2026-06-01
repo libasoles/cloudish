@@ -18,8 +18,12 @@ export const VPC_HEIGHT = 400;
 export const SUBNET_WIDTH = 320;
 export const SUBNET_HEIGHT = 220;
 
+export const AZ_WIDTH = 450;
+export const AZ_HEIGHT = 300;
+
 export const REGION_STYLE = { width: REGION_WIDTH, height: REGION_HEIGHT } as const;
 export const VPC_STYLE = { width: VPC_WIDTH, height: VPC_HEIGHT } as const;
+export const AZ_STYLE = { width: AZ_WIDTH, height: AZ_HEIGHT } as const;
 export const SUBNET_STYLE = { width: SUBNET_WIDTH, height: SUBNET_HEIGHT } as const;
 export const CONTAINER_STYLE = SUBNET_STYLE;
 

@@ -8,6 +8,7 @@ import {
   type OnConnect,
   type Connection,
   type NodeTypes,
+  type EdgeTypes,
   type OnNodeDrag,
   type ReactFlowInstance,
 } from "@xyflow/react";
@@ -19,6 +20,7 @@ import NewToolMenu from "@/components/NewToolMenu";
 import AwsServiceNode from "@/components/AwsServiceNode";
 import NetworkContainerNode from "@/components/NetworkContainerNode";
 import UserNode from "@/components/UserNode";
+import EditableEdge from "@/components/EditableEdge";
 import ServiceSearch from "@/components/ServiceSearch";
 import { AWS_SERVICES } from "@/data/aws-services";
 import {
@@ -50,6 +52,9 @@ import {
   VPC_STYLE,
   VPC_WIDTH,
   VPC_HEIGHT,
+  AZ_STYLE,
+  AZ_WIDTH,
+  AZ_HEIGHT,
   CONTAINER_STYLE,
   CONTAINER_WIDTH,
   CONTAINER_HEIGHT,
@@ -76,6 +81,10 @@ const nodeTypes: NodeTypes = {
   user: UserNode,
 };
 
+const edgeTypes: EdgeTypes = {
+  default: EditableEdge,
+};
+
 const SERVICE_DROP_OFFSET = { x: 50, y: 36 };
 const INITIAL_FIT_VIEW_PADDING = 1.3;
 const VPC_SERVICE_ID = "vpc";
@@ -99,6 +108,7 @@ export default function Canvas() {
     dropTargetNodeId,
     setDropTargetNodeId,
     setDropPreview,
+    resetCanvas,
   } = useFlowStore();
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance<
     AppNode,
@@ -194,6 +204,28 @@ export default function Canvas() {
         return;
       }
 
+      if (droppedTool.type === "az") {
+        const azPosition = {
+          x: position.x - AZ_WIDTH / 2,
+          y: position.y - AZ_HEIGHT / 2,
+        };
+        const target = findIntersectingContainer(
+          { ...azPosition, width: AZ_WIDTH, height: AZ_HEIGHT },
+          currentNodes,
+          nodesById,
+          {
+            id: "drop-preview-az",
+            type: "networkContainer",
+            position: azPosition,
+            data: { containerType: "az", label: t.availabilityZone },
+          },
+        );
+
+        setDropTargetNodeId(target?.id ?? null);
+        setDropPreview(target ? { parentId: target.id, childType: "az" } : null);
+        return;
+      }
+
       if (droppedTool.type === "container") {
         const subnetPosition = {
           x: position.x - CONTAINER_WIDTH / 2,
@@ -229,6 +261,7 @@ export default function Canvas() {
       reactFlowInstance,
       setDropPreview,
       setDropTargetNodeId,
+      t.availabilityZone,
       t.subnet,
     ],
   );
@@ -398,6 +431,51 @@ export default function Canvas() {
           ]),
           edges,
         }));
+        return;
+      }
+
+      if (tool.type === "az") {
+        const containerNumber = containerIdRef.current++;
+        const azPosition = {
+          x: position.x - AZ_WIDTH / 2,
+          y: position.y - AZ_HEIGHT / 2,
+        };
+        const azRect = { ...azPosition, width: AZ_WIDTH, height: AZ_HEIGHT };
+        const azId = `az-${containerNumber}`;
+
+        commitGraphChange(({ nodes, edges }) => {
+          const nodesById = new Map(nodes.map((node) => [node.id, node]));
+          const parentContainer = findIntersectingContainer(azRect, nodes, nodesById, {
+            id: azId,
+            type: "networkContainer",
+            position: azPosition,
+            data: { containerType: "az", label: t.availabilityZone },
+          });
+          const parentPosition = parentContainer
+            ? getAbsolutePosition(parentContainer, nodesById)
+            : null;
+
+          return {
+            nodes: orderNodesForSubflows([
+              ...nodes,
+              {
+                id: azId,
+                type: "networkContainer",
+                parentId: parentContainer?.id,
+                position: parentPosition
+                  ? { x: azPosition.x - parentPosition.x, y: azPosition.y - parentPosition.y }
+                  : azPosition,
+                data: {
+                  containerType: "az" as const,
+                  label: t.availabilityZone,
+                  ...pulseData,
+                },
+                style: AZ_STYLE,
+              },
+            ]),
+            edges,
+          };
+        });
         return;
       }
 
@@ -716,11 +794,14 @@ export default function Canvas() {
           dragOrClickToAdd: t.dragOrClickToAdd,
           dragSubnet: t.dragSubnet,
           dragRegion: t.dragRegion,
+          dragAz: t.dragAz,
           subnet: t.subnet,
           region: t.region,
+          az: t.availabilityZone,
           user: t.user,
           userDescription: t.userDescription,
           regionDescription: t.regionDescription,
+          azDescription: t.azDescription,
           subnetDescription: t.subnetDescription,
           dragService: t.dragService,
           getServiceDescription: (service) =>
@@ -744,6 +825,7 @@ export default function Canvas() {
           onNodeDrag={onNodeDrag}
           onNodeDragStop={onNodeDragStop}
           nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
           defaultEdgeOptions={DEFAULT_EDGE_OPTIONS}
           fitView
           fitViewOptions={{ padding: INITIAL_FIT_VIEW_PADDING }}
@@ -773,19 +855,12 @@ export default function Canvas() {
             labels={{
               newTool: t.newTool,
               newToolTooltip: t.newToolTooltip,
-              newToolMenuTitle: t.newToolMenuTitle,
-              addTool: t.addTool,
-              clickToAdd: t.clickToAdd,
-              subnet: t.subnet,
-              region: t.region,
-              user: t.user,
-              userDescription: t.userDescription,
-              regionDescription: t.regionDescription,
-              subnetDescription: t.subnetDescription,
-              getServiceDescription: (service) =>
-                getServiceDescription(service, locale),
+              newToolConfirmTitle: t.newToolConfirmTitle,
+              newToolConfirmDescription: t.newToolConfirmDescription,
+              newToolConfirmAction: t.newToolConfirmAction,
+              newToolConfirmCancel: t.newToolConfirmCancel,
             }}
-            onToolClick={addToolAtViewportCenter}
+            onReset={resetCanvas}
           />
         </div>
       </div>

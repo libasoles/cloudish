@@ -1,5 +1,5 @@
 import type { DragEvent, ReactNode } from "react";
-import { Container, User, Globe } from "lucide-react";
+import { Container, User, Globe, Layers } from "lucide-react";
 import { AwsServiceIcon } from "@/components/AwsServiceIcon";
 import {
   Tooltip,
@@ -24,11 +24,14 @@ type DragDropSidebarProps = {
     dragOrClickToAdd: string;
     dragSubnet: string;
     dragRegion: string;
+    dragAz: string;
     subnet: string;
     region: string;
+    az: string;
     user: string;
     userDescription: string;
     regionDescription: string;
+    azDescription: string;
     subnetDescription: string;
     dragService: (serviceName: string) => string;
     getServiceDescription: (service: AwsService) => string;
@@ -161,6 +164,18 @@ export default function DragDropSidebar({
             />
           </SidebarToolButton>
         )}
+        <SidebarToolButton
+          name={labels.az}
+          description={`${labels.azDescription} ${labels.dragOrClickToAdd}`}
+          ariaLabel={labels.dragAz}
+          tool={{ type: "az" }}
+          featured
+          onToolClick={onToolClick}
+          onToolDragStart={onToolDragStart}
+          onToolDragEnd={onToolDragEnd}
+        >
+          <Layers className="h-8 w-8 text-muted-foreground" />
+        </SidebarToolButton>
         <SidebarToolButton
           name={labels.subnet}
           description={`${labels.subnetDescription} ${labels.dragOrClickToAdd}`}

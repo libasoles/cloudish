@@ -39,6 +39,7 @@ type FlowStore = {
     }
   ) => void;
   undo: () => void;
+  resetCanvas: () => void;
   duplicateSelectedNodes: () => void;
   setInspectorOpen: (updater: boolean | ((prev: boolean) => boolean)) => void;
   setDropTargetNodeId: (id: string | null) => void;
@@ -155,6 +156,9 @@ export const useFlowStore = create<FlowStore>()((set) => ({
       const nodes = last.before.nodes.map((n) => ({ ...n, selected: false }));
       return { nodes, edges: last.before.edges, history: s.history.slice(0, -1) };
     }),
+
+  resetCanvas: () =>
+    set({ nodes: initialNodes, edges: initialEdges, history: [] }),
 
   duplicateSelectedNodes: () =>
     set((s) => {
