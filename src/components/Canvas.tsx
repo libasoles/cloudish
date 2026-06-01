@@ -15,6 +15,7 @@ import "@xyflow/react/dist/style.css";
 import { Button } from "@/components/ui/button";
 import { PanelRightClose, PanelRightOpen } from "lucide-react";
 import DragDropSidebar from "@/components/DragDropSidebar";
+import NewToolMenu from "@/components/NewToolMenu";
 import AwsServiceNode from "@/components/AwsServiceNode";
 import NetworkContainerNode from "@/components/NetworkContainerNode";
 import UserNode from "@/components/UserNode";
@@ -27,7 +28,7 @@ import {
   type DragTool,
 } from "@/lib/drag-tools";
 import type { AppEdge, AppNode } from "@/types/flow";
-import { UI_TEXT, getBrowserLocale } from "@/i18n";
+import { UI_TEXT, getBrowserLocale, getServiceDescription } from "@/i18n";
 import { useFlowStore } from "@/store/flowStore";
 import {
   isNetworkContainerNode,
@@ -62,6 +63,12 @@ import {
 } from "@/lib/az-sync";
 import { getAwsServiceNodeData } from "@/lib/node-utils";
 import { EDGE_STYLE } from "@/lib/edge-tools";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const nodeTypes: NodeTypes = {
   awsService: AwsServiceNode,
@@ -702,16 +709,22 @@ export default function Canvas() {
   );
 
   return (
-    <>
+    <TooltipProvider delayDuration={250}>
       <DragDropSidebar
         labels={{
           dragAndDrop: t.dragAndDrop,
+          dragOrClickToAdd: t.dragOrClickToAdd,
           dragSubnet: t.dragSubnet,
           dragRegion: t.dragRegion,
           subnet: t.subnet,
           region: t.region,
           user: t.user,
+          userDescription: t.userDescription,
+          regionDescription: t.regionDescription,
+          subnetDescription: t.subnetDescription,
           dragService: t.dragService,
+          getServiceDescription: (service) =>
+            getServiceDescription(service, locale),
         }}
         onToolClick={addToolAtViewportCenter}
         onToolDragStart={handleToolDragStart}
@@ -740,17 +753,42 @@ export default function Canvas() {
           <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
           <ServiceSearch />
         </ReactFlow>
-        <div className="absolute top-2 right-2 z-10">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setInspectorOpen((v) => !v)}
-            aria-label={inspectorOpen ? t.closeInspector : t.openInspector}
-          >
-            {inspectorOpen ? <PanelRightClose /> : <PanelRightOpen />}
-          </Button>
+        <div className="absolute top-2 right-2 z-10 flex flex-col items-end gap-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setInspectorOpen((v) => !v)}
+                aria-label={inspectorOpen ? t.closeInspector : t.openInspector}
+              >
+                {inspectorOpen ? <PanelRightClose /> : <PanelRightOpen />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="left">
+              {inspectorOpen ? t.closeInspector : t.openInspector}
+            </TooltipContent>
+          </Tooltip>
+          <NewToolMenu
+            labels={{
+              newTool: t.newTool,
+              newToolTooltip: t.newToolTooltip,
+              newToolMenuTitle: t.newToolMenuTitle,
+              addTool: t.addTool,
+              clickToAdd: t.clickToAdd,
+              subnet: t.subnet,
+              region: t.region,
+              user: t.user,
+              userDescription: t.userDescription,
+              regionDescription: t.regionDescription,
+              subnetDescription: t.subnetDescription,
+              getServiceDescription: (service) =>
+                getServiceDescription(service, locale),
+            }}
+            onToolClick={addToolAtViewportCenter}
+          />
         </div>
       </div>
-    </>
+    </TooltipProvider>
   );
 }

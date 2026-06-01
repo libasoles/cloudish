@@ -1,7 +1,16 @@
-import type { DragEvent } from "react";
+import type { DragEvent, ReactNode } from "react";
 import { Container, User, Globe } from "lucide-react";
 import { AwsServiceIcon } from "@/components/AwsServiceIcon";
-import { AWS_SERVICES, type AwsService } from "@/data/aws-services";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  dragServices,
+  vpcService,
+} from "@/data/drag-tool-catalog";
+import type { AwsService } from "@/data/aws-services";
 import {
   AWS_SERVICE_NODE_TYPE,
   DND_MIME_TYPE,
@@ -9,37 +18,20 @@ import {
   type DragTool,
 } from "@/lib/drag-tools";
 
-const TOP_AWS_SERVICE_IDS = [
-  "s3",
-  "ec2",
-  "lambda",
-  "fargate",
-  "rds",
-  "dynamodb",
-  "cloudfront",
-  "api-gateway",
-  "iam",
-  "cloudwatch",
-  "sqs",
-] as const;
-
-const VPC_SERVICE_ID = "vpc";
-const vpcService = AWS_SERVICES.find(
-  (service) => service.id === VPC_SERVICE_ID,
-);
-const dragServices = TOP_AWS_SERVICE_IDS.map((serviceId) =>
-  AWS_SERVICES.find((service) => service.id === serviceId),
-).filter((service): service is AwsService => Boolean(service));
-
 type DragDropSidebarProps = {
   labels: {
     dragAndDrop: string;
+    dragOrClickToAdd: string;
     dragSubnet: string;
     dragRegion: string;
     subnet: string;
     region: string;
     user: string;
+    userDescription: string;
+    regionDescription: string;
+    subnetDescription: string;
     dragService: (serviceName: string) => string;
+    getServiceDescription: (service: AwsService) => string;
   };
   onToolClick?: (tool: DragTool) => void;
   onToolDragStart?: (tool: DragTool) => void;
@@ -56,6 +48,63 @@ function setDragPayload(
   onToolDragStart?.(tool);
 }
 
+type SidebarToolButtonProps = {
+  name: string;
+  description: string;
+  ariaLabel: string;
+  tool: DragTool;
+  featured?: boolean;
+  children: ReactNode;
+  onToolClick?: (tool: DragTool) => void;
+  onToolDragStart?: (tool: DragTool) => void;
+  onToolDragEnd?: () => void;
+};
+
+function SidebarToolButton({
+  name,
+  description,
+  ariaLabel,
+  tool,
+  featured = false,
+  children,
+  onToolClick,
+  onToolDragStart,
+  onToolDragEnd,
+}: SidebarToolButtonProps) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          draggable
+          onDragStart={(event) =>
+            setDragPayload(event, tool, onToolDragStart)
+          }
+          onDragEnd={onToolDragEnd}
+          onClick={() => onToolClick?.(tool)}
+          className={
+            featured
+              ? "flex w-full cursor-pointer flex-col items-center gap-1 rounded-md border border-border bg-card px-1 py-2 text-center text-[11px] font-medium leading-tight text-card-foreground shadow-sm transition hover:border-primary hover:bg-accent"
+              : "flex w-full cursor-pointer flex-col items-center gap-1 rounded-md border border-transparent px-1 py-2 text-center text-[11px] font-medium leading-tight text-foreground transition hover:border-border hover:bg-accent"
+          }
+          aria-label={ariaLabel}
+        >
+          {children}
+          <span className="w-full break-words">{name}</span>
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="right" className="max-w-64 px-3 py-2">
+        <span className="block text-xs font-semibold leading-tight">
+          {name}
+        </span>
+        <span className="mt-1 block text-xs leading-snug text-muted-foreground">
+          {description}
+        </span>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
 export default function DragDropSidebar({
   labels,
   onToolClick,
@@ -68,60 +117,41 @@ export default function DragDropSidebar({
         {labels.dragAndDrop}
       </div>
       <div className="flex-1 space-y-2 overflow-y-auto p-2">
-        <button
-          type="button"
-          draggable
-          onDragStart={(event) =>
-            setDragPayload(event, { type: "user" }, onToolDragStart)
-          }
-          onDragEnd={onToolDragEnd}
-          onClick={() => onToolClick?.({ type: "user" })}
-          className="flex w-full cursor-pointer flex-col items-center gap-1 rounded-md border border-transparent px-1 py-2 text-center text-[11px] font-medium leading-tight text-foreground transition hover:border-border hover:bg-accent"
-          aria-label={`Drag ${labels.user}`}
-          title={labels.user}
+        <SidebarToolButton
+          name={labels.user}
+          description={`${labels.userDescription} ${labels.dragOrClickToAdd}`}
+          ariaLabel={`Drag ${labels.user}`}
+          tool={{ type: "user" }}
+          onToolClick={onToolClick}
+          onToolDragStart={onToolDragStart}
+          onToolDragEnd={onToolDragEnd}
         >
           <User className="size-10 text-muted-foreground" />
-          <span className="w-full break-words">{labels.user}</span>
-        </button>
-        <button
-          type="button"
-          draggable
-          onDragStart={(event) =>
-            setDragPayload(event, { type: "region" }, onToolDragStart)
-          }
-          onDragEnd={onToolDragEnd}
-          onClick={() => onToolClick?.({ type: "region" })}
-          className="flex w-full cursor-pointer flex-col items-center gap-1 rounded-md border border-border bg-card px-1 py-2 text-center text-[11px] font-medium leading-tight text-card-foreground shadow-sm transition hover:border-primary hover:bg-accent"
-          aria-label={labels.dragRegion}
-          title={labels.region}
+        </SidebarToolButton>
+        <SidebarToolButton
+          name={labels.region}
+          description={`${labels.regionDescription} ${labels.dragOrClickToAdd}`}
+          ariaLabel={labels.dragRegion}
+          tool={{ type: "region" }}
+          featured
+          onToolClick={onToolClick}
+          onToolDragStart={onToolDragStart}
+          onToolDragEnd={onToolDragEnd}
         >
           <Globe className="h-8 w-8 text-muted-foreground" />
-          <span className="w-full wrap-break-word">{labels.region}</span>
-        </button>
+        </SidebarToolButton>
         {vpcService && (
-          <button
-            type="button"
-            draggable
-            onDragStart={(event) =>
-              setDragPayload(
-                event,
-                {
-                  type: AWS_SERVICE_NODE_TYPE,
-                  serviceId: vpcService.id,
-                },
-                onToolDragStart,
-              )
-            }
-            onDragEnd={onToolDragEnd}
-            onClick={() =>
-              onToolClick?.({
-                type: AWS_SERVICE_NODE_TYPE,
-                serviceId: vpcService.id,
-              })
-            }
-            className="flex w-full cursor-pointer flex-col items-center gap-1 rounded-md border border-transparent px-1 py-2 text-center text-[11px] font-medium leading-tight text-foreground transition hover:border-border hover:bg-accent"
-            aria-label={labels.dragService(vpcService.name)}
-            title={vpcService.name}
+          <SidebarToolButton
+            name={vpcService.name}
+            description={`${labels.getServiceDescription(vpcService)} ${labels.dragOrClickToAdd}`}
+            ariaLabel={labels.dragService(vpcService.name)}
+            tool={{
+              type: AWS_SERVICE_NODE_TYPE,
+              serviceId: vpcService.id,
+            }}
+            onToolClick={onToolClick}
+            onToolDragStart={onToolDragStart}
+            onToolDragEnd={onToolDragEnd}
           >
             <AwsServiceIcon
               slug={vpcService.slug}
@@ -129,49 +159,33 @@ export default function DragDropSidebar({
               name={vpcService.name}
               size={40}
             />
-            <span className="w-full break-words">{vpcService.name}</span>
-          </button>
+          </SidebarToolButton>
         )}
-        <button
-          type="button"
-          draggable
-          onDragStart={(event) =>
-            setDragPayload(event, { type: "container" }, onToolDragStart)
-          }
-          onDragEnd={onToolDragEnd}
-          onClick={() => onToolClick?.({ type: "container" })}
-          className="flex w-full cursor-pointer flex-col items-center gap-1 rounded-md border border-border bg-card px-1 py-2 text-center text-[11px] font-medium leading-tight text-card-foreground shadow-sm transition hover:border-primary hover:bg-accent"
-          aria-label={labels.dragSubnet}
-          title={labels.subnet}
+        <SidebarToolButton
+          name={labels.subnet}
+          description={`${labels.subnetDescription} ${labels.dragOrClickToAdd}`}
+          ariaLabel={labels.dragSubnet}
+          tool={{ type: "container" }}
+          featured
+          onToolClick={onToolClick}
+          onToolDragStart={onToolDragStart}
+          onToolDragEnd={onToolDragEnd}
         >
           <Container className="h-8 w-8 text-muted-foreground" />
-          <span className="w-full wrap-break-word">{labels.subnet}</span>
-        </button>
+        </SidebarToolButton>
         {dragServices.map((service) => (
-          <button
+          <SidebarToolButton
             key={service.id}
-            type="button"
-            draggable
-            onDragStart={(event) =>
-              setDragPayload(
-                event,
-                {
-                  type: AWS_SERVICE_NODE_TYPE,
-                  serviceId: service.id,
-                },
-                onToolDragStart,
-              )
-            }
-            onDragEnd={onToolDragEnd}
-            onClick={() =>
-              onToolClick?.({
-                type: AWS_SERVICE_NODE_TYPE,
-                serviceId: service.id,
-              })
-            }
-            className="flex w-full cursor-pointer flex-col items-center gap-1 rounded-md border border-transparent px-1 py-2 text-center text-[11px] font-medium leading-tight text-foreground transition hover:border-border hover:bg-accent"
-            aria-label={labels.dragService(service.name)}
-            title={service.name}
+            name={service.name}
+            description={`${labels.getServiceDescription(service)} ${labels.dragOrClickToAdd}`}
+            ariaLabel={labels.dragService(service.name)}
+            tool={{
+              type: AWS_SERVICE_NODE_TYPE,
+              serviceId: service.id,
+            }}
+            onToolClick={onToolClick}
+            onToolDragStart={onToolDragStart}
+            onToolDragEnd={onToolDragEnd}
           >
             <AwsServiceIcon
               slug={service.slug}
@@ -179,8 +193,7 @@ export default function DragDropSidebar({
               name={service.name}
               size={40}
             />
-            <span className="w-full break-words">{service.name}</span>
-          </button>
+          </SidebarToolButton>
         ))}
       </div>
     </aside>

@@ -104,6 +104,29 @@ export default function Inspector() {
     [setNodes, t.region],
   );
 
+  const onContainerFieldChange = useCallback(
+    (nodeId: string, fieldKey: string, value: FieldValue) => {
+      setNodes((nodes) =>
+        nodes.map((node) => {
+          if (node.id !== nodeId) return node;
+
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              fields: {
+                ...(node.data as { fields?: Record<string, FieldValue> })
+                  .fields,
+                [fieldKey]: value,
+              },
+            },
+          };
+        }),
+      );
+    },
+    [setNodes],
+  );
+
   const onNumberOfVPCsChange = useCallback(
     (nodeId: string, count: number) => {
       commitGraphChange(({ nodes: prevNodes, edges }) => {
@@ -401,15 +424,16 @@ export default function Inspector() {
   const selectedAwsDescription = selectedAwsNode
     ? getServiceDescription(selectedAwsNode, locale)
     : "";
+  const selectedContainerFields =
+    (selectedNode?.data as { fields?: Record<string, FieldValue> } | undefined)
+      ?.fields ?? {};
 
   const selectedLabel =
     selectedNode?.type === "awsService"
       ? (selectedNode.data as AwsServiceNodeData).name
-      : selectedIsSubnet
-        ? t.subnet
-        : selectedNode
-          ? String((selectedNode.data as { label?: unknown })?.label ?? "")
-          : "";
+      : selectedNode
+        ? String((selectedNode.data as { label?: unknown })?.label ?? "")
+        : "";
 
   // Calculate dynamic child counts
   const childVpcCount = selectedNode
@@ -529,6 +553,20 @@ export default function Inspector() {
                   </SelectContent>
                 </Select>
               </label>
+              <label className="grid gap-2 text-sm font-medium text-foreground">
+                {t.cidrBlock}
+                <Input
+                  value={String(selectedContainerFields.cidrBlock ?? "")}
+                  placeholder={t.subnetCidrBlockPlaceholder}
+                  onChange={(event) =>
+                    onContainerFieldChange(
+                      selectedNode.id,
+                      "cidrBlock",
+                      event.target.value,
+                    )
+                  }
+                />
+              </label>
             </div>
           ) : selectedNode && selectedIsRegion ? (
             <div className="space-y-4 text-sm">
@@ -588,6 +626,20 @@ export default function Inspector() {
             </div>
           ) : selectedNode && selectedIsVpc ? (
             <div className="space-y-4 text-sm">
+              <label className="grid gap-2 text-sm font-medium text-foreground">
+                {t.cidrBlock}
+                <Input
+                  value={String(selectedContainerFields.cidrBlock ?? "")}
+                  placeholder={t.vpcCidrBlockPlaceholder}
+                  onChange={(event) =>
+                    onContainerFieldChange(
+                      selectedNode.id,
+                      "cidrBlock",
+                      event.target.value,
+                    )
+                  }
+                />
+              </label>
               <ChildCountSlider
                 label={t.numberOfAZs}
                 value={childAzCount}

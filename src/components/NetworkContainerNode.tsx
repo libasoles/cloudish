@@ -3,6 +3,7 @@ import {
   type Node,
   type NodeProps,
 } from "@xyflow/react";
+import EditableNodeLabel from "@/components/EditableNodeLabel";
 import { cn } from "@/lib/utils";
 import { UI_TEXT, getBrowserLocale } from "@/i18n";
 import { useFlowStore } from "@/store/flowStore";
@@ -64,17 +65,19 @@ export default function NetworkContainerNode({
   selected,
 }: NodeProps<NetworkContainerNodeType>) {
   const t = UI_TEXT[getBrowserLocale()];
-  const { nodes, setNodes, dropTargetNodeId, dropPreview, toggleAzSync } =
-    useFlowStore();
+  const {
+    nodes,
+    setNodes,
+    dropTargetNodeId,
+    dropPreview,
+    toggleAzSync,
+    commitGraphChange,
+  } = useFlowStore();
   const isVpc = data.containerType === "vpc";
   const isRegion = data.containerType === "region";
   const isAz = data.containerType === "az";
   const isPrivateSubnet = data.subnetType === "Private";
-  const labelIndex = Number(String(data.label).match(/\d+$/)?.[0] ?? 1);
-  const displayLabel =
-    data.containerType === "subnet"
-      ? t.subnetLabel(isPrivateSubnet ? t.private : t.public, labelIndex)
-      : data.label;
+  const displayLabel = String(data.label);
   const isDropTarget = dropTargetNodeId === id;
   const previewChildType =
     dropPreview?.parentId === id ? dropPreview.childType : null;
@@ -96,6 +99,23 @@ export default function NetworkContainerNode({
     }
   };
 
+  const renameNode = (label: string) => {
+    commitGraphChange(({ nodes, edges }) => ({
+      nodes: nodes.map((node) =>
+        node.id === id
+          ? {
+              ...node,
+              data: {
+                ...node.data,
+                label,
+              },
+            }
+          : node,
+      ),
+      edges,
+    }));
+  };
+
   return (
     <div
       className={cn(
@@ -109,7 +129,7 @@ export default function NetworkContainerNode({
               : isPrivateSubnet
                 ? "border-blue-500/45 bg-blue-500/10"
                 : "border-emerald-500/45 bg-emerald-500/10",
-        selected && "ring-2 ring-primary ring-offset-2 ring-offset-background",
+        selected && "ring-2 ring-primary ring-offset-4 ring-offset-background",
         isDropTarget && "ring-2 ring-emerald-400 ring-offset-2 ring-offset-background",
         data.pulseKey && "node-click-pulse",
       )}
@@ -177,7 +197,12 @@ export default function NetworkContainerNode({
             />
           </span>
         )}
-        {displayLabel}
+        <EditableNodeLabel
+          value={displayLabel}
+          editLabel={t.editNodeName}
+          className="max-w-48 text-current font-semibold"
+          onCommit={renameNode}
+        />
       </div>
     </div>
   );

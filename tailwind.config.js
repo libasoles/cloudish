@@ -40,6 +40,10 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        "node-label": {
+          selection: "#3B82F6",
+          "selection-text": "#FFFFFF",
+        },
         aws: {
           compute: "#ED7100",
           storage: "#7AA116",

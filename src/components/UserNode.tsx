@@ -40,7 +40,9 @@ export default function UserNode({ id, data, selected }: NodeProps<UserNodeType>
       className={cn(
         "flex flex-col items-center gap-1 px-3 py-2 bg-white rounded-xl border-2 shadow-sm min-w-20",
         data.pulseKey && "node-click-pulse",
-        selected ? "border-blue-500 shadow-md" : "border-gray-200",
+        selected
+          ? "border-blue-500 shadow-md ring-2 ring-primary ring-offset-4 ring-offset-background"
+          : "border-gray-200",
       )}
     >
       <Handle type="target" position={Position.Left} />

@@ -41,7 +41,7 @@ export default function EditableNodeLabel({
         ref={inputRef}
         aria-label={editLabel}
         className={cn(
-          "nodrag max-w-24 border-0 border-b border-blue-400 bg-transparent px-0.5 py-0 text-center text-xs font-medium leading-tight text-gray-700 outline-none selection:bg-blue-100 selection:text-gray-900 focus:border-blue-600",
+          "nodrag max-w-24 border-0 border-b border-blue-400 bg-transparent px-0.5 py-0 text-center text-xs font-medium leading-tight text-gray-700 outline-none selection:bg-node-label-selection selection:text-node-label-selection-text focus:border-blue-600",
           className,
         )}
         style={{ width: `${inputCharacterWidth}ch` }}
