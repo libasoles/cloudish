@@ -12,10 +12,9 @@ import {
   getServiceDescription,
   type Locale,
 } from '@/i18n';
+import { CONTAINER_WIDTH, CONTAINER_HEIGHT } from '@/lib/graph-utils';
 
 const VPC_SERVICE_ID = 'vpc';
-const CONTAINER_WIDTH = 320;
-const CONTAINER_HEIGHT = 220;
 
 function getSearchResults(query: string, locale: Locale) {
   const normalizedQuery = query.trim().toLowerCase();

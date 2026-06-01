@@ -2,8 +2,6 @@ import { useCallback, useRef, useState, type DragEvent } from "react";
 import {
   ReactFlow,
   addEdge,
-  useNodesState,
-  useEdgesState,
   Controls,
   MiniMap,
   Background,
@@ -12,7 +10,6 @@ import {
   type NodeTypes,
   type OnNodeDrag,
   type ReactFlowInstance,
-  type Rect,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { Button } from "@/components/ui/button";
@@ -35,12 +32,8 @@ import EdgeArrowDirectionOption from "@/components/EdgeArrowDirectionOption";
 import NetworkContainerNode from "@/components/NetworkContainerNode";
 import DragDropSidebar from "@/components/DragDropSidebar";
 import ServiceSearch from "@/components/ServiceSearch";
-import { AWS_SERVICES, type AwsService } from "@/data/aws-services";
-import {
-  AWS_SERVICE_FIELDS,
-  type ServiceField,
-} from "@/data/aws-service-fields";
-import { initialEdges, initialNodes } from "@/data/initial-flow";
+import { AWS_SERVICES } from "@/data/aws-services";
+import { AWS_SERVICE_FIELDS } from "@/data/aws-service-fields";
 import {
   AWS_SERVICE_NODE_TYPE,
   DND_MIME_TYPE,
@@ -54,8 +47,6 @@ import {
 import type {
   AppEdge,
   AppNode,
-  FlowPosition,
-  NetworkContainerNodeData,
   SubnetNodeData,
   SubnetType,
 } from "@/types/flow";
@@ -63,200 +54,54 @@ import {
   UI_TEXT,
   getBrowserLocale,
   getLocalizedField,
-  getServiceDescription as getLocalizedServiceDescription,
 } from "@/i18n";
+import { useFlowStore } from "@/store/flowStore";
+import {
+  isNetworkContainerNode,
+  isSubnetNode,
+  isVpcNode,
+  orderNodesForSubflows,
+  getNodeRect,
+  getAbsolutePosition,
+  isRectIntersecting,
+  findIntersectingContainer,
+  getParentedPosition,
+  CONTAINER_STYLE,
+  CONTAINER_WIDTH,
+  CONTAINER_HEIGHT,
+  DEFAULT_NODE_WIDTH,
+  DEFAULT_NODE_HEIGHT,
+} from "@/lib/graph-utils";
+import {
+  getServiceId,
+  getServiceDescription,
+  getFieldValue,
+  getAwsServiceNodeData,
+  type FieldValue,
+} from "@/lib/node-utils";
 
 const nodeTypes: NodeTypes = {
   awsService: AwsServiceNode,
   networkContainer: NetworkContainerNode,
 };
 
-type FieldValue = string | boolean | number;
-
-const CONTAINER_WIDTH = 320;
-const CONTAINER_HEIGHT = 220;
-const DEFAULT_NODE_WIDTH = 150;
-const DEFAULT_NODE_HEIGHT = 40;
 const SERVICE_DROP_OFFSET = { x: 50, y: 36 };
 const INITIAL_FIT_VIEW_PADDING = 1.3;
 const VPC_SERVICE_ID = "vpc";
 
-function getContainerStyle() {
-  return {
-    width: CONTAINER_WIDTH,
-    height: CONTAINER_HEIGHT,
-  };
-}
-
-function isNetworkContainerNode(node: AppNode) {
-  return node.type === "networkContainer";
-}
-
-function isSubnetNode(node: AppNode) {
-  return (
-    isNetworkContainerNode(node) &&
-    (node.data as NetworkContainerNodeData).containerType === "subnet"
-  );
-}
-
-function isVpcNode(node: AppNode) {
-  return (
-    isNetworkContainerNode(node) &&
-    (node.data as NetworkContainerNodeData).containerType === "vpc"
-  );
-}
-
-function orderNodesForSubflows(nodes: AppNode[]) {
-  return [...nodes].sort((a, b) => {
-    if (isNetworkContainerNode(a) === isNetworkContainerNode(b)) {
-      if (isVpcNode(a) !== isVpcNode(b)) {
-        return isVpcNode(a) ? -1 : 1;
-      }
-
-      return 0;
-    }
-
-    return isNetworkContainerNode(a) ? -1 : 1;
-  });
-}
-
-function getNodeSize(node: AppNode) {
-  return {
-    width: node.width ?? node.measured?.width ?? DEFAULT_NODE_WIDTH,
-    height: node.height ?? node.measured?.height ?? DEFAULT_NODE_HEIGHT,
-  };
-}
-
-function getAbsolutePosition(
-  node: AppNode,
-  nodesById: Map<string, AppNode>,
-): FlowPosition {
-  if (!node.parentId) {
-    return node.position;
-  }
-
-  const parentNode = nodesById.get(node.parentId);
-  if (!parentNode) {
-    return node.position;
-  }
-
-  const parentPosition = getAbsolutePosition(parentNode, nodesById);
-
-  return {
-    x: parentPosition.x + node.position.x,
-    y: parentPosition.y + node.position.y,
-  };
-}
-
-function getNodeRect(node: AppNode, nodesById: Map<string, AppNode>): Rect {
-  return {
-    ...getAbsolutePosition(node, nodesById),
-    ...getNodeSize(node),
-  };
-}
-
-function isRectIntersecting(a: Rect, b: Rect) {
-  return (
-    a.x < b.x + b.width &&
-    a.x + a.width > b.x &&
-    a.y < b.y + b.height &&
-    a.y + a.height > b.y
-  );
-}
-
-function findIntersectingContainer(
-  nodeRect: Rect,
-  nodes: AppNode[],
-  nodesById: Map<string, AppNode>,
-  childNode?: AppNode,
-) {
-  return nodes
-    .filter((node) => {
-      if (!isNetworkContainerNode(node) || node.id === childNode?.id) {
-        return false;
-      }
-
-      if (childNode && isVpcNode(childNode)) {
-        return false;
-      }
-
-      if (childNode && isSubnetNode(childNode) && !isVpcNode(node)) {
-        return false;
-      }
-
-      return isRectIntersecting(nodeRect, getNodeRect(node, nodesById));
-    })
-    .sort((a, b) => {
-      if (isSubnetNode(a) !== isSubnetNode(b)) {
-        return isSubnetNode(a) ? -1 : 1;
-      }
-
-      return 0;
-    })[0];
-}
-
-function getServiceId(node: AwsServiceNodeType) {
-  return node.data.serviceId ?? node.id;
-}
-
-function getServiceDescription(
-  node: AwsServiceNodeType,
-  locale: ReturnType<typeof getBrowserLocale>,
-) {
-  const serviceId = getServiceId(node);
-  const service = AWS_SERVICES.find(
-    (service) => service.id === serviceId || service.slug === node.data.slug,
-  );
-
-  return getLocalizedServiceDescription(service, locale, node.data.description);
-}
-
-function getFieldValue(
-  data: AwsServiceNodeData,
-  field: ServiceField,
-): FieldValue {
-  return data.fields?.[field.key] ?? field.defaultValue ?? "";
-}
-
-function getAwsServiceNodeData(service: AwsService): AwsServiceNodeData {
-  return {
-    name: service.name,
-    slug: service.slug,
-    category: service.category,
-    serviceId: service.id,
-  };
-}
-
-function getParentedPosition(
-  position: FlowPosition,
-  size: { width: number; height: number },
-  nodes: AppNode[],
-) {
-  const nodeRect = { ...position, ...size };
-  const nodesById = new Map(nodes.map((node) => [node.id, node]));
-  const parentNode = findIntersectingContainer(nodeRect, nodes, nodesById);
-
-  if (!parentNode) {
-    return { position };
-  }
-
-  const parentPosition = getAbsolutePosition(parentNode, nodesById);
-
-  return {
-    parentId: parentNode.id,
-    position: {
-      x: position.x - parentPosition.x,
-      y: position.y - parentPosition.y,
-    },
-  };
-}
-
 export default function App() {
   const locale = getBrowserLocale();
   const t = UI_TEXT[locale];
-  const [nodes, setNodes, onNodesChange] = useNodesState<AppNode>(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState<AppEdge>(initialEdges);
-  const [inspectorOpen, setInspectorOpen] = useState(true);
+  const {
+    nodes,
+    setNodes,
+    onNodesChange,
+    edges,
+    setEdges,
+    onEdgesChange,
+    inspectorOpen,
+    setInspectorOpen,
+  } = useFlowStore();
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance<
     AppNode,
     AppEdge
@@ -341,7 +186,7 @@ export default function App() {
                 type: "networkContainer",
                 position: vpcPosition,
                 data: { containerType: "vpc", label: "VPC" },
-                style: getContainerStyle(),
+                style: CONTAINER_STYLE,
               },
             ]);
           });
@@ -446,7 +291,7 @@ export default function App() {
               label: t.public,
               subnetType: "Public",
             },
-            style: getContainerStyle(),
+            style: CONTAINER_STYLE,
           },
         ]);
       });
