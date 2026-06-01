@@ -411,7 +411,7 @@ export default function Canvas() {
             position: subnetPosition,
             data: {
               containerType: "subnet",
-              label: `${t.public} ${t.subnet} ${subnetNumber}`,
+              label: t.subnetLabel(t.public, subnetNumber),
               subnetType: "Public",
             },
           },
@@ -453,7 +453,7 @@ export default function Canvas() {
               : subnetPosition,
             data: {
               containerType: "subnet",
-              label: `${t.public} ${t.subnet} ${subnetNumber}`,
+              label: t.subnetLabel(t.public, subnetNumber),
               subnetType: "Public",
               ...pulseData,
             },
@@ -468,7 +468,7 @@ export default function Canvas() {
         return allNodes;
       });
     },
-    [setNodes, t.public, t.subnet, t.user, t.region],
+    [setNodes, t],
   );
 
   const onDrop = useCallback(

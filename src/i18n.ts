@@ -33,6 +33,8 @@ export const UI_TEXT = {
     type: "Type",
     public: "Public",
     private: "Private",
+    subnetLabel: (subnetType: string, index: number) =>
+      `Subnet ${subnetType} ${index}`,
     comingSoon: "Coming Soon",
     fieldsUnavailable:
       "Configuration fields for this service are not available yet.",
@@ -67,6 +69,8 @@ export const UI_TEXT = {
     type: "Tipo",
     public: "Publica",
     private: "Privada",
+    subnetLabel: (subnetType: string, index: number) =>
+      `Subred ${subnetType} ${index}`,
     comingSoon: "Proximamente",
     fieldsUnavailable:
       "Los campos de configuracion para este servicio todavia no estan disponibles.",

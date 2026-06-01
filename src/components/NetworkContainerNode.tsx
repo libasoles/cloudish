@@ -4,13 +4,9 @@ import {
   type NodeProps,
 } from "@xyflow/react";
 import { cn } from "@/lib/utils";
+import { UI_TEXT, getBrowserLocale } from "@/i18n";
 import { useFlowStore } from "@/store/flowStore";
-import {
-  redistributeAzNodes,
-  redistributeVpcNodes,
-  redistributeSubnetNodes,
-  isAzNode,
-} from "@/lib/graph-utils";
+import { resizeContainerNode } from "@/lib/graph-utils";
 import type {
   NetworkContainerNodeData,
   NetworkContainerType,
@@ -67,12 +63,18 @@ export default function NetworkContainerNode({
   data,
   selected,
 }: NodeProps<NetworkContainerNodeType>) {
+  const t = UI_TEXT[getBrowserLocale()];
   const { nodes, setNodes, dropTargetNodeId, dropPreview, toggleAzSync } =
     useFlowStore();
   const isVpc = data.containerType === "vpc";
   const isRegion = data.containerType === "region";
   const isAz = data.containerType === "az";
   const isPrivateSubnet = data.subnetType === "Private";
+  const labelIndex = Number(String(data.label).match(/\d+$/)?.[0] ?? 1);
+  const displayLabel =
+    data.containerType === "subnet"
+      ? t.subnetLabel(isPrivateSubnet ? t.private : t.public, labelIndex)
+      : data.label;
   const isDropTarget = dropTargetNodeId === id;
   const previewChildType =
     dropPreview?.parentId === id ? dropPreview.childType : null;
@@ -89,19 +91,8 @@ export default function NetworkContainerNode({
     _: unknown,
     params: { width: number; height: number },
   ) => {
-    if (isRegion) {
-      setNodes((prev) => redistributeVpcNodes(id, params.width, params.height, prev));
-    } else if (isVpc) {
-      setNodes((prev) => {
-        let result = redistributeAzNodes(id, params.width, params.height, prev);
-        const azNodes = result.filter((n) => n.parentId === id && isAzNode(n));
-        for (const az of azNodes) {
-          const azW = (az.style?.width as number) ?? 300;
-          const azH = (az.style?.height as number) ?? 360;
-          result = redistributeSubnetNodes(az.id, azW, azH, result);
-        }
-        return result;
-      });
+    if (isRegion || isVpc) {
+      setNodes((prev) => resizeContainerNode(id, params.width, params.height, prev));
     }
   };
 
@@ -171,7 +162,7 @@ export default function NetworkContainerNode({
                   : "border-emerald-500/50 bg-background text-emerald-200",
         )}
       >
-        {data.label}
+        {displayLabel}
         {isAz && (
           <span
             className="nodrag nopan flex items-center"

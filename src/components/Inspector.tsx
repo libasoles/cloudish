@@ -50,22 +50,28 @@ export default function Inspector() {
 
   const onSubnetTypeChange = useCallback(
     (nodeId: string, subnetType: SubnetType) => {
+      const typeLabel = subnetType === "Public" ? t.public : t.private;
       setNodes((nodes) =>
-        nodes.map((node) =>
-          node.id === nodeId
-            ? {
-                ...node,
-                data: {
-                  ...node.data,
-                  label: subnetType === "Public" ? t.public : t.private,
-                  subnetType,
-                },
-              }
-            : node,
-        ),
+        nodes.map((node) => {
+          if (node.id !== nodeId) return node;
+
+          const currentLabel = String(
+            (node.data as Partial<SubnetNodeData>).label ?? "",
+          );
+          const labelIndex = Number(currentLabel.match(/\d+$/)?.[0] ?? 1);
+
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              label: t.subnetLabel(typeLabel, labelIndex),
+              subnetType,
+            },
+          };
+        }),
       );
     },
-    [setNodes, t.private, t.public],
+    [setNodes, t],
   );
 
   const onRegionChange = useCallback(
@@ -269,11 +275,17 @@ export default function Inspector() {
           return withUpdatedAz;
         }
 
-        const subnetNodes = buildSubnetNodes(az.id, azW, azH, count);
+        const subnetNodes = buildSubnetNodes(
+          az.id,
+          azW,
+          azH,
+          count,
+          t.subnetLabel,
+        );
         return orderNodesForSubflows([...withUpdatedAz, ...subnetNodes]);
       });
     },
-    [setNodes],
+    [setNodes, t.subnetLabel],
   );
 
   const onServiceFieldChange = useCallback(

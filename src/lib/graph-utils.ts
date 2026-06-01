@@ -271,6 +271,7 @@ export function buildSubnetNodes(
   azW: number,
   azH: number,
   count: number,
+  getSubnetLabel: (subnetType: string, index: number) => string,
 ): AppNode[] {
   const subnetW = azW - SUBNET_PAD * 2;
   const subnetH = Math.floor(
@@ -289,7 +290,7 @@ export function buildSubnetNodes(
     },
     data: {
       containerType: "subnet" as const,
-      label: `Public Subnet ${i + 1}`,
+      label: getSubnetLabel("Public", i + 1),
       subnetType: "Public" as const,
     } as NetworkContainerNodeData,
     style: { width: subnetW, height: subnetH },
@@ -446,6 +447,81 @@ export function redistributeNestedContainerNodes(nodes: AppNode[]): AppNode[] {
   }
 
   redistributeSubnetsForAzs();
+
+  return result;
+}
+
+function resizeNode(
+  nodes: AppNode[],
+  nodeId: string,
+  width: number,
+  height: number,
+) {
+  return nodes.map((node) => {
+    if (node.id !== nodeId) return node;
+
+    return {
+      ...node,
+      width,
+      height,
+      style: { ...node.style, width, height },
+    };
+  });
+}
+
+export function resizeContainerNode(
+  nodeId: string,
+  width: number,
+  height: number,
+  nodes: AppNode[],
+): AppNode[] {
+  const containerNode = nodes.find((node) => node.id === nodeId);
+  const containerType = containerNode
+    ? getNetworkContainerType(containerNode)
+    : null;
+
+  if (!containerType) return nodes;
+
+  let result = resizeNode(nodes, nodeId, width, height);
+
+  if (containerType === "region") {
+    result = redistributeVpcNodes(nodeId, width, height, result);
+
+    const vpcChildren = result.filter(
+      (node) => node.parentId === nodeId && isVpcNode(node),
+    );
+
+    for (const vpc of vpcChildren) {
+      const currentVpc = result.find((node) => node.id === vpc.id);
+      if (!currentVpc) continue;
+      const { width: vpcW, height: vpcH } = getNodeSize(currentVpc);
+      result = resizeContainerNode(currentVpc.id, vpcW, vpcH, result);
+    }
+
+    return result;
+  }
+
+  if (containerType === "vpc") {
+    result = redistributeAzNodes(nodeId, width, height, result);
+    result = redistributeSubnetNodes(nodeId, width, height, result);
+
+    const azChildren = result.filter(
+      (node) => node.parentId === nodeId && isAzNode(node),
+    );
+
+    for (const az of azChildren) {
+      const currentAz = result.find((node) => node.id === az.id);
+      if (!currentAz) continue;
+      const { width: azW, height: azH } = getNodeSize(currentAz);
+      result = resizeContainerNode(currentAz.id, azW, azH, result);
+    }
+
+    return result;
+  }
+
+  if (containerType === "az") {
+    return redistributeSubnetNodes(nodeId, width, height, result);
+  }
 
   return result;
 }
