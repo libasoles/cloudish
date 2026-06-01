@@ -31,13 +31,19 @@ import { UI_TEXT, getBrowserLocale } from "@/i18n";
 import { useFlowStore } from "@/store/flowStore";
 import {
   isNetworkContainerNode,
-  isVpcNode,
+  isRegionNode,
   orderNodesForSubflows,
   getNodeRect,
   getAbsolutePosition,
   isRectIntersecting,
   findIntersectingContainer,
   getParentedPosition,
+  REGION_STYLE,
+  REGION_WIDTH,
+  REGION_HEIGHT,
+  VPC_STYLE,
+  VPC_WIDTH,
+  VPC_HEIGHT,
   CONTAINER_STYLE,
   CONTAINER_WIDTH,
   CONTAINER_HEIGHT,
@@ -69,6 +75,8 @@ export default function Canvas() {
     setEdges,
     inspectorOpen,
     setInspectorOpen,
+    dropTargetNodeId,
+    setDropTargetNodeId,
   } = useFlowStore();
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance<
     AppNode,
@@ -124,22 +132,38 @@ export default function Canvas() {
         if (service.id === VPC_SERVICE_ID) {
           const containerNumber = containerIdRef.current++;
           const vpcPosition = {
-            x: position.x - CONTAINER_WIDTH / 2,
-            y: position.y - CONTAINER_HEIGHT / 2,
+            x: position.x - VPC_WIDTH / 2,
+            y: position.y - VPC_HEIGHT / 2,
           };
           const vpcRect = {
             ...vpcPosition,
-            width: CONTAINER_WIDTH,
-            height: CONTAINER_HEIGHT,
+            width: VPC_WIDTH,
+            height: VPC_HEIGHT,
           };
           const vpcId = `vpc-${containerNumber}`;
 
           setNodes((nodes) => {
             const nodesById = new Map(nodes.map((node) => [node.id, node]));
 
+            // Check if VPC is dropped inside a Region
+            const parentRegion = nodes.find(
+              (n) => isRegionNode(n) && isRectIntersecting(vpcRect, getNodeRect(n, nodesById)),
+            );
+            const parentRegionPosition = parentRegion
+              ? getAbsolutePosition(parentRegion, nodesById)
+              : null;
+
+            const vpcRelativePosition = parentRegionPosition
+              ? {
+                  x: vpcPosition.x - parentRegionPosition.x,
+                  y: vpcPosition.y - parentRegionPosition.y,
+                }
+              : vpcPosition;
+
             return orderNodesForSubflows([
               ...nodes.map((node) => {
-                if (isVpcNode(node)) {
+                // Don't absorb other containers into the new VPC on drop
+                if (isNetworkContainerNode(node)) {
                   return node;
                 }
 
@@ -161,9 +185,10 @@ export default function Canvas() {
               {
                 id: vpcId,
                 type: "networkContainer",
-                position: vpcPosition,
+                parentId: parentRegion?.id,
+                position: vpcRelativePosition,
                 data: { containerType: "vpc", label: "VPC", ...pulseData },
-                style: CONTAINER_STYLE,
+                style: VPC_STYLE,
               },
             ]);
           });
@@ -215,6 +240,34 @@ export default function Canvas() {
               type: "user",
               ...parentedPosition,
               data: { label: t.user, fields: { label: t.user }, ...pulseData },
+            },
+          ]);
+        });
+        return;
+      }
+
+      if (tool.type === "region") {
+        const containerNumber = containerIdRef.current++;
+        const regionPosition = {
+          x: position.x - REGION_WIDTH / 2,
+          y: position.y - REGION_HEIGHT / 2,
+        };
+        const regionId = `region-${containerNumber}`;
+
+        setNodes((nodes) => {
+          return orderNodesForSubflows([
+            ...nodes,
+            {
+              id: regionId,
+              type: "networkContainer",
+              position: regionPosition,
+              data: {
+                containerType: "region",
+                label: `${t.region} us-east-1`,
+                fields: { region: "us-east-1" },
+                ...pulseData,
+              },
+              style: REGION_STYLE,
             },
           ]);
         });
@@ -296,7 +349,7 @@ export default function Canvas() {
         ]);
       });
     },
-    [setNodes, t.public, t.user],
+    [setNodes, t.public, t.user, t.region],
   );
 
   const onDrop = useCallback(
@@ -361,10 +414,6 @@ export default function Canvas() {
           node: AppNode,
           forcedContainer?: AppNode,
         ) {
-          if (isVpcNode(node)) {
-            return;
-          }
-
           const nodeRect = getNodeRect(node, nodesById);
           const containerNode =
             forcedContainer ??
@@ -411,10 +460,14 @@ export default function Canvas() {
         }
 
         if (isNetworkContainerNode(draggedNode)) {
+          // Re-parent the dragged container to its new ancestor
+          updateContainerForNode(draggedNode);
+
           const draggedContainerRect = getNodeRect(draggedNode, nodesById);
 
           nodes.forEach((node) => {
-            if (node.id === draggedNode.id || isVpcNode(node)) {
+            // Skip the dragged container and other containers - only absorb service/user nodes
+            if (node.id === draggedNode.id || isNetworkContainerNode(node)) {
               return;
             }
 
@@ -441,11 +494,30 @@ export default function Canvas() {
     [setNodes],
   );
 
+  const onNodeDrag: OnNodeDrag<AppNode> = useCallback(
+    (_event, node) => {
+      if (!isNetworkContainerNode(node)) {
+        if (dropTargetNodeId !== null) setDropTargetNodeId(null);
+        return;
+      }
+
+      const { nodes: currentNodes } = useFlowStore.getState();
+      const nodesById = new Map(currentNodes.map((n) => [n.id, n]));
+      const nodeRect = getNodeRect(node, nodesById);
+      const containerNodes = currentNodes.filter(isNetworkContainerNode);
+      const target = findIntersectingContainer(nodeRect, containerNodes, nodesById, node);
+
+      setDropTargetNodeId(target?.id ?? null);
+    },
+    [dropTargetNodeId, setDropTargetNodeId],
+  );
+
   const onNodeDragStop: OnNodeDrag<AppNode> = useCallback(
     (_event, node) => {
+      setDropTargetNodeId(null);
       syncNodeSubnet(node.id);
     },
-    [syncNodeSubnet],
+    [syncNodeSubnet, setDropTargetNodeId],
   );
 
   return (
@@ -454,7 +526,9 @@ export default function Canvas() {
         labels={{
           dragAndDrop: t.dragAndDrop,
           dragSubnet: t.dragSubnet,
+          dragRegion: t.dragRegion,
           subnet: t.subnet,
+          region: t.region,
           user: t.user,
           dragService: t.dragService,
         }}
@@ -471,6 +545,7 @@ export default function Canvas() {
           onDragOver={onDragOver}
           onDrop={onDrop}
           onInit={handleInit}
+          onNodeDrag={onNodeDrag}
           onNodeDragStop={onNodeDragStop}
           nodeTypes={nodeTypes}
           fitView

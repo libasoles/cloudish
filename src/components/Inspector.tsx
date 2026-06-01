@@ -20,10 +20,23 @@ import {
   setEdgeArrowDirection,
   type EdgeArrowDirection,
 } from "@/lib/edge-tools";
-import type { SubnetNodeData, SubnetType } from "@/types/flow";
+import type { SubnetNodeData, SubnetType, NetworkContainerNodeData } from "@/types/flow";
 import { UI_TEXT, getBrowserLocale, getLocalizedField } from "@/i18n";
 import { useFlowStore } from "@/store/flowStore";
-import { isSubnetNode } from "@/lib/graph-utils";
+import {
+  isSubnetNode,
+  isNetworkContainerNode,
+  isVpcNode,
+  buildAzNodes,
+  buildVpcNodes,
+  orderNodesForSubflows,
+  isAzNode,
+  REGION_WIDTH,
+  REGION_HEIGHT,
+  VPC_WIDTH,
+  VPC_HEIGHT,
+  getAbsolutePosition,
+} from "@/lib/graph-utils";
 import {
   getServiceId,
   getServiceDescription,
@@ -54,6 +67,159 @@ export default function Inspector() {
       );
     },
     [setNodes, t.private, t.public],
+  );
+
+  const onRegionChange = useCallback(
+    (nodeId: string, region: string) => {
+      setNodes((nodes) =>
+        nodes.map((node) =>
+          node.id === nodeId
+            ? {
+                ...node,
+                data: {
+                  ...node.data,
+                  label: `${t.region} ${region}`,
+                  fields: {
+                    ...(node.data as { fields?: Record<string, unknown> }).fields,
+                    region,
+                  },
+                },
+              }
+            : node,
+        ),
+      );
+    },
+    [setNodes, t.region],
+  );
+
+  const onNumberOfVPCsChange = useCallback(
+    (nodeId: string, count: number) => {
+      setNodes((prevNodes) => {
+        const region = prevNodes.find((n) => n.id === nodeId);
+        if (!region) return prevNodes;
+
+        const regionW = (region.style?.width as number) ?? REGION_WIDTH;
+        const regionH = (region.style?.height as number) ?? REGION_HEIGHT;
+
+        const managedVpcs = prevNodes.filter(
+          (n) =>
+            n.parentId === region.id && isVpcNode(n) && n.draggable === false,
+        );
+
+        const withoutVpcs = prevNodes.filter(
+          (n) =>
+            !(n.parentId === region.id && isVpcNode(n) && n.draggable === false),
+        );
+
+        const removedVpcIds = new Set(managedVpcs.map((n) => n.id));
+        const nodesById = new Map(prevNodes.map((n) => [n.id, n]));
+        const regionAbsPos = getAbsolutePosition(region, nodesById);
+
+        // Re-parent orphaned children of removed managed VPCs to the Region
+        const reParentedNodes = withoutVpcs.map((n) => {
+          if (!n.parentId || !removedVpcIds.has(n.parentId)) return n;
+          const vpcAbsPos = getAbsolutePosition(
+            nodesById.get(n.parentId)!,
+            nodesById,
+          );
+          return {
+            ...n,
+            parentId: region.id,
+            position: {
+              x: vpcAbsPos.x + n.position.x - regionAbsPos.x,
+              y: vpcAbsPos.y + n.position.y - regionAbsPos.y,
+            },
+          };
+        });
+
+        const updatedRegion = {
+          ...region,
+          data: {
+            ...region.data,
+            fields: {
+              ...(region.data as { fields?: Record<string, unknown> }).fields,
+              numberOfVPCs: count,
+            },
+          },
+        };
+
+        const withUpdatedRegion = reParentedNodes.map((n) =>
+          n.id === region.id ? updatedRegion : n,
+        );
+
+        if (count <= 0) {
+          return withUpdatedRegion;
+        }
+
+        const vpcNodes = buildVpcNodes(region.id, regionW, regionH, count);
+        return orderNodesForSubflows([...withUpdatedRegion, ...vpcNodes]);
+      });
+    },
+    [setNodes],
+  );
+
+  const onNumberOfAZsChange = useCallback(
+    (nodeId: string, count: number) => {
+      setNodes((prevNodes) => {
+        const vpc = prevNodes.find((n) => n.id === nodeId);
+        if (!vpc) return prevNodes;
+
+        const vpcW = (vpc.style?.width as number) ?? VPC_WIDTH;
+        const vpcH = (vpc.style?.height as number) ?? VPC_HEIGHT;
+
+        const managedAzs = prevNodes.filter(
+          (n) => n.parentId === vpc.id && isAzNode(n) && n.draggable === false,
+        );
+
+        const withoutAzs = prevNodes.filter(
+          (n) => !(n.parentId === vpc.id && isAzNode(n) && n.draggable === false),
+        );
+
+        const removedAzIds = new Set(managedAzs.map((n) => n.id));
+        const nodesById = new Map(prevNodes.map((n) => [n.id, n]));
+        const vpcAbsPos = getAbsolutePosition(vpc, nodesById);
+
+        // Re-parent orphaned children of removed managed AZs to the VPC
+        const reParentedNodes = withoutAzs.map((n) => {
+          if (!n.parentId || !removedAzIds.has(n.parentId)) return n;
+          const azAbsPos = getAbsolutePosition(
+            nodesById.get(n.parentId)!,
+            nodesById,
+          );
+          return {
+            ...n,
+            parentId: vpc.id,
+            position: {
+              x: azAbsPos.x + n.position.x - vpcAbsPos.x,
+              y: azAbsPos.y + n.position.y - vpcAbsPos.y,
+            },
+          };
+        });
+
+        const updatedVpc = {
+          ...vpc,
+          data: {
+            ...vpc.data,
+            fields: {
+              ...(vpc.data as { fields?: Record<string, unknown> }).fields,
+              numberOfAZs: count,
+            },
+          },
+        };
+
+        const withUpdatedVpc = reParentedNodes.map((n) =>
+          n.id === vpc.id ? updatedVpc : n,
+        );
+
+        if (count <= 0) {
+          return withUpdatedVpc;
+        }
+
+        const azNodes = buildAzNodes(vpc.id, vpcW, vpcH, count);
+        return orderNodesForSubflows([...withUpdatedVpc, ...azNodes]);
+      });
+    },
+    [setNodes],
   );
 
   const onServiceFieldChange = useCallback(
@@ -117,6 +283,16 @@ export default function Inspector() {
     both: t.bothArrows,
   };
   const selectedIsSubnet = selectedNode ? isSubnetNode(selectedNode) : false;
+  const selectedIsRegion = selectedNode
+    ? isNetworkContainerNode(selectedNode) &&
+      (selectedNode.data as Partial<NetworkContainerNodeData>).containerType ===
+        "region"
+    : false;
+  const selectedIsVpc = selectedNode
+    ? isNetworkContainerNode(selectedNode) &&
+      (selectedNode.data as Partial<NetworkContainerNodeData>).containerType ===
+        "vpc"
+    : false;
   const selectedAwsNode =
     selectedNode?.type === "awsService"
       ? (selectedNode as AwsServiceNodeType)
@@ -138,6 +314,15 @@ export default function Inspector() {
         : selectedNode
           ? String((selectedNode.data as { label?: unknown })?.label ?? "")
           : "";
+
+  // Calculate dynamic child counts
+  const childVpcCount = selectedNode
+    ? nodes.filter((n) => n.parentId === selectedNode.id && isVpcNode(n)).length
+    : 0;
+
+  const childAzCount = selectedNode
+    ? nodes.filter((n) => n.parentId === selectedNode.id && isAzNode(n)).length
+    : 0;
 
   return (
     <Card className="flex h-full w-72 flex-col rounded-none border-y-0 border-r-0">
@@ -236,6 +421,88 @@ export default function Inspector() {
                     <SelectItem value="Private">{t.private}</SelectItem>
                   </SelectContent>
                 </Select>
+              </label>
+            </div>
+          ) : selectedNode && selectedIsRegion ? (
+            <div className="space-y-4 text-sm">
+              <label className="grid gap-2 text-sm font-medium text-foreground">
+                {t.region}
+                <Select
+                  value={
+                    ((selectedNode.data as Partial<NetworkContainerNodeData> & {
+                      fields?: Record<string, unknown>;
+                    })?.fields?.region as string) ?? "us-east-1"
+                  }
+                  onValueChange={(value) => onRegionChange(selectedNode.id, value)}
+                >
+                  <SelectTrigger className="font-normal">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="us-east-1">
+                      US East (N. Virginia)
+                    </SelectItem>
+                    <SelectItem value="us-east-2">US East (Ohio)</SelectItem>
+                    <SelectItem value="us-west-1">
+                      US West (N. California)
+                    </SelectItem>
+                    <SelectItem value="us-west-2">US West (Oregon)</SelectItem>
+                    <SelectItem value="eu-west-1">
+                      Europe (Ireland)
+                    </SelectItem>
+                    <SelectItem value="eu-west-2">Europe (London)</SelectItem>
+                    <SelectItem value="eu-central-1">
+                      Europe (Frankfurt)
+                    </SelectItem>
+                    <SelectItem value="ap-southeast-1">
+                      Asia Pacific (Singapore)
+                    </SelectItem>
+                    <SelectItem value="ap-southeast-2">
+                      Asia Pacific (Sydney)
+                    </SelectItem>
+                    <SelectItem value="ap-northeast-1">
+                      Asia Pacific (Tokyo)
+                    </SelectItem>
+                    <SelectItem value="sa-east-1">
+                      South America (São Paulo)
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </label>
+              <label className="grid gap-2 text-sm font-medium text-foreground">
+                {t.numberOfVPCs}
+                <Input
+                  type="number"
+                  min={0}
+                  max={6}
+                  value={String(childVpcCount)}
+                  onChange={(event) => {
+                    const value = Math.max(
+                      0,
+                      Math.min(6, parseInt(event.target.value) || 0),
+                    );
+                    onNumberOfVPCsChange(selectedNode.id, value);
+                  }}
+                />
+              </label>
+            </div>
+          ) : selectedNode && selectedIsVpc ? (
+            <div className="space-y-4 text-sm">
+              <label className="grid gap-2 text-sm font-medium text-foreground">
+                {t.numberOfAZs}
+                <Input
+                  type="number"
+                  min={0}
+                  max={6}
+                  value={String(childAzCount)}
+                  onChange={(event) => {
+                    const value = Math.max(
+                      0,
+                      Math.min(6, parseInt(event.target.value) || 0),
+                    );
+                    onNumberOfAZsChange(selectedNode.id, value);
+                  }}
+                />
               </label>
             </div>
           ) : selectedNode && selectedHasFields ? (
