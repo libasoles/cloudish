@@ -1,7 +1,11 @@
 import { Handle, Position, type NodeProps, type Node } from "@xyflow/react";
 import { cn } from "@/lib/utils";
 import { AwsServiceIcon } from "@/components/AwsServiceIcon";
+import EditableNodeLabel from "@/components/EditableNodeLabel";
 import type { AwsCategory } from "@/data/aws-services";
+import { updateSyncedNodeGroup } from "@/lib/az-sync";
+import { useFlowStore } from "@/store/flowStore";
+import { UI_TEXT, getBrowserLocale } from "@/i18n";
 
 export type AwsServiceNodeData = {
   name: string;
@@ -16,9 +20,26 @@ export type AwsServiceNodeData = {
 export type AwsServiceNodeType = Node<AwsServiceNodeData, "awsService">;
 
 export default function AwsServiceNode({
+  id,
   data,
   selected,
 }: NodeProps<AwsServiceNodeType>) {
+  const commitGraphChange = useFlowStore((state) => state.commitGraphChange);
+  const t = UI_TEXT[getBrowserLocale()];
+
+  function renameNode(name: string) {
+    commitGraphChange(({ nodes, edges }) => ({
+      nodes: updateSyncedNodeGroup(id, nodes, (node) => ({
+        ...node,
+        data: {
+          ...node.data,
+          name,
+        },
+      })),
+      edges,
+    }));
+  }
+
   return (
     <div
       className={cn(
@@ -34,9 +55,11 @@ export default function AwsServiceNode({
         name={data.name}
         size={40}
       />
-      <span className="text-xs font-medium text-gray-700 text-center leading-tight max-w-20 truncate">
-        {data.name}
-      </span>
+      <EditableNodeLabel
+        value={data.name}
+        editLabel={t.editNodeName}
+        onCommit={renameNode}
+      />
       <Handle type="source" position={Position.Right} />
     </div>
   );

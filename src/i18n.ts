@@ -48,6 +48,7 @@ export const UI_TEXT = {
     numberOfVPCs: "VPCs",
     numberOfSubnets: "Subnets",
     syncAzs: "Sync AZs",
+    editNodeName: "Edit node name",
   },
   es: {
     dragAndDrop: "Arrastrar",
@@ -84,6 +85,7 @@ export const UI_TEXT = {
     numberOfVPCs: "VPCs",
     numberOfSubnets: "Subredes",
     syncAzs: "Sincronizar AZs",
+    editNodeName: "Editar nombre del nodo",
   },
 } as const;
 
