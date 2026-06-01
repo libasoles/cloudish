@@ -55,6 +55,7 @@ const nodeTypes: NodeTypes = {
 const SERVICE_DROP_OFFSET = { x: 50, y: 36 };
 const INITIAL_FIT_VIEW_PADDING = 1.3;
 const VPC_SERVICE_ID = "vpc";
+const CLICK_PULSE_PREFIX = "sidebar-click";
 
 export default function Canvas() {
   const locale = getBrowserLocale();
@@ -75,6 +76,7 @@ export default function Canvas() {
   > | null>(null);
   const containerIdRef = useRef(1);
   const serviceIdRef = useRef(1);
+  const pulseIdRef = useRef(1);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const handleInit = useCallback(
@@ -103,7 +105,13 @@ export default function Canvas() {
   }, []);
 
   const addToolAtPosition = useCallback(
-    (tool: DragTool, position: { x: number; y: number }) => {
+    (
+      tool: DragTool,
+      position: { x: number; y: number },
+      pulseKey?: string,
+    ) => {
+      const pulseData = pulseKey ? { pulseKey } : {};
+
       if (tool.type === AWS_SERVICE_NODE_TYPE) {
         const service = AWS_SERVICES.find(
           (service) => service.id === tool.serviceId,
@@ -154,7 +162,7 @@ export default function Canvas() {
                 id: vpcId,
                 type: "networkContainer",
                 position: vpcPosition,
-                data: { containerType: "vpc", label: "VPC" },
+                data: { containerType: "vpc", label: "VPC", ...pulseData },
                 style: CONTAINER_STYLE,
               },
             ]);
@@ -181,7 +189,7 @@ export default function Canvas() {
               id: nodeId,
               type: AWS_SERVICE_NODE_TYPE,
               ...parentedPosition,
-              data: getAwsServiceNodeData(service),
+              data: { ...getAwsServiceNodeData(service), ...pulseData },
             },
           ]);
         });
@@ -206,7 +214,7 @@ export default function Canvas() {
               id: nodeId,
               type: "user",
               ...parentedPosition,
-              data: { label: t.user, fields: { label: t.user } },
+              data: { label: t.user, fields: { label: t.user }, ...pulseData },
             },
           ]);
         });
@@ -281,6 +289,7 @@ export default function Canvas() {
               containerType: "subnet",
               label: t.public,
               subnetType: "Public",
+              ...pulseData,
             },
             style: CONTAINER_STYLE,
           },
@@ -325,6 +334,7 @@ export default function Canvas() {
           x: bounds.left + bounds.width / 2,
           y: bounds.top + bounds.height / 2,
         }),
+        `${CLICK_PULSE_PREFIX}-${pulseIdRef.current++}`,
       );
     },
     [addToolAtPosition, reactFlowInstance],

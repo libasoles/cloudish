@@ -10,6 +10,7 @@ export type AwsServiceNodeData = {
   serviceId?: string;
   description?: string;
   fields?: Record<string, string | boolean | number>;
+  pulseKey?: string;
 };
 
 export type AwsServiceNodeType = Node<AwsServiceNodeData, "awsService">;
@@ -22,6 +23,7 @@ export default function AwsServiceNode({
     <div
       className={cn(
         "flex flex-col items-center gap-1 px-3 py-2 bg-white rounded-xl border-2 shadow-sm min-w-20",
+        data.pulseKey && "node-click-pulse",
         selected ? "border-blue-500 shadow-md" : "border-gray-200",
       )}
     >

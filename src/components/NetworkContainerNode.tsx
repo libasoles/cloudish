@@ -32,6 +32,7 @@ export default function NetworkContainerNode({
             ? "border-blue-500/45 bg-blue-500/10"
             : "border-emerald-500/45 bg-emerald-500/10",
         selected && "ring-2 ring-primary ring-offset-2 ring-offset-background",
+        data.pulseKey && "node-click-pulse",
       )}
     >
       <NodeResizeControl

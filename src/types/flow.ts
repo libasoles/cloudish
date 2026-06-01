@@ -13,6 +13,7 @@ export type NetworkContainerNodeData = {
   containerType: NetworkContainerType;
   label: string;
   subnetType?: SubnetType;
+  pulseKey?: string;
 };
 
 export type SubnetNodeData = NetworkContainerNodeData & {
