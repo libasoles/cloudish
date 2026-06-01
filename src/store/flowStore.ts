@@ -158,7 +158,7 @@ export const useFlowStore = create<FlowStore>()((set) => ({
     }),
 
   resetCanvas: () =>
-    set({ nodes: initialNodes, edges: initialEdges, history: [] }),
+    set({ nodes: [], edges: [], history: [] }),
 
   duplicateSelectedNodes: () =>
     set((s) => {

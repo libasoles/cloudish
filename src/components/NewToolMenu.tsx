@@ -1,4 +1,5 @@
-import { FilePlus } from "lucide-react";
+import { useState } from "react";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -30,19 +31,19 @@ type NewToolMenuProps = {
 };
 
 export default function NewToolMenu({ labels, onReset }: NewToolMenuProps) {
+  const [dialogOpen, setDialogOpen] = useState(false);
+
   return (
-    <AlertDialog>
-      <Tooltip>
+    <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Tooltip open={dialogOpen ? false : undefined}>
         <TooltipTrigger asChild>
           <AlertDialogTrigger asChild>
             <Button
               variant="outline"
-              size="default"
-              className="gap-2 px-3"
+              size="icon"
               aria-label={labels.newTool}
             >
-              <FilePlus className="size-5" />
-              <span>{labels.newTool}</span>
+              <Plus />
             </Button>
           </AlertDialogTrigger>
         </TooltipTrigger>

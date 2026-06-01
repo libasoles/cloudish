@@ -824,6 +824,9 @@ export default function Canvas() {
           onInit={handleInit}
           onNodeDrag={onNodeDrag}
           onNodeDragStop={onNodeDragStop}
+          onNodeDoubleClick={() => {
+            if (!inspectorOpen) setInspectorOpen(true);
+          }}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           defaultEdgeOptions={DEFAULT_EDGE_OPTIONS}
