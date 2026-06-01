@@ -39,29 +39,18 @@ export default function NetworkContainerNode({
         variant={ResizeControlVariant.Handle}
         minWidth={MIN_CONTAINER_WIDTH}
         minHeight={MIN_CONTAINER_HEIGHT}
-        className="h-7! w-7! border-0! bg-transparent!"
-        style={{
-          bottom: 0,
-          left: "auto",
-          right: 0,
-          top: "auto",
-          translate: "0 0",
-        }}
+        className="bottom-0! left-auto! right-0! top-auto! translate-x-0! translate-y-0! h-7! w-7! border-0! bg-transparent!"
       >
         <div
           aria-hidden="true"
           className={cn(
-            "absolute bottom-1 right-1 h-4 w-4 overflow-hidden rounded-[2px]",
+            "absolute bottom-1 right-1 h-4 w-4 overflow-hidden rounded-[2px] bg-[repeating-linear-gradient(135deg,transparent_0_4px,currentColor_4px_6px,transparent_6px_8px)]",
             isVpc
               ? "text-amber-300/90"
               : isPrivateSubnet
                 ? "text-blue-300/90"
                 : "text-emerald-300/90",
           )}
-          style={{
-            background:
-              "repeating-linear-gradient(135deg, transparent 0 4px, currentColor 4px 6px, transparent 6px 8px)",
-          }}
         />
       </NodeResizeControl>
       <div
