@@ -32,3 +32,13 @@ export type FlowPosition = {
   x: number;
   y: number;
 };
+
+export type AzSyncRole = "source" | "mirror";
+
+export type AzSyncNodeData = {
+  syncGroupId?: string;
+  syncSourceAzId?: string;
+  syncRole?: AzSyncRole;
+};
+
+export type AzSyncEdgeData = AzSyncNodeData;

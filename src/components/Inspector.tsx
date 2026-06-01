@@ -42,6 +42,10 @@ import {
   getFieldValue,
   type FieldValue,
 } from "@/lib/node-utils";
+import {
+  updateSyncedEdgeGroup,
+  updateSyncedNodeGroup,
+} from "@/lib/az-sync";
 
 export default function Inspector() {
   const locale = getBrowserLocale();
@@ -291,11 +295,7 @@ export default function Inspector() {
   const onServiceFieldChange = useCallback(
     (nodeId: string, fieldKey: string, value: FieldValue) => {
       setNodes((nodes) =>
-        nodes.map((node) => {
-          if (node.id !== nodeId) {
-            return node;
-          }
-
+        updateSyncedNodeGroup(nodeId, nodes, (node) => {
           const data = node.data as { fields?: Record<string, FieldValue> };
 
           return {
@@ -314,9 +314,9 @@ export default function Inspector() {
     [setNodes],
   );
 
-  const onEdgeLabelChange = useCallback(    (edgeId: string, label: string) => {
+  const onEdgeLabelChange = useCallback((edgeId: string, label: string) => {
       setEdges((edges) =>
-        edges.map((edge) => (edge.id === edgeId ? { ...edge, label } : edge)),
+        updateSyncedEdgeGroup(edgeId, edges, (edge) => ({ ...edge, label })),
       );
     },
     [setEdges],
@@ -325,8 +325,8 @@ export default function Inspector() {
   const onEdgeArrowDirectionChange = useCallback(
     (edgeId: string, direction: EdgeArrowDirection) => {
       setEdges((edges) =>
-        edges.map((edge) =>
-          edge.id === edgeId ? setEdgeArrowDirection(edge, direction) : edge,
+        updateSyncedEdgeGroup(edgeId, edges, (edge) =>
+          setEdgeArrowDirection(edge, direction),
         ),
       );
     },

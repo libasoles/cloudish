@@ -1,12 +1,12 @@
 import { useCallback, useRef, useState, type DragEvent } from "react";
 import {
   ReactFlow,
-  addEdge,
   Controls,
   MiniMap,
   Background,
   BackgroundVariant,
   type OnConnect,
+  type Connection,
   type NodeTypes,
   type OnNodeDrag,
   type ReactFlowInstance,
@@ -39,7 +39,6 @@ import {
   isRectIntersecting,
   findIntersectingContainer,
   getParentedPosition,
-  mirrorNodeToSiblingAzs,
   redistributeSubnetNodes,
   redistributeVpcNodes,
   redistributeChildContainers,
@@ -56,6 +55,11 @@ import {
   DEFAULT_NODE_WIDTH,
   DEFAULT_NODE_HEIGHT,
 } from "@/lib/graph-utils";
+import {
+  addEdgeWithAzSync,
+  addNodeWithAzSync,
+  syncNodeGroupPosition,
+} from "@/lib/az-sync";
 import { getAwsServiceNodeData } from "@/lib/node-utils";
 import { EDGE_STYLE } from "@/lib/edge-tools";
 
@@ -96,6 +100,7 @@ export default function Canvas() {
   const containerIdRef = useRef(1);
   const subnetIdRef = useRef(1);
   const serviceIdRef = useRef(1);
+  const edgeIdRef = useRef(1);
   const pulseIdRef = useRef(1);
   const activeDragToolRef = useRef<DragTool | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -116,8 +121,22 @@ export default function Canvas() {
   );
 
   const onConnect: OnConnect = useCallback(
-    (connection) =>
-      setEdges((edges) => addEdge({ ...connection, style: EDGE_STYLE }, edges)),
+    (connection: Connection) => {
+      if (!connection.source || !connection.target) return;
+
+      const edge: AppEdge = {
+        ...connection,
+        id: `edge-${edgeIdRef.current++}`,
+        source: connection.source,
+        target: connection.target,
+        style: EDGE_STYLE,
+      };
+
+      setEdges((edges) => {
+        const { nodes: currentNodes } = useFlowStore.getState();
+        return addEdgeWithAzSync(edge, currentNodes, edges);
+      });
+    },
     [setEdges],
   );
 
@@ -316,13 +335,7 @@ export default function Canvas() {
             data: { ...getAwsServiceNodeData(service), ...pulseData },
           };
 
-          const mirrors = mirrorNodeToSiblingAzs(
-            newNode,
-            nodes,
-            (sibAzId) => `${nodeId}-m-${sibAzId}`,
-          );
-
-          return orderNodesForSubflows([...nodes, newNode, ...mirrors]);
+          return addNodeWithAzSync(newNode, nodes);
         });
         return;
       }
@@ -347,13 +360,7 @@ export default function Canvas() {
             data: { label: t.user, fields: { label: t.user }, ...pulseData },
           };
 
-          const mirrors = mirrorNodeToSiblingAzs(
-            newNode,
-            nodes,
-            (sibAzId) => `${nodeId}-m-${sibAzId}`,
-          );
-
-          return orderNodesForSubflows([...nodes, newNode, ...mirrors]);
+          return addNodeWithAzSync(newNode, nodes);
         });
         return;
       }
@@ -615,7 +622,9 @@ export default function Canvas() {
         }
 
         if (updates.size === 0) {
-          return nodes;
+          return isNetworkContainerNode(draggedNode)
+            ? nodes
+            : syncNodeGroupPosition(draggedNodeId, nodes);
         }
 
         let result = orderNodesForSubflows(
@@ -640,7 +649,9 @@ export default function Canvas() {
           }
         }
 
-        return result;
+        return isNetworkContainerNode(draggedNode)
+          ? result
+          : syncNodeGroupPosition(draggedNodeId, result);
       });
     },
     [setNodes],

@@ -76,7 +76,7 @@ export default function DragDropSidebar({
           }
           onDragEnd={onToolDragEnd}
           onClick={() => onToolClick?.({ type: "user" })}
-          className="flex w-full flex-col items-center gap-1 rounded-md border border-transparent px-1 py-2 text-center text-[11px] font-medium leading-tight text-foreground transition hover:border-border hover:bg-accent"
+          className="flex w-full cursor-pointer flex-col items-center gap-1 rounded-md border border-transparent px-1 py-2 text-center text-[11px] font-medium leading-tight text-foreground transition hover:border-border hover:bg-accent"
           aria-label={`Drag ${labels.user}`}
           title={labels.user}
         >
@@ -91,7 +91,7 @@ export default function DragDropSidebar({
           }
           onDragEnd={onToolDragEnd}
           onClick={() => onToolClick?.({ type: "region" })}
-          className="flex w-full flex-col items-center gap-1 rounded-md border border-border bg-card px-1 py-2 text-center text-[11px] font-medium leading-tight text-card-foreground shadow-sm transition hover:border-primary hover:bg-accent"
+          className="flex w-full cursor-pointer flex-col items-center gap-1 rounded-md border border-border bg-card px-1 py-2 text-center text-[11px] font-medium leading-tight text-card-foreground shadow-sm transition hover:border-primary hover:bg-accent"
           aria-label={labels.dragRegion}
           title={labels.region}
         >
@@ -119,7 +119,7 @@ export default function DragDropSidebar({
                 serviceId: vpcService.id,
               })
             }
-            className="flex w-full flex-col items-center gap-1 rounded-md border border-transparent px-1 py-2 text-center text-[11px] font-medium leading-tight text-foreground transition hover:border-border hover:bg-accent"
+            className="flex w-full cursor-pointer flex-col items-center gap-1 rounded-md border border-transparent px-1 py-2 text-center text-[11px] font-medium leading-tight text-foreground transition hover:border-border hover:bg-accent"
             aria-label={labels.dragService(vpcService.name)}
             title={vpcService.name}
           >
@@ -140,7 +140,7 @@ export default function DragDropSidebar({
           }
           onDragEnd={onToolDragEnd}
           onClick={() => onToolClick?.({ type: "container" })}
-          className="flex w-full flex-col items-center gap-1 rounded-md border border-border bg-card px-1 py-2 text-center text-[11px] font-medium leading-tight text-card-foreground shadow-sm transition hover:border-primary hover:bg-accent"
+          className="flex w-full cursor-pointer flex-col items-center gap-1 rounded-md border border-border bg-card px-1 py-2 text-center text-[11px] font-medium leading-tight text-card-foreground shadow-sm transition hover:border-primary hover:bg-accent"
           aria-label={labels.dragSubnet}
           title={labels.subnet}
         >
@@ -169,7 +169,7 @@ export default function DragDropSidebar({
                 serviceId: service.id,
               })
             }
-            className="flex w-full flex-col items-center gap-1 rounded-md border border-transparent px-1 py-2 text-center text-[11px] font-medium leading-tight text-foreground transition hover:border-border hover:bg-accent"
+            className="flex w-full cursor-pointer flex-col items-center gap-1 rounded-md border border-transparent px-1 py-2 text-center text-[11px] font-medium leading-tight text-foreground transition hover:border-border hover:bg-accent"
             aria-label={labels.dragService(service.name)}
             title={service.name}
           >

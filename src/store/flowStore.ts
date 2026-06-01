@@ -6,6 +6,11 @@ import {
 } from "@xyflow/react";
 import { create } from "zustand";
 import { initialNodes, initialEdges } from "@/data/initial-flow";
+import {
+  removeSyncedEdges,
+  removeSyncedNodes,
+  toggleAzSyncState,
+} from "@/lib/az-sync";
 import type { AppNode, AppEdge, ContainerDropPreview } from "@/types/flow";
 
 type FlowStore = {
@@ -35,7 +40,18 @@ export const useFlowStore = create<FlowStore>()((set) => ({
     })),
 
   onNodesChange: (changes) =>
-    set((s) => ({ nodes: applyNodeChanges(changes, s.nodes) })),
+    set((s) => {
+      const nextNodes = applyNodeChanges(changes, s.nodes);
+      const removedNodeIds = changes.flatMap((change) =>
+        change.type === "remove" ? [change.id] : [],
+      );
+
+      if (!removedNodeIds.length) {
+        return { nodes: nextNodes };
+      }
+
+      return removeSyncedNodes(removedNodeIds, s.nodes, nextNodes, s.edges);
+    }),
 
   setEdges: (updater) =>
     set((s) => ({
@@ -43,7 +59,16 @@ export const useFlowStore = create<FlowStore>()((set) => ({
     })),
 
   onEdgesChange: (changes) =>
-    set((s) => ({ edges: applyEdgeChanges(changes, s.edges) })),
+    set((s) => {
+      const nextEdges = applyEdgeChanges(changes, s.edges);
+      const removedEdgeIds = changes.flatMap((change) =>
+        change.type === "remove" ? [change.id] : [],
+      );
+
+      return {
+        edges: removeSyncedEdges(removedEdgeIds, s.edges, nextEdges),
+      };
+    }),
 
   setInspectorOpen: (updater) =>
     set((s) => ({
@@ -57,20 +82,5 @@ export const useFlowStore = create<FlowStore>()((set) => ({
   setDropPreview: (preview) => set({ dropPreview: preview }),
 
   toggleAzSync: (azId, synced) =>
-    set((s) => {
-      const az = s.nodes.find((n) => n.id === azId);
-      if (!az) return s;
-      const { parentId } = az;
-      return {
-        nodes: s.nodes.map((n) => {
-          if (
-            n.parentId === parentId &&
-            (n.data as { containerType?: string }).containerType === "az"
-          ) {
-            return { ...n, data: { ...n.data, synced } };
-          }
-          return n;
-        }),
-      };
-    }),
+    set((s) => toggleAzSyncState(azId, synced, s.nodes, s.edges)),
 }));

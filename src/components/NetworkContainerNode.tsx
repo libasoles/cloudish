@@ -173,7 +173,8 @@ export default function NetworkContainerNode({
               checked={data.synced ?? false}
               onChange={(e) => toggleAzSync(id, e.target.checked)}
               className="h-3 w-3 cursor-pointer accent-indigo-400"
-              title="Sync AZs"
+              title={t.syncAzs}
+              aria-label={t.syncAzs}
             />
           </span>
         )}
