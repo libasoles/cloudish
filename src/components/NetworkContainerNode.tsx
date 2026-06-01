@@ -101,7 +101,7 @@ export default function NetworkContainerNode({
       className={cn(
         "relative h-full w-full rounded-lg border bg-card/20",
         isVpc
-          ? "border-amber-400/55 bg-amber-400/10"
+          ? "border-violet-500/55 bg-violet-950/35"
           : isRegion
             ? "border-purple-500/45 bg-purple-500/10"
             : isAz
@@ -129,7 +129,7 @@ export default function NetworkContainerNode({
           lineClassName={cn(
             "!border-2",
             isVpc
-              ? "!border-amber-400/70"
+              ? "!border-violet-500/70"
               : isRegion
                 ? "!border-purple-400/70"
                 : isPrivateSubnet
@@ -139,7 +139,7 @@ export default function NetworkContainerNode({
           handleClassName={cn(
             "!h-3 !w-3 !rounded-full !border-2 !bg-background",
             isVpc
-              ? "!border-amber-400"
+              ? "!border-violet-500"
               : isRegion
                 ? "!border-purple-400"
                 : isPrivateSubnet
@@ -152,7 +152,7 @@ export default function NetworkContainerNode({
         className={cn(
           "absolute left-3 top-0 -translate-y-1/2 flex items-center gap-1.5 rounded border px-2.5 py-1 text-xs font-semibold leading-none shadow-sm",
           isVpc
-            ? "border-amber-400/60 bg-background text-amber-200"
+            ? "border-violet-500/60 bg-background text-violet-200"
             : isRegion
               ? "border-purple-500/50 bg-background text-purple-200"
               : isAz
@@ -162,7 +162,6 @@ export default function NetworkContainerNode({
                   : "border-emerald-500/50 bg-background text-emerald-200",
         )}
       >
-        {displayLabel}
         {isAz && (
           <span
             className="nodrag nopan flex items-center"
@@ -178,6 +177,7 @@ export default function NetworkContainerNode({
             />
           </span>
         )}
+        {displayLabel}
       </div>
     </div>
   );

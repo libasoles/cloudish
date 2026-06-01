@@ -657,12 +657,11 @@ export default function Inspector() {
                   return (
                     <label
                       key={field.key}
-                      className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground"
+                      className="flex items-center gap-3 px-1 py-2 text-sm font-medium text-foreground"
                     >
-                      <span>{localizedField.label}</span>
                       <input
                         type="checkbox"
-                        className="h-4 w-4 rounded border-input accent-primary"
+                        className="h-4 w-4 accent-primary"
                         checked={Boolean(value)}
                         onChange={(event) =>
                           onServiceFieldChange(
@@ -672,6 +671,7 @@ export default function Inspector() {
                           )
                         }
                       />
+                      <span>{localizedField.label}</span>
                     </label>
                   );
                 }

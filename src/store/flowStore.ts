@@ -12,6 +12,7 @@ import {
   toggleAzSyncState,
 } from "@/lib/az-sync";
 import { getNetworkContainerType, resizeContainerNode } from "@/lib/graph-utils";
+import { duplicateSelectedGraph } from "@/lib/node-duplication";
 import type { AppNode, AppEdge, ContainerDropPreview } from "@/types/flow";
 
 const MAX_HISTORY = 100;
@@ -38,6 +39,7 @@ type FlowStore = {
     }
   ) => void;
   undo: () => void;
+  duplicateSelectedNodes: () => void;
   setInspectorOpen: (updater: boolean | ((prev: boolean) => boolean)) => void;
   setDropTargetNodeId: (id: string | null) => void;
   setDropPreview: (preview: ContainerDropPreview | null) => void;
@@ -152,6 +154,16 @@ export const useFlowStore = create<FlowStore>()((set) => ({
       if (!last) return {};
       const nodes = last.before.nodes.map((n) => ({ ...n, selected: false }));
       return { nodes, edges: last.before.edges, history: s.history.slice(0, -1) };
+    }),
+
+  duplicateSelectedNodes: () =>
+    set((s) => {
+      const next = duplicateSelectedGraph(s.nodes, s.edges);
+      if (next.nodes === s.nodes && next.edges === s.edges) return {};
+
+      const entry: HistoryEntry = { before: { nodes: s.nodes, edges: s.edges } };
+      const history = [...s.history, entry].slice(-MAX_HISTORY);
+      return { nodes: next.nodes, edges: next.edges, history };
     }),
 
   setInspectorOpen: (updater) =>

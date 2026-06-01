@@ -32,7 +32,7 @@ export default function ChildCountSlider({
         max={MAX_CHILD_COUNT}
         step={1}
         value={sliderValue}
-        className="h-1 w-full cursor-pointer accent-primary"
+        className="h-0.5 w-full cursor-pointer accent-primary"
         onChange={(event) => onChange(Number(event.target.value))}
       />
     </label>
