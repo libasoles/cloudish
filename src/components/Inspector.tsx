@@ -137,19 +137,25 @@ export default function Inspector() {
         ? t.subnet
         : selectedNode
           ? String((selectedNode.data as { label?: unknown })?.label ?? "")
-          : selectedEdge
-            ? `${t.edge}: ${selectedEdge.source} -> ${selectedEdge.target}`
-            : "";
+          : "";
 
   return (
     <Card className="flex h-full w-72 flex-col rounded-none border-y-0 border-r-0">
       <CardHeader>
         <CardTitle className="text-sm font-medium">
-          {selectedNode || selectedEdge ? selectedLabel : t.noNodeSelected}
+          {!selectedNode && selectedEdge ? (
+            <>
+              {t.edge}
+              <br />
+              <span className="font-normal text-muted-foreground">
+                {selectedEdge.source} → {selectedEdge.target}
+              </span>
+            </>
+          ) : selectedNode || selectedEdge ? selectedLabel : t.noNodeSelected}
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-1 flex-col overflow-hidden">
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto px-0.5">
           {!selectedNode && selectedEdge ? (
             <div className="space-y-4 text-sm">
               <label className="grid gap-2 text-sm font-medium text-foreground">
@@ -208,10 +214,6 @@ export default function Inspector() {
                   </SelectContent>
                 </Select>
               </label>
-              <div className="space-y-2 text-muted-foreground">
-                <p>ID: {selectedEdge.id}</p>
-                <p>{`${selectedEdge.source} -> ${selectedEdge.target}`}</p>
-              </div>
             </div>
           ) : selectedNode && selectedIsSubnet ? (
             <div className="space-y-4 text-sm">

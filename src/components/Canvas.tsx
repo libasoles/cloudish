@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { PanelRightClose, PanelRightOpen } from "lucide-react";
 import AwsServiceNode from "@/components/AwsServiceNode";
 import NetworkContainerNode from "@/components/NetworkContainerNode";
+import UserNode from "@/components/UserNode";
 import ServiceSearch from "@/components/ServiceSearch";
 import { AWS_SERVICES } from "@/data/aws-services";
 import {
@@ -46,6 +47,7 @@ import { getAwsServiceNodeData } from "@/lib/node-utils";
 const nodeTypes: NodeTypes = {
   awsService: AwsServiceNode,
   networkContainer: NetworkContainerNode,
+  user: UserNode,
 };
 
 const SERVICE_DROP_OFFSET = { x: 50, y: 36 };
@@ -176,6 +178,31 @@ export default function Canvas() {
               type: AWS_SERVICE_NODE_TYPE,
               ...parentedPosition,
               data: getAwsServiceNodeData(service),
+            },
+          ]);
+        });
+        return;
+      }
+
+      if (droppedTool.type === "user") {
+        const nodeId = `user-${serviceIdRef.current++}`;
+        const nodePosition = {
+          x: position.x - SERVICE_DROP_OFFSET.x,
+          y: position.y - SERVICE_DROP_OFFSET.y,
+        };
+        setNodes((nodes) => {
+          const parentedPosition = getParentedPosition(
+            nodePosition,
+            { width: DEFAULT_NODE_WIDTH, height: DEFAULT_NODE_HEIGHT },
+            nodes,
+          );
+          return orderNodesForSubflows([
+            ...nodes,
+            {
+              id: nodeId,
+              type: "user",
+              ...parentedPosition,
+              data: { label: "User" },
             },
           ]);
         });

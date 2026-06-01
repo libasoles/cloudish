@@ -1,6 +1,7 @@
 export type DragTool =
   | { type: "container" }
-  | { type: "awsService"; serviceId: string };
+  | { type: "awsService"; serviceId: string }
+  | { type: "user" };
 
 export const CONTAINER_NODE_TYPE = "container";
 export const AWS_SERVICE_NODE_TYPE = "awsService";
@@ -20,6 +21,10 @@ export function decodeDragTool(value: string): DragTool | null {
 
     if (tool.type === "container") {
       return { type: "container" };
+    }
+
+    if (tool.type === "user") {
+      return { type: "user" };
     }
 
     if (tool.type === AWS_SERVICE_NODE_TYPE && typeof tool.serviceId === "string") {

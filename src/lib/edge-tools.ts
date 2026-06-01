@@ -3,7 +3,7 @@ import type { AppEdge } from "@/types/flow";
 
 export type EdgeArrowDirection = "none" | "source" | "target" | "both";
 
-const EDGE_ARROW_MARKER = { type: MarkerType.ArrowClosed };
+const EDGE_ARROW_MARKER = { type: MarkerType.ArrowClosed, width: 25, height: 25 };
 
 export function getEdgeArrowDirection(edge: AppEdge): EdgeArrowDirection {
   const hasSourceArrow = Boolean(edge.markerStart);

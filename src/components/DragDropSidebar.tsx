@@ -1,5 +1,5 @@
 import type { DragEvent } from "react";
-import { Container } from "lucide-react";
+import { Container, User } from "lucide-react";
 import { AwsServiceIcon } from "@/components/AwsServiceIcon";
 import { AWS_SERVICES, type AwsService } from "@/data/aws-services";
 import {
@@ -52,6 +52,17 @@ export default function DragDropSidebar({ labels }: DragDropSidebarProps) {
         {labels.dragAndDrop}
       </div>
       <div className="flex-1 space-y-2 overflow-y-auto p-2">
+        <button
+          type="button"
+          draggable
+          onDragStart={(event) => setDragPayload(event, { type: "user" })}
+          className="flex w-full flex-col items-center gap-1 rounded-md border border-transparent px-1 py-2 text-center text-[11px] font-medium leading-tight text-foreground transition hover:border-border hover:bg-accent"
+          aria-label="Drag User"
+          title="User"
+        >
+          <User className="size-10 text-muted-foreground" />
+          <span className="w-full break-words">User</span>
+        </button>
         {vpcService && (
           <button
             type="button"
