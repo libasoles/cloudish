@@ -8,10 +8,7 @@ import {
   MiniMap,
   Background,
   BackgroundVariant,
-  Panel,
-  type Edge,
   type OnConnect,
-  type Node,
   type NodeTypes,
   type OnNodeDrag,
   type ReactFlowInstance,
@@ -29,72 +26,91 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Container, PanelRightClose, PanelRightOpen } from "lucide-react";
+import { PanelRightClose, PanelRightOpen } from "lucide-react";
 import AwsServiceNode, {
   type AwsServiceNodeType,
   type AwsServiceNodeData,
 } from "@/components/AwsServiceNode";
+import NetworkContainerNode from "@/components/NetworkContainerNode";
+import DragDropSidebar from "@/components/DragDropSidebar";
 import ServiceSearch from "@/components/ServiceSearch";
-import { AWS_CATEGORIES, AWS_SERVICES } from "@/data/aws-services";
+import { AWS_SERVICES, type AwsService } from "@/data/aws-services";
 import {
   AWS_SERVICE_FIELDS,
   type ServiceField,
 } from "@/data/aws-service-fields";
+import { initialEdges, initialNodes } from "@/data/initial-flow";
+import {
+  AWS_SERVICE_NODE_TYPE,
+  DND_MIME_TYPE,
+  decodeDragTool,
+} from "@/lib/drag-tools";
+import type {
+  AppEdge,
+  AppNode,
+  FlowPosition,
+  NetworkContainerNodeData,
+  SubnetNodeData,
+  SubnetType,
+} from "@/types/flow";
+import {
+  UI_TEXT,
+  getBrowserLocale,
+  getLocalizedField,
+  getServiceDescription as getLocalizedServiceDescription,
+} from "@/i18n";
 
 const nodeTypes: NodeTypes = {
   awsService: AwsServiceNode,
+  networkContainer: NetworkContainerNode,
 };
 
-type AppNode = Node | AwsServiceNodeType;
-type AppEdge = Edge;
-type SubnetType = "Public" | "Private";
-type SubnetNodeData = {
-  label: string;
-  subnetType: SubnetType;
-};
-type FlowPosition = {
-  x: number;
-  y: number;
-};
 type FieldValue = string | boolean | number;
 
-const CONTAINER_NODE_TYPE = "container";
 const CONTAINER_WIDTH = 320;
 const CONTAINER_HEIGHT = 220;
 const DEFAULT_NODE_WIDTH = 150;
 const DEFAULT_NODE_HEIGHT = 40;
+const SERVICE_DROP_OFFSET = { x: 50, y: 36 };
+const INITIAL_FIT_VIEW_PADDING = 1.3;
+const VPC_SERVICE_ID = "vpc";
 
-function getSubnetStyle(subnetType: SubnetType) {
-  const color =
-    subnetType === "Public"
-      ? {
-          backgroundColor: "rgba(34, 197, 94, 0.08)",
-          border: "1px solid rgba(22, 163, 74, 0.35)",
-        }
-      : {
-          backgroundColor: "rgba(59, 130, 246, 0.08)",
-          border: "1px solid rgba(37, 99, 235, 0.35)",
-        };
-
+function getContainerStyle() {
   return {
     width: CONTAINER_WIDTH,
     height: CONTAINER_HEIGHT,
-    borderRadius: 8,
-    ...color,
   };
 }
 
+function isNetworkContainerNode(node: AppNode) {
+  return node.type === "networkContainer";
+}
+
 function isSubnetNode(node: AppNode) {
-  return node.type === "group";
+  return (
+    isNetworkContainerNode(node) &&
+    (node.data as NetworkContainerNodeData).containerType === "subnet"
+  );
+}
+
+function isVpcNode(node: AppNode) {
+  return (
+    isNetworkContainerNode(node) &&
+    (node.data as NetworkContainerNodeData).containerType === "vpc"
+  );
 }
 
 function orderNodesForSubflows(nodes: AppNode[]) {
   return [...nodes].sort((a, b) => {
-    if (isSubnetNode(a) === isSubnetNode(b)) {
+    if (isNetworkContainerNode(a) === isNetworkContainerNode(b)) {
+      if (isVpcNode(a) !== isVpcNode(b)) {
+        return isVpcNode(a) ? -1 : 1;
+      }
+
       return 0;
     }
 
-    return isSubnetNode(a) ? -1 : 1;
+    return isNetworkContainerNode(a) ? -1 : 1;
   });
 }
 
@@ -142,17 +158,48 @@ function isRectIntersecting(a: Rect, b: Rect) {
   );
 }
 
+function findIntersectingContainer(
+  nodeRect: Rect,
+  nodes: AppNode[],
+  nodesById: Map<string, AppNode>,
+  childNode?: AppNode,
+) {
+  return nodes
+    .filter((node) => {
+      if (!isNetworkContainerNode(node) || node.id === childNode?.id) {
+        return false;
+      }
+
+      if (childNode && isVpcNode(childNode)) {
+        return false;
+      }
+
+      if (childNode && isSubnetNode(childNode) && !isVpcNode(node)) {
+        return false;
+      }
+
+      return isRectIntersecting(nodeRect, getNodeRect(node, nodesById));
+    })
+    .sort((a, b) => {
+      if (isSubnetNode(a) !== isSubnetNode(b)) {
+        return isSubnetNode(a) ? -1 : 1;
+      }
+
+      return 0;
+    })[0];
+}
+
 function getServiceId(node: AwsServiceNodeType) {
   return node.data.serviceId ?? node.id;
 }
 
-function getServiceDescription(node: AwsServiceNodeType) {
+function getServiceDescription(node: AwsServiceNodeType, locale: ReturnType<typeof getBrowserLocale>) {
   const serviceId = getServiceId(node);
   const service = AWS_SERVICES.find(
     (service) => service.id === serviceId || service.slug === node.data.slug,
   );
 
-  return node.data.description ?? service?.description ?? "";
+  return getLocalizedServiceDescription(service, locale, node.data.description);
 }
 
 function getFieldValue(
@@ -162,106 +209,55 @@ function getFieldValue(
   return data.fields?.[field.key] ?? field.defaultValue ?? "";
 }
 
-const initialNodes: AppNode[] = [
-  {
-    id: "route53",
-    type: "awsService",
-    position: { x: 0, y: 100 },
-    data: {
-      name: "Route 53",
-      slug: "aws-amazon-route-53",
-      category: AWS_CATEGORIES.NETWORKING,
-      serviceId: "route53",
+function getAwsServiceNodeData(service: AwsService): AwsServiceNodeData {
+  return {
+    name: service.name,
+    slug: service.slug,
+    category: service.category,
+    serviceId: service.id,
+  };
+}
+
+function getParentedPosition(
+  position: FlowPosition,
+  size: { width: number; height: number },
+  nodes: AppNode[],
+) {
+  const nodeRect = { ...position, ...size };
+  const nodesById = new Map(nodes.map((node) => [node.id, node]));
+  const parentNode = findIntersectingContainer(nodeRect, nodes, nodesById);
+
+  if (!parentNode) {
+    return { position };
+  }
+
+  const parentPosition = getAbsolutePosition(parentNode, nodesById);
+
+  return {
+    parentId: parentNode.id,
+    position: {
+      x: position.x - parentPosition.x,
+      y: position.y - parentPosition.y,
     },
-  },
-  {
-    id: "waf",
-    type: "awsService",
-    position: { x: 120, y: -80 },
-    data: {
-      name: "WAF",
-      slug: "aws-aws-waf",
-      category: AWS_CATEGORIES.SECURITY,
-      serviceId: "waf",
-    },
-  },
-  {
-    id: "cloudfront",
-    type: "awsService",
-    position: { x: 210, y: 100 },
-    data: {
-      name: "CloudFront",
-      slug: "aws-amazon-cloudfront",
-      category: AWS_CATEGORIES.NETWORKING,
-      serviceId: "cloudfront",
-    },
-  },
-  {
-    id: "acm",
-    type: "awsService",
-    position: { x: 120, y: 280 },
-    data: {
-      name: "ACM",
-      slug: "aws-aws-certificate-manager",
-      category: AWS_CATEGORIES.SECURITY,
-      serviceId: "acm",
-    },
-  },
-  {
-    id: "s3",
-    type: "awsService",
-    position: { x: 440, y: 100 },
-    data: {
-      name: "S3",
-      slug: "aws-amazon-simple-storage-service",
-      category: AWS_CATEGORIES.STORAGE,
-      serviceId: "s3",
-    },
-  },
-];
-const initialEdges: AppEdge[] = [
-  {
-    id: "route53-cloudfront",
-    source: "route53",
-    target: "cloudfront",
-    label: "DNS",
-  },
-  {
-    id: "waf-cloudfront",
-    source: "waf",
-    target: "cloudfront",
-    label: "protects",
-  },
-  {
-    id: "acm-cloudfront",
-    source: "acm",
-    target: "cloudfront",
-    label: "TLS cert",
-  },
-  { id: "cloudfront-s3", source: "cloudfront", target: "s3", label: "origin" },
-];
+  };
+}
 
 export default function App() {
+  const locale = getBrowserLocale();
+  const t = UI_TEXT[locale];
   const [nodes, setNodes, onNodesChange] = useNodesState<AppNode>(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<AppEdge>(initialEdges);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [inspectorOpen, setInspectorOpen] = useState(true);
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance<
     AppNode,
     AppEdge
   > | null>(null);
   const containerIdRef = useRef(1);
+  const serviceIdRef = useRef(1);
 
   const onConnect: OnConnect = useCallback(
     (connection) => setEdges((edges) => addEdge(connection, edges)),
     [setEdges],
-  );
-
-  const onContainerDragStart = useCallback(
-    (event: DragEvent<HTMLButtonElement>) => {
-      event.dataTransfer.setData("application/reactflow", CONTAINER_NODE_TYPE);
-      event.dataTransfer.effectAllowed = "move";
-    },
-    [],
   );
 
   const onDragOver = useCallback((event: DragEvent) => {
@@ -273,16 +269,104 @@ export default function App() {
     (event: DragEvent) => {
       event.preventDefault();
 
-      const droppedType = event.dataTransfer.getData("application/reactflow");
-      if (droppedType !== CONTAINER_NODE_TYPE || !reactFlowInstance) {
+      const droppedTool = decodeDragTool(event.dataTransfer.getData(DND_MIME_TYPE));
+      if (!droppedTool || !reactFlowInstance) {
         return;
       }
 
-      const containerNumber = containerIdRef.current++;
       const position = reactFlowInstance.screenToFlowPosition({
         x: event.clientX,
         y: event.clientY,
       });
+
+      if (droppedTool.type === AWS_SERVICE_NODE_TYPE) {
+        const service = AWS_SERVICES.find(
+          (service) => service.id === droppedTool.serviceId,
+        );
+
+        if (!service) {
+          return;
+        }
+
+        if (service.id === VPC_SERVICE_ID) {
+          const containerNumber = containerIdRef.current++;
+          const vpcPosition = {
+            x: position.x - CONTAINER_WIDTH / 2,
+            y: position.y - CONTAINER_HEIGHT / 2,
+          };
+          const vpcRect = {
+            ...vpcPosition,
+            width: CONTAINER_WIDTH,
+            height: CONTAINER_HEIGHT,
+          };
+          const vpcId = `vpc-${containerNumber}`;
+
+          setNodes((nodes) => {
+            const nodesById = new Map(nodes.map((node) => [node.id, node]));
+
+            return orderNodesForSubflows([
+              ...nodes.map((node) => {
+                if (isVpcNode(node)) {
+                  return node;
+                }
+
+                const nodeRect = getNodeRect(node, nodesById);
+
+                if (!isRectIntersecting(nodeRect, vpcRect)) {
+                  return node;
+                }
+
+                return {
+                  ...node,
+                  parentId: vpcId,
+                  position: {
+                    x: nodeRect.x - vpcPosition.x,
+                    y: nodeRect.y - vpcPosition.y,
+                  },
+                };
+              }),
+              {
+                id: vpcId,
+                type: "networkContainer",
+                position: vpcPosition,
+                data: { containerType: "vpc", label: "VPC" },
+                style: getContainerStyle(),
+              },
+            ]);
+          });
+          return;
+        }
+
+        const nodeId = `${service.id}-${serviceIdRef.current++}`;
+        const nodePosition = {
+          x: position.x - SERVICE_DROP_OFFSET.x,
+          y: position.y - SERVICE_DROP_OFFSET.y,
+        };
+
+        setNodes((nodes) => {
+          const parentedPosition = getParentedPosition(
+            nodePosition,
+            {
+              width: DEFAULT_NODE_WIDTH,
+              height: DEFAULT_NODE_HEIGHT,
+            },
+            nodes,
+          );
+
+          return orderNodesForSubflows([
+            ...nodes,
+            {
+              id: nodeId,
+              type: AWS_SERVICE_NODE_TYPE,
+              ...parentedPosition,
+              data: getAwsServiceNodeData(service),
+            },
+          ]);
+        });
+        return;
+      }
+
+      const containerNumber = containerIdRef.current++;
       const subnetPosition = {
         x: position.x - CONTAINER_WIDTH / 2,
         y: position.y - CONTAINER_HEIGHT / 2,
@@ -296,10 +380,28 @@ export default function App() {
 
       setNodes((nodes) => {
         const nodesById = new Map(nodes.map((node) => [node.id, node]));
+        const parentVpc = findIntersectingContainer(
+          subnetRect,
+          nodes,
+          nodesById,
+          {
+            id: subnetId,
+            type: "networkContainer",
+            position: subnetPosition,
+            data: {
+              containerType: "subnet",
+              label: t.public,
+              subnetType: "Public",
+            },
+          },
+        );
+        const parentVpcPosition = parentVpc
+          ? getAbsolutePosition(parentVpc, nodesById)
+          : null;
 
         return orderNodesForSubflows([
           ...nodes.map((node) => {
-            if (isSubnetNode(node)) {
+            if (isNetworkContainerNode(node)) {
               return node;
             }
 
@@ -320,15 +422,25 @@ export default function App() {
           }),
           {
             id: subnetId,
-            type: "group",
-            position: subnetPosition,
-            data: { label: "Subnet", subnetType: "Public" },
-            style: getSubnetStyle("Public"),
+            type: "networkContainer",
+            parentId: parentVpc?.id,
+            position: parentVpcPosition
+              ? {
+                  x: subnetPosition.x - parentVpcPosition.x,
+                  y: subnetPosition.y - parentVpcPosition.y,
+                }
+              : subnetPosition,
+            data: {
+              containerType: "subnet",
+              label: t.public,
+              subnetType: "Public",
+            },
+            style: getContainerStyle(),
           },
         ]);
       });
     },
-    [reactFlowInstance, setNodes],
+    [reactFlowInstance, setNodes, t.public],
   );
 
   const syncNodeSubnet = useCallback(
@@ -341,26 +453,29 @@ export default function App() {
           return nodes;
         }
 
-        const subnetNodes = nodes.filter(isSubnetNode);
+        const containerNodes = nodes.filter(isNetworkContainerNode);
         const updates = new Map<string, AppNode>();
 
         function getUpdatedNode(node: AppNode) {
           return updates.get(node.id) ?? node;
         }
 
-        function updateSubnetForNode(node: AppNode, forcedSubnet?: AppNode) {
-          if (isSubnetNode(node)) {
+        function updateContainerForNode(node: AppNode, forcedContainer?: AppNode) {
+          if (isVpcNode(node)) {
             return;
           }
 
           const nodeRect = getNodeRect(node, nodesById);
-          const subnetNode =
-            forcedSubnet ??
-            subnetNodes.find((subnet) =>
-              isRectIntersecting(nodeRect, getNodeRect(subnet, nodesById)),
+          const containerNode =
+            forcedContainer ??
+            findIntersectingContainer(
+              nodeRect,
+              containerNodes,
+              nodesById,
+              node,
             );
 
-          if (!subnetNode) {
+          if (!containerNode) {
             if (!node.parentId) {
               return;
             }
@@ -376,39 +491,39 @@ export default function App() {
             return;
           }
 
-          if (node.parentId === subnetNode.id) {
+          if (node.parentId === containerNode.id) {
             return;
           }
 
-          const subnetPosition = getAbsolutePosition(subnetNode, nodesById);
+          const containerPosition = getAbsolutePosition(containerNode, nodesById);
 
           updates.set(node.id, {
             ...node,
-            parentId: subnetNode.id,
+            parentId: containerNode.id,
             position: {
-              x: nodeRect.x - subnetPosition.x,
-              y: nodeRect.y - subnetPosition.y,
+              x: nodeRect.x - containerPosition.x,
+              y: nodeRect.y - containerPosition.y,
             },
           });
         }
 
-        if (isSubnetNode(draggedNode)) {
-          const draggedSubnetRect = getNodeRect(draggedNode, nodesById);
+        if (isNetworkContainerNode(draggedNode)) {
+          const draggedContainerRect = getNodeRect(draggedNode, nodesById);
 
           nodes.forEach((node) => {
-            if (node.id === draggedNode.id || isSubnetNode(node)) {
+            if (node.id === draggedNode.id || isVpcNode(node)) {
               return;
             }
 
             const currentNode = getUpdatedNode(node);
             const nodeRect = getNodeRect(currentNode, nodesById);
 
-            if (isRectIntersecting(nodeRect, draggedSubnetRect)) {
-              updateSubnetForNode(currentNode, draggedNode);
+            if (isRectIntersecting(nodeRect, draggedContainerRect)) {
+              updateContainerForNode(currentNode, draggedNode);
             }
           });
         } else {
-          updateSubnetForNode(draggedNode);
+          updateContainerForNode(draggedNode);
         }
 
         if (updates.size === 0) {
@@ -437,14 +552,17 @@ export default function App() {
           node.id === nodeId
             ? {
                 ...node,
-                data: { ...node.data, subnetType },
-                style: getSubnetStyle(subnetType),
+                data: {
+                  ...node.data,
+                  label: subnetType === "Public" ? t.public : t.private,
+                  subnetType,
+                },
               }
             : node,
         ),
       );
     },
-    [setNodes],
+    [setNodes, t.private, t.public],
   );
 
   const onServiceFieldChange = useCallback(
@@ -474,7 +592,7 @@ export default function App() {
   );
 
   const selectedNode = nodes.find((n) => n.selected);
-  const selectedIsSubnet = selectedNode?.type === "group";
+  const selectedIsSubnet = selectedNode ? isSubnetNode(selectedNode) : false;
   const selectedAwsNode =
     selectedNode?.type === "awsService"
       ? (selectedNode as AwsServiceNodeType)
@@ -484,20 +602,32 @@ export default function App() {
     : [];
   const selectedHasFields = selectedAwsFields.length > 0;
   const selectedAwsDescription = selectedAwsNode
-    ? getServiceDescription(selectedAwsNode)
+    ? getServiceDescription(selectedAwsNode, locale)
     : "";
 
   const selectedLabel =
     selectedNode?.type === "awsService"
       ? (selectedNode.data as AwsServiceNodeData).name
       : selectedIsSubnet
-        ? "Subnet"
+        ? t.subnet
         : String((selectedNode?.data as { label?: unknown })?.label ?? "");
 
   return (
-    <div style={{ display: "flex", width: "100vw", height: "100vh" }}>
+    <div
+      className="bg-background text-foreground"
+      style={{ display: "flex", width: "100vw", height: "100vh" }}
+    >
+      <DragDropSidebar
+        labels={{
+          dragAndDrop: t.dragAndDrop,
+          dragSubnet: t.dragSubnet,
+          subnet: t.subnet,
+          dragService: t.dragService,
+        }}
+      />
       <div style={{ flex: 1, position: "relative" }}>
         <ReactFlow
+          className="dark"
           nodes={nodes}
           edges={edges}
           onNodesChange={onNodesChange}
@@ -509,21 +639,8 @@ export default function App() {
           onNodeDragStop={onNodeDragStop}
           nodeTypes={nodeTypes}
           fitView
+          fitViewOptions={{ padding: INITIAL_FIT_VIEW_PADDING }}
         >
-          <Panel position="top-left">
-            <div className="mt-2 flex items-center gap-1 rounded-lg border border-gray-200 bg-white p-1 shadow-md">
-              <Button
-                variant="ghost"
-                size="icon"
-                draggable
-                onDragStart={onContainerDragStart}
-                aria-label="Add container"
-                title="Add container"
-              >
-                <Container className="h-4 w-4" />
-              </Button>
-            </div>
-          </Panel>
           <Controls />
           <MiniMap />
           <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
@@ -533,19 +650,19 @@ export default function App() {
           <Button
             variant="outline"
             size="icon"
-            onClick={() => setSidebarOpen((v) => !v)}
-            aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
+            onClick={() => setInspectorOpen((v) => !v)}
+            aria-label={inspectorOpen ? t.closeInspector : t.openInspector}
           >
-            {sidebarOpen ? <PanelRightClose /> : <PanelRightOpen />}
+            {inspectorOpen ? <PanelRightClose /> : <PanelRightOpen />}
           </Button>
         </div>
       </div>
 
-      {sidebarOpen && (
+      {inspectorOpen && (
         <Card className="flex h-full w-72 flex-col rounded-none border-y-0 border-r-0">
           <CardHeader>
             <CardTitle className="text-sm font-medium">
-              {selectedNode ? selectedLabel : "No node selected"}
+              {selectedNode ? selectedLabel : t.noNodeSelected}
             </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-1 flex-col overflow-hidden">
@@ -553,7 +670,7 @@ export default function App() {
               {selectedNode && selectedIsSubnet ? (
                 <div className="space-y-4 text-sm">
                   <label className="grid gap-2 text-sm font-medium text-foreground">
-                    Type
+                    {t.type}
                     <Select
                       value={
                         ((selectedNode.data as Partial<SubnetNodeData>)
@@ -567,8 +684,8 @@ export default function App() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Public">Public</SelectItem>
-                        <SelectItem value="Private">Private</SelectItem>
+                        <SelectItem value="Public">{t.public}</SelectItem>
+                        <SelectItem value="Private">{t.private}</SelectItem>
                       </SelectContent>
                     </Select>
                   </label>
@@ -576,6 +693,11 @@ export default function App() {
               ) : selectedAwsNode && selectedHasFields ? (
                 <div className="space-y-4">
                   {selectedAwsFields.map((field) => {
+                    const localizedField = getLocalizedField(
+                      getServiceId(selectedAwsNode),
+                      field,
+                      locale,
+                    );
                     const value = getFieldValue(selectedAwsNode.data, field);
 
                     if (field.type === "select") {
@@ -584,7 +706,7 @@ export default function App() {
                           key={field.key}
                           className="grid gap-2 text-sm font-medium text-foreground"
                         >
-                          {field.label}
+                          {localizedField.label}
                           <Select
                             value={String(value)}
                             onValueChange={(nextValue) =>
@@ -596,10 +718,10 @@ export default function App() {
                             }
                           >
                             <SelectTrigger className="font-normal">
-                              <SelectValue placeholder={field.placeholder} />
+                              <SelectValue placeholder={localizedField.placeholder} />
                             </SelectTrigger>
                             <SelectContent>
-                              {(field.options ?? []).map((option) => (
+                              {(localizedField.options ?? []).map((option) => (
                                 <SelectItem
                                   key={option.value}
                                   value={option.value}
@@ -619,7 +741,7 @@ export default function App() {
                           key={field.key}
                           className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground"
                         >
-                          <span>{field.label}</span>
+                          <span>{localizedField.label}</span>
                           <input
                             type="checkbox"
                             className="h-4 w-4 rounded border-input accent-primary"
@@ -641,11 +763,11 @@ export default function App() {
                         key={field.key}
                         className="grid gap-2 text-sm font-medium text-foreground"
                       >
-                        {field.label}
+                        {localizedField.label}
                         <Input
                           type={field.type === "number" ? "number" : "text"}
                           value={String(value)}
-                          placeholder={field.placeholder}
+                          placeholder={localizedField.placeholder}
                           onChange={(event) => {
                             const nextValue =
                               field.type === "number"
@@ -669,22 +791,21 @@ export default function App() {
                 <div className="space-y-4 text-sm text-muted-foreground">
                   {selectedAwsNode && (
                     <Alert>
-                      <AlertTitle>Coming Soon</AlertTitle>
+                      <AlertTitle>{t.comingSoon}</AlertTitle>
                       <AlertDescription>
-                        Configuration fields for this service are not available
-                        yet.
+                        {t.fieldsUnavailable}
                       </AlertDescription>
                     </Alert>
                   )}
                   <p>ID: {selectedNode.id}</p>
                   <p>
-                    Position: ({Math.round(selectedNode.position.x)},{" "}
+                    {t.position}: ({Math.round(selectedNode.position.x)},{" "}
                     {Math.round(selectedNode.position.y)})
                   </p>
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  Click a node to see its details.
+                  {t.clickNodeDetails}
                 </p>
               )}
             </div>

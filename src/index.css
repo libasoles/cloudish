@@ -2,47 +2,45 @@
 @config "../tailwind.config.js";
 
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
+  --text: #c7ceda;
+  --text-h: #f8fafc;
+  --bg: #0f1117;
+  --code-bg: #1b2029;
+  --accent-bg: rgba(56, 189, 248, 0.16);
+  --accent-border: rgba(56, 189, 248, 0.5);
+  --social-bg: rgba(30, 35, 46, 0.7);
   --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+    rgba(0, 0, 0, 0.45) 0 10px 15px -3px, rgba(0, 0, 0, 0.3) 0 4px 6px -2px;
 
   --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
   --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
   --mono: ui-monospace, Consolas, monospace;
 
   /* shadcn/ui CSS variables */
-  --background: 0 0% 100%;
-  --foreground: 222.2 84% 4.9%;
-  --card: 0 0% 100%;
-  --card-foreground: 222.2 84% 4.9%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 222.2 84% 4.9%;
-  --primary: 221.2 83.2% 53.3%;
+  --background: 224 21% 7%;
+  --foreground: 210 40% 96%;
+  --card: 224 19% 10%;
+  --card-foreground: 210 40% 96%;
+  --popover: 224 19% 10%;
+  --popover-foreground: 210 40% 96%;
+  --primary: 199 89% 48%;
   --primary-foreground: 210 40% 98%;
-  --secondary: 210 40% 96%;
-  --secondary-foreground: 222.2 47.6% 11.2%;
-  --muted: 210 40% 96%;
-  --muted-foreground: 215.4 16.3% 46.9%;
-  --accent: 262.1 80% 50.6%;
+  --secondary: 221 20% 18%;
+  --secondary-foreground: 210 40% 96%;
+  --muted: 222 18% 16%;
+  --muted-foreground: 215 20% 72%;
+  --accent: 221 20% 18%;
   --accent-foreground: 210 40% 98%;
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 210 40% 98%;
-  --border: 214.3 31.8% 91.4%;
-  --input: 214.3 31.8% 91.4%;
-  --ring: 221.2 83.2% 53.3%;
+  --border: 218 19% 23%;
+  --input: 218 19% 27%;
+  --ring: 199 89% 48%;
   --radius: 0.5rem;
 
   font: 18px/145% var(--sans);
   letter-spacing: 0.18px;
-  color-scheme: light dark;
+  color-scheme: dark;
   color: var(--text);
   background: var(--bg);
   font-synthesis: none;
@@ -55,24 +53,8 @@
   }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
+#social .button-icon {
+  filter: invert(1) brightness(2);
 }
 
 #root {
@@ -83,6 +65,53 @@
 
 body {
   margin: 0;
+  background: var(--bg);
+}
+
+.react-flow {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  --xy-controls-button-background-color: hsl(var(--card));
+  --xy-controls-button-background-color-hover: hsl(var(--accent));
+  --xy-controls-button-color: hsl(var(--foreground));
+  --xy-controls-button-color-hover: hsl(var(--accent-foreground));
+  --xy-controls-button-border-color: hsl(var(--border));
+  --xy-controls-box-shadow: var(--shadow);
+}
+
+.react-flow__background {
+  background: hsl(var(--background));
+}
+
+.react-flow__background-pattern.dots {
+  color: hsl(var(--muted-foreground) / 0.45);
+}
+
+.react-flow__controls {
+  border: 1px solid hsl(var(--border));
+  box-shadow: var(--shadow);
+}
+
+.react-flow__controls-button {
+  background: hsl(var(--card)) !important;
+  border-bottom-color: hsl(var(--border)) !important;
+  color: hsl(var(--foreground)) !important;
+  fill: hsl(var(--foreground)) !important;
+}
+
+.react-flow__controls-button:hover {
+  background: hsl(var(--accent)) !important;
+  color: hsl(var(--accent-foreground)) !important;
+  fill: hsl(var(--accent-foreground)) !important;
+}
+
+.react-flow__controls-button svg {
+  fill: currentColor;
+}
+
+.react-flow__minimap {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
 }
 
 h1,

@@ -4,8 +4,15 @@ import { Search, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AWS_SERVICES, type AwsService } from '@/data/aws-services';
 import { AwsServiceIcon } from '@/components/AwsServiceIcon';
+import {
+  UI_TEXT,
+  getBrowserLocale,
+  getCategoryLabel,
+  getServiceDescription,
+  type Locale,
+} from '@/i18n';
 
-function getSearchResults(query: string) {
+function getSearchResults(query: string, locale: Locale) {
   const normalizedQuery = query.trim().toLowerCase();
 
   if (normalizedQuery.length === 0) {
@@ -13,13 +20,23 @@ function getSearchResults(query: string) {
   }
 
   return AWS_SERVICES.filter(
-    (service) =>
-      service.name.toLowerCase().includes(normalizedQuery) ||
-      service.category.toLowerCase().includes(normalizedQuery)
+    (service) => {
+      const categoryLabel = getCategoryLabel(service.category, locale);
+      const description = getServiceDescription(service, locale);
+
+      return (
+        service.name.toLowerCase().includes(normalizedQuery) ||
+        service.category.toLowerCase().includes(normalizedQuery) ||
+        categoryLabel.toLowerCase().includes(normalizedQuery) ||
+        description.toLowerCase().includes(normalizedQuery)
+      );
+    }
   ).slice(0, 8);
 }
 
 export default function ServiceSearch() {
+  const locale = getBrowserLocale();
+  const t = UI_TEXT[locale];
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(-1);
   const [open, setOpen] = useState(false);
@@ -27,7 +44,7 @@ export default function ServiceSearch() {
   const containerRef = useRef<HTMLDivElement>(null);
   const { addNodes, screenToFlowPosition } = useReactFlow();
 
-  const results = getSearchResults(query);
+  const results = getSearchResults(query, locale);
 
   useEffect(() => {
     function handleMouseDown(e: MouseEvent) {
@@ -53,7 +70,6 @@ export default function ServiceSearch() {
         slug: service.slug,
         category: service.category,
         serviceId: service.id,
-        description: service.description,
       },
     });
     setQuery('');
@@ -63,7 +79,7 @@ export default function ServiceSearch() {
   }
 
   function handleQueryChange(value: string) {
-    const nextResults = getSearchResults(value);
+    const nextResults = getSearchResults(value, locale);
 
     setQuery(value);
     setActiveIndex(-1);
@@ -97,13 +113,13 @@ export default function ServiceSearch() {
   return (
     <Panel position="top-center">
       <div className="relative mt-2" ref={containerRef}>
-        <div className="flex items-center gap-2 bg-white rounded-lg shadow-md border border-gray-200 px-3 py-2 w-72">
-          <Search className="w-4 h-4 text-gray-400 shrink-0" />
+        <div className="flex w-72 items-center gap-2 rounded-lg border border-input bg-card px-3 py-2 text-card-foreground shadow-md">
+          <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
           <input
             ref={inputRef}
             type="text"
-            placeholder="Search AWS services..."
-            className="flex-1 text-sm outline-none bg-transparent"
+            placeholder={t.searchPlaceholder}
+            className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
             value={query}
             onChange={(e) => handleQueryChange(e.target.value)}
             onFocus={() => {
@@ -113,22 +129,24 @@ export default function ServiceSearch() {
           />
           {query && (
             <button
+              type="button"
               onClick={clearSearch}
-              className="text-gray-400 hover:text-gray-600"
+              className="rounded-sm text-muted-foreground transition hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              aria-label={t.clearSearch}
             >
-              <X className="w-3 h-3" />
+              <X className="h-3 w-3" />
             </button>
           )}
         </div>
 
         {open && results.length > 0 && (
-          <ul className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-y-auto max-h-64 z-50">
+          <ul className="absolute left-0 right-0 top-full z-50 mt-1 max-h-64 overflow-y-auto rounded-lg border border-border bg-popover text-popover-foreground shadow-lg">
             {results.map((service, i) => (
               <li
                 key={service.id}
                 className={cn(
-                  'flex items-center gap-3 px-3 py-2 cursor-pointer text-sm',
-                  i === activeIndex ? 'bg-blue-50' : 'hover:bg-gray-50'
+                  'flex cursor-pointer items-center gap-3 px-3 py-2 text-sm',
+                  i === activeIndex ? 'bg-accent text-accent-foreground' : 'hover:bg-accent hover:text-accent-foreground'
                 )}
                 onMouseDown={(e) => {
                   e.preventDefault();
@@ -142,8 +160,10 @@ export default function ServiceSearch() {
                   name={service.name}
                   size={24}
                 />
-                <span className="font-medium text-gray-800">{service.name}</span>
-                <span className="ml-auto text-xs text-gray-400 shrink-0">{service.category}</span>
+                <span className="font-medium text-foreground">{service.name}</span>
+                <span className="ml-auto shrink-0 text-xs text-muted-foreground">
+                  {getCategoryLabel(service.category, locale)}
+                </span>
               </li>
             ))}
           </ul>

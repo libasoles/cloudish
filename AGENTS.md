@@ -2,7 +2,14 @@
 
 ## Architecture
 
-This is a single-component POC for [React Flow](https://reactflow.dev/) (`@xyflow/react`). All logic lives in `src/App.tsx`.
+This is a React Flow POC for [React Flow](https://reactflow.dev/) (`@xyflow/react`). Keep `src/App.tsx` focused on orchestration of the canvas, state wiring, and high-level layout.
+
+Prefer atomized React/JavaScript modules over large files:
+
+- Move reusable UI into dedicated components under `src/components`.
+- Move static data and initial graph state into dedicated files under `src/data`.
+- Move shared types into `src/types` and cross-cutting helpers into `src/lib`.
+- Avoid adding unrelated component JSX, data catalogs, or utility functions directly to `App.tsx` when a small module would keep ownership clearer.
 
 **State management** uses the `@xyflow/react` built-in hooks:
 
