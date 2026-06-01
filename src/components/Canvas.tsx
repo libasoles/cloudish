@@ -73,6 +73,22 @@ export default function Canvas() {
   > | null>(null);
   const containerIdRef = useRef(1);
   const serviceIdRef = useRef(1);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const handleInit = useCallback(
+    (instance: ReactFlowInstance<AppNode, AppEdge>) => {
+      setReactFlowInstance(instance);
+      if (containerRef.current) {
+        const canvasWidth = containerRef.current.clientWidth;
+        const vp = instance.getViewport();
+        instance.setViewport(
+          { ...vp, x: vp.x - canvasWidth / 6 },
+          { duration: 0 },
+        );
+      }
+    },
+    [setReactFlowInstance],
+  );
 
   const onConnect: OnConnect = useCallback(
     (connection) => setEdges((edges) => addEdge(connection, edges)),
@@ -395,7 +411,7 @@ export default function Canvas() {
   );
 
   return (
-    <div style={{ flex: 1, position: "relative" }}>
+    <div ref={containerRef} style={{ flex: 1, position: "relative" }}>
       <ReactFlow
         className="dark"
         nodes={nodes}
@@ -405,7 +421,7 @@ export default function Canvas() {
         onConnect={onConnect}
         onDragOver={onDragOver}
         onDrop={onDrop}
-        onInit={setReactFlowInstance}
+        onInit={handleInit}
         onNodeDragStop={onNodeDragStop}
         nodeTypes={nodeTypes}
         fitView
