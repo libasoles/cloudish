@@ -16,7 +16,6 @@ const TOP_AWS_SERVICE_IDS = [
   "fargate",
   "rds",
   "dynamodb",
-  "vpc",
   "cloudfront",
   "api-gateway",
   "iam",
@@ -24,6 +23,8 @@ const TOP_AWS_SERVICE_IDS = [
   "sqs",
 ] as const;
 
+const VPC_SERVICE_ID = "vpc";
+const vpcService = AWS_SERVICES.find((service) => service.id === VPC_SERVICE_ID);
 const dragServices = TOP_AWS_SERVICE_IDS.map((serviceId) =>
   AWS_SERVICES.find((service) => service.id === serviceId),
 ).filter((service): service is AwsService => Boolean(service));
@@ -49,6 +50,29 @@ export default function DragDropSidebar({ labels }: DragDropSidebarProps) {
         {labels.dragAndDrop}
       </div>
       <div className="flex-1 space-y-2 overflow-y-auto p-2">
+        {vpcService && (
+          <button
+            type="button"
+            draggable
+            onDragStart={(event) =>
+              setDragPayload(event, {
+                type: AWS_SERVICE_NODE_TYPE,
+                serviceId: vpcService.id,
+              })
+            }
+            className="flex w-full flex-col items-center gap-1 rounded-md border border-transparent px-1 py-2 text-center text-[11px] font-medium leading-tight text-foreground transition hover:border-border hover:bg-accent"
+            aria-label={labels.dragService(vpcService.name)}
+            title={vpcService.name}
+          >
+            <AwsServiceIcon
+              slug={vpcService.slug}
+              category={vpcService.category}
+              name={vpcService.name}
+              size={40}
+            />
+            <span className="w-full break-words">{vpcService.name}</span>
+          </button>
+        )}
         <button
           type="button"
           draggable

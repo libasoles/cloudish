@@ -1,4 +1,9 @@
-import type { Node, NodeProps } from "@xyflow/react";
+import {
+  NodeResizeControl,
+  ResizeControlVariant,
+  type Node,
+  type NodeProps,
+} from "@xyflow/react";
 import { cn } from "@/lib/utils";
 import type { NetworkContainerNodeData } from "@/types/flow";
 
@@ -6,6 +11,9 @@ export type NetworkContainerNodeType = Node<
   NetworkContainerNodeData,
   "networkContainer"
 >;
+
+const MIN_CONTAINER_WIDTH = 220;
+const MIN_CONTAINER_HEIGHT = 140;
 
 export default function NetworkContainerNode({
   data,
@@ -26,6 +34,36 @@ export default function NetworkContainerNode({
         selected && "ring-2 ring-primary ring-offset-2 ring-offset-background",
       )}
     >
+      <NodeResizeControl
+        position="bottom-right"
+        variant={ResizeControlVariant.Handle}
+        minWidth={MIN_CONTAINER_WIDTH}
+        minHeight={MIN_CONTAINER_HEIGHT}
+        className="h-7! w-7! border-0! bg-transparent!"
+        style={{
+          bottom: 0,
+          left: "auto",
+          right: 0,
+          top: "auto",
+          translate: "0 0",
+        }}
+      >
+        <div
+          aria-hidden="true"
+          className={cn(
+            "absolute bottom-1 right-1 h-4 w-4 overflow-hidden rounded-[2px]",
+            isVpc
+              ? "text-amber-300/90"
+              : isPrivateSubnet
+                ? "text-blue-300/90"
+                : "text-emerald-300/90",
+          )}
+          style={{
+            background:
+              "repeating-linear-gradient(135deg, transparent 0 4px, currentColor 4px 6px, transparent 6px 8px)",
+          }}
+        />
+      </NodeResizeControl>
       <div
         className={cn(
           "absolute left-3 top-0 -translate-y-1/2 rounded border px-2 py-0.5 text-[11px] font-semibold leading-none shadow-sm",

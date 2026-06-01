@@ -4,6 +4,7 @@ import { Search, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AWS_SERVICES, type AwsService } from '@/data/aws-services';
 import { AwsServiceIcon } from '@/components/AwsServiceIcon';
+import type { AppNode } from '@/types/flow';
 import {
   UI_TEXT,
   getBrowserLocale,
@@ -11,6 +12,10 @@ import {
   getServiceDescription,
   type Locale,
 } from '@/i18n';
+
+const VPC_SERVICE_ID = 'vpc';
+const CONTAINER_WIDTH = 320;
+const CONTAINER_HEIGHT = 220;
 
 function getSearchResults(query: string, locale: Locale) {
   const normalizedQuery = query.trim().toLowerCase();
@@ -42,7 +47,7 @@ export default function ServiceSearch() {
   const [open, setOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const { addNodes, screenToFlowPosition } = useReactFlow();
+  const { addNodes, screenToFlowPosition, setNodes } = useReactFlow<AppNode>();
 
   const results = getSearchResults(query, locale);
 
@@ -61,17 +66,37 @@ export default function ServiceSearch() {
       x: window.innerWidth / 2,
       y: window.innerHeight / 2,
     });
-    addNodes({
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-      type: 'awsService',
-      position,
-      data: {
-        name: service.name,
-        slug: service.slug,
-        category: service.category,
-        serviceId: service.id,
-      },
-    });
+
+    if (service.id === VPC_SERVICE_ID) {
+      const vpcNode: AppNode = {
+        id: `vpc-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        type: 'networkContainer',
+        position: {
+          x: position.x - CONTAINER_WIDTH / 2,
+          y: position.y - CONTAINER_HEIGHT / 2,
+        },
+        data: { containerType: 'vpc', label: 'VPC' },
+        style: {
+          width: CONTAINER_WIDTH,
+          height: CONTAINER_HEIGHT,
+        },
+      };
+
+      setNodes((nodes) => [vpcNode, ...nodes]);
+    } else {
+      addNodes({
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        type: 'awsService',
+        position,
+        data: {
+          name: service.name,
+          slug: service.slug,
+          category: service.category,
+          serviceId: service.id,
+        },
+      });
+    }
+
     setQuery('');
     setOpen(false);
     setActiveIndex(-1);
