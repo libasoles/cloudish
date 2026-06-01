@@ -509,10 +509,7 @@ export default function App() {
             : "";
 
   return (
-    <div
-      className="bg-background text-foreground"
-      style={{ display: "flex", width: "100vw", height: "100vh" }}
-    >
+    <div className="flex h-screen w-screen bg-background text-foreground">
       <DragDropSidebar
         labels={{
           dragAndDrop: t.dragAndDrop,
@@ -521,7 +518,7 @@ export default function App() {
           dragService: t.dragService,
         }}
       />
-      <div style={{ flex: 1, position: "relative" }}>
+      <div className="relative flex-1">
         <ReactFlow
           className="dark"
           nodes={nodes}
