@@ -24,7 +24,9 @@ const TOP_AWS_SERVICE_IDS = [
 ] as const;
 
 const VPC_SERVICE_ID = "vpc";
-const vpcService = AWS_SERVICES.find((service) => service.id === VPC_SERVICE_ID);
+const vpcService = AWS_SERVICES.find(
+  (service) => service.id === VPC_SERVICE_ID,
+);
 const dragServices = TOP_AWS_SERVICE_IDS.map((serviceId) =>
   AWS_SERVICES.find((service) => service.id === serviceId),
 ).filter((service): service is AwsService => Boolean(service));
@@ -82,7 +84,7 @@ export default function DragDropSidebar({ labels }: DragDropSidebarProps) {
           title={labels.subnet}
         >
           <Container className="h-8 w-8 text-muted-foreground" />
-          <span className="w-full break-words">{labels.subnet}</span>
+          <span className="w-full wrap-break-word">{labels.subnet}</span>
         </button>
         {dragServices.map((service) => (
           <button
