@@ -218,7 +218,7 @@ export default function Canvas() {
               id: nodeId,
               type: "user",
               ...parentedPosition,
-              data: { label: t.user },
+              data: { label: t.user, fields: { label: t.user } },
             },
           ]);
         });

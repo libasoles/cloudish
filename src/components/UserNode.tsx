@@ -2,7 +2,10 @@ import { Handle, Position, type NodeProps, type Node } from "@xyflow/react";
 import { User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type UserNodeData = { label: string };
+export type UserNodeData = {
+  label: string;
+  fields?: Record<string, string | boolean | number>;
+};
 export type UserNodeType = Node<UserNodeData, "user">;
 
 export default function UserNode({ data, selected }: NodeProps<UserNodeType>) {
@@ -16,7 +19,7 @@ export default function UserNode({ data, selected }: NodeProps<UserNodeType>) {
       <Handle type="target" position={Position.Left} />
       <User className="size-10 text-gray-500" />
       <span className="text-xs font-medium text-gray-700 text-center leading-tight max-w-20 truncate">
-        {data.label}
+        {String(data.fields?.label ?? data.label)}
       </span>
       <Handle type="source" position={Position.Right} />
     </div>

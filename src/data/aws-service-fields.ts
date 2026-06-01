@@ -503,3 +503,24 @@ export const AWS_SERVICE_FIELDS: Record<string, ServiceField[]> = {
     },
   ],
 };
+
+// ─── Non-AWS node fields ──────────────────────────────────────────────────────
+const EXTRA_NODE_FIELDS: Record<string, ServiceField[]> = {
+  user: [
+    {
+      key: "label",
+      label: "Name",
+      type: "text",
+      defaultValue: "User",
+      placeholder: "User",
+    },
+  ],
+};
+
+export function getNodeFields(nodeTypeOrServiceId: string): ServiceField[] {
+  return (
+    AWS_SERVICE_FIELDS[nodeTypeOrServiceId] ??
+    EXTRA_NODE_FIELDS[nodeTypeOrServiceId] ??
+    []
+  );
+}

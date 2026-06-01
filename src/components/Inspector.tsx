@@ -14,7 +14,7 @@ import {
   type AwsServiceNodeData,
 } from "@/components/AwsServiceNode";
 import EdgeArrowDirectionOption from "@/components/EdgeArrowDirectionOption";
-import { AWS_SERVICE_FIELDS } from "@/data/aws-service-fields";
+import { getNodeFields } from "@/data/aws-service-fields";
 import {
   getEdgeArrowDirection,
   setEdgeArrowDirection,
@@ -60,11 +60,11 @@ export default function Inspector() {
     (nodeId: string, fieldKey: string, value: FieldValue) => {
       setNodes((nodes) =>
         nodes.map((node) => {
-          if (node.id !== nodeId || node.type !== "awsService") {
+          if (node.id !== nodeId) {
             return node;
           }
 
-          const data = node.data as AwsServiceNodeData;
+          const data = node.data as { fields?: Record<string, FieldValue> };
 
           return {
             ...node,
@@ -82,8 +82,7 @@ export default function Inspector() {
     [setNodes],
   );
 
-  const onEdgeLabelChange = useCallback(
-    (edgeId: string, label: string) => {
+  const onEdgeLabelChange = useCallback(    (edgeId: string, label: string) => {
       setEdges((edges) =>
         edges.map((edge) => (edge.id === edgeId ? { ...edge, label } : edge)),
       );
@@ -122,10 +121,11 @@ export default function Inspector() {
     selectedNode?.type === "awsService"
       ? (selectedNode as AwsServiceNodeType)
       : null;
-  const selectedAwsFields = selectedAwsNode
-    ? (AWS_SERVICE_FIELDS[getServiceId(selectedAwsNode)] ?? [])
-    : [];
-  const selectedHasFields = selectedAwsFields.length > 0;
+  const selectedNodeFieldsKey = selectedAwsNode
+    ? getServiceId(selectedAwsNode)
+    : (selectedNode?.type ?? "");
+  const selectedNodeFields = getNodeFields(selectedNodeFieldsKey);
+  const selectedHasFields = selectedNodeFields.length > 0;
   const selectedAwsDescription = selectedAwsNode
     ? getServiceDescription(selectedAwsNode, locale)
     : "";
@@ -238,15 +238,18 @@ export default function Inspector() {
                 </Select>
               </label>
             </div>
-          ) : selectedAwsNode && selectedHasFields ? (
+          ) : selectedNode && selectedHasFields ? (
             <div className="space-y-4">
-              {selectedAwsFields.map((field) => {
+              {selectedNodeFields.map((field) => {
                 const localizedField = getLocalizedField(
-                  getServiceId(selectedAwsNode),
+                  selectedNodeFieldsKey,
                   field,
                   locale,
                 );
-                const value = getFieldValue(selectedAwsNode.data, field);
+                const value = getFieldValue(
+                  selectedNode.data as AwsServiceNodeData,
+                  field,
+                );
 
                 if (field.type === "select") {
                   return (
@@ -259,7 +262,7 @@ export default function Inspector() {
                         value={String(value)}
                         onValueChange={(nextValue) =>
                           onServiceFieldChange(
-                            selectedAwsNode.id,
+                            selectedNode.id,
                             field.key,
                             nextValue,
                           )
@@ -295,7 +298,7 @@ export default function Inspector() {
                         checked={Boolean(value)}
                         onChange={(event) =>
                           onServiceFieldChange(
-                            selectedAwsNode.id,
+                            selectedNode.id,
                             field.key,
                             event.target.checked,
                           )
@@ -324,7 +327,7 @@ export default function Inspector() {
                             : event.target.value;
 
                         onServiceFieldChange(
-                          selectedAwsNode.id,
+                          selectedNode.id,
                           field.key,
                           nextValue,
                         );

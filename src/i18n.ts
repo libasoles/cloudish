@@ -383,6 +383,9 @@ const ES_FIELD_TRANSLATIONS: Record<string, FieldTranslations> = {
     queueName: { label: "Nombre de la cola", placeholder: "mi-cola" },
     type: { label: "Tipo" },
   },
+  user: {
+    label: { label: "Nombre", placeholder: "Usuario" },
+  },
 };
 
 export function getBrowserLocale(): Locale {
