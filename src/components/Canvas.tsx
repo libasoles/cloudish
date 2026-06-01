@@ -14,6 +14,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import { Button } from "@/components/ui/button";
 import { PanelRightClose, PanelRightOpen } from "lucide-react";
+import DragDropSidebar from "@/components/DragDropSidebar";
 import AwsServiceNode from "@/components/AwsServiceNode";
 import NetworkContainerNode from "@/components/NetworkContainerNode";
 import UserNode from "@/components/UserNode";
@@ -23,6 +24,7 @@ import {
   AWS_SERVICE_NODE_TYPE,
   DND_MIME_TYPE,
   decodeDragTool,
+  type DragTool,
 } from "@/lib/drag-tools";
 import type { AppEdge, AppNode } from "@/types/flow";
 import { UI_TEXT, getBrowserLocale } from "@/i18n";
@@ -100,25 +102,11 @@ export default function Canvas() {
     event.dataTransfer.dropEffect = "move";
   }, []);
 
-  const onDrop = useCallback(
-    (event: DragEvent) => {
-      event.preventDefault();
-
-      const droppedTool = decodeDragTool(
-        event.dataTransfer.getData(DND_MIME_TYPE),
-      );
-      if (!droppedTool || !reactFlowInstance) {
-        return;
-      }
-
-      const position = reactFlowInstance.screenToFlowPosition({
-        x: event.clientX,
-        y: event.clientY,
-      });
-
-      if (droppedTool.type === AWS_SERVICE_NODE_TYPE) {
+  const addToolAtPosition = useCallback(
+    (tool: DragTool, position: { x: number; y: number }) => {
+      if (tool.type === AWS_SERVICE_NODE_TYPE) {
         const service = AWS_SERVICES.find(
-          (service) => service.id === droppedTool.serviceId,
+          (service) => service.id === tool.serviceId,
         );
 
         if (!service) {
@@ -200,7 +188,7 @@ export default function Canvas() {
         return;
       }
 
-      if (droppedTool.type === "user") {
+      if (tool.type === "user") {
         const nodeId = `user-${serviceIdRef.current++}`;
         const nodePosition = {
           x: position.x - SERVICE_DROP_OFFSET.x,
@@ -299,7 +287,47 @@ export default function Canvas() {
         ]);
       });
     },
-    [reactFlowInstance, setNodes, t.public, t.user],
+    [setNodes, t.public, t.user],
+  );
+
+  const onDrop = useCallback(
+    (event: DragEvent) => {
+      event.preventDefault();
+
+      const droppedTool = decodeDragTool(
+        event.dataTransfer.getData(DND_MIME_TYPE),
+      );
+      if (!droppedTool || !reactFlowInstance) {
+        return;
+      }
+
+      addToolAtPosition(
+        droppedTool,
+        reactFlowInstance.screenToFlowPosition({
+          x: event.clientX,
+          y: event.clientY,
+        }),
+      );
+    },
+    [addToolAtPosition, reactFlowInstance],
+  );
+
+  const addToolAtViewportCenter = useCallback(
+    (tool: DragTool) => {
+      if (!reactFlowInstance || !containerRef.current) {
+        return;
+      }
+
+      const bounds = containerRef.current.getBoundingClientRect();
+      addToolAtPosition(
+        tool,
+        reactFlowInstance.screenToFlowPosition({
+          x: bounds.left + bounds.width / 2,
+          y: bounds.top + bounds.height / 2,
+        }),
+      );
+    },
+    [addToolAtPosition, reactFlowInstance],
   );
 
   const syncNodeSubnet = useCallback(
@@ -411,37 +439,49 @@ export default function Canvas() {
   );
 
   return (
-    <div ref={containerRef} style={{ flex: 1, position: "relative" }}>
-      <ReactFlow
-        className="dark"
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
-        onDragOver={onDragOver}
-        onDrop={onDrop}
-        onInit={handleInit}
-        onNodeDragStop={onNodeDragStop}
-        nodeTypes={nodeTypes}
-        fitView
-        fitViewOptions={{ padding: INITIAL_FIT_VIEW_PADDING }}
-      >
-        <Controls />
-        <MiniMap />
-        <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
-        <ServiceSearch />
-      </ReactFlow>
-      <div className="absolute top-2 right-2 z-10">
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={() => setInspectorOpen((v) => !v)}
-          aria-label={inspectorOpen ? t.closeInspector : t.openInspector}
+    <>
+      <DragDropSidebar
+        labels={{
+          dragAndDrop: t.dragAndDrop,
+          dragSubnet: t.dragSubnet,
+          subnet: t.subnet,
+          user: t.user,
+          dragService: t.dragService,
+        }}
+        onToolClick={addToolAtViewportCenter}
+      />
+      <div ref={containerRef} style={{ flex: 1, position: "relative" }}>
+        <ReactFlow
+          className="dark"
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          onDragOver={onDragOver}
+          onDrop={onDrop}
+          onInit={handleInit}
+          onNodeDragStop={onNodeDragStop}
+          nodeTypes={nodeTypes}
+          fitView
+          fitViewOptions={{ padding: INITIAL_FIT_VIEW_PADDING }}
         >
-          {inspectorOpen ? <PanelRightClose /> : <PanelRightOpen />}
-        </Button>
+          <Controls />
+          <MiniMap />
+          <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
+          <ServiceSearch />
+        </ReactFlow>
+        <div className="absolute top-2 right-2 z-10">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setInspectorOpen((v) => !v)}
+            aria-label={inspectorOpen ? t.closeInspector : t.openInspector}
+          >
+            {inspectorOpen ? <PanelRightClose /> : <PanelRightOpen />}
+          </Button>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

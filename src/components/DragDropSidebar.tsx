@@ -39,6 +39,7 @@ type DragDropSidebarProps = {
     user: string;
     dragService: (serviceName: string) => string;
   };
+  onToolClick?: (tool: DragTool) => void;
 };
 
 function setDragPayload(event: DragEvent<HTMLButtonElement>, tool: DragTool) {
@@ -46,7 +47,10 @@ function setDragPayload(event: DragEvent<HTMLButtonElement>, tool: DragTool) {
   event.dataTransfer.effectAllowed = "move";
 }
 
-export default function DragDropSidebar({ labels }: DragDropSidebarProps) {
+export default function DragDropSidebar({
+  labels,
+  onToolClick,
+}: DragDropSidebarProps) {
   return (
     <aside className="flex h-full w-24 shrink-0 flex-col border-r border-border bg-background">
       <div className="border-b border-border px-2 py-3 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -57,6 +61,7 @@ export default function DragDropSidebar({ labels }: DragDropSidebarProps) {
           type="button"
           draggable
           onDragStart={(event) => setDragPayload(event, { type: "user" })}
+          onClick={() => onToolClick?.({ type: "user" })}
           className="flex w-full flex-col items-center gap-1 rounded-md border border-transparent px-1 py-2 text-center text-[11px] font-medium leading-tight text-foreground transition hover:border-border hover:bg-accent"
           aria-label={`Drag ${labels.user}`}
           title={labels.user}
@@ -70,6 +75,12 @@ export default function DragDropSidebar({ labels }: DragDropSidebarProps) {
             draggable
             onDragStart={(event) =>
               setDragPayload(event, {
+                type: AWS_SERVICE_NODE_TYPE,
+                serviceId: vpcService.id,
+              })
+            }
+            onClick={() =>
+              onToolClick?.({
                 type: AWS_SERVICE_NODE_TYPE,
                 serviceId: vpcService.id,
               })
@@ -91,6 +102,7 @@ export default function DragDropSidebar({ labels }: DragDropSidebarProps) {
           type="button"
           draggable
           onDragStart={(event) => setDragPayload(event, { type: "container" })}
+          onClick={() => onToolClick?.({ type: "container" })}
           className="flex w-full flex-col items-center gap-1 rounded-md border border-border bg-card px-1 py-2 text-center text-[11px] font-medium leading-tight text-card-foreground shadow-sm transition hover:border-primary hover:bg-accent"
           aria-label={labels.dragSubnet}
           title={labels.subnet}
@@ -105,6 +117,12 @@ export default function DragDropSidebar({ labels }: DragDropSidebarProps) {
             draggable
             onDragStart={(event) =>
               setDragPayload(event, {
+                type: AWS_SERVICE_NODE_TYPE,
+                serviceId: service.id,
+              })
+            }
+            onClick={() =>
+              onToolClick?.({
                 type: AWS_SERVICE_NODE_TYPE,
                 serviceId: service.id,
               })
