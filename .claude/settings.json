@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pkill -f \"vite\")",
+      "Bash(git add *)",
+      "Bash(git reset *)",
+      "Bash(git commit -m ' *)",
+      "Bash(curl -s http://localhost:5174/)",
+      "Read(//tmp/**)"
+    ]
+  }
+}

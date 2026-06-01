@@ -7,13 +7,15 @@ export type AppEdge = Edge;
 
 export type SubnetType = "Public" | "Private";
 
-export type NetworkContainerType = "subnet" | "vpc";
+export type NetworkContainerType = "subnet" | "vpc" | "region" | "az";
 
 export type NetworkContainerNodeData = {
   containerType: NetworkContainerType;
   label: string;
   subnetType?: SubnetType;
+  fields?: Record<string, string | boolean | number>;
   pulseKey?: string;
+  synced?: boolean;
 };
 
 export type SubnetNodeData = NetworkContainerNodeData & {

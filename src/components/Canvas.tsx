@@ -32,12 +32,19 @@ import { useFlowStore } from "@/store/flowStore";
 import {
   isNetworkContainerNode,
   isRegionNode,
+  isVpcNode,
+  isAzNode,
+  isSubnetNode,
   orderNodesForSubflows,
   getNodeRect,
+  getNodeSize,
   getAbsolutePosition,
   isRectIntersecting,
   findIntersectingContainer,
   getParentedPosition,
+  mirrorNodeToSiblingAzs,
+  redistributeSubnetNodes,
+  redistributeVpcNodes,
   REGION_STYLE,
   REGION_WIDTH,
   REGION_HEIGHT,
@@ -51,6 +58,7 @@ import {
   DEFAULT_NODE_HEIGHT,
 } from "@/lib/graph-utils";
 import { getAwsServiceNodeData } from "@/lib/node-utils";
+import { EDGE_STYLE } from "@/lib/edge-tools";
 
 const nodeTypes: NodeTypes = {
   awsService: AwsServiceNode,
@@ -62,6 +70,9 @@ const SERVICE_DROP_OFFSET = { x: 50, y: 36 };
 const INITIAL_FIT_VIEW_PADDING = 1.3;
 const VPC_SERVICE_ID = "vpc";
 const CLICK_PULSE_PREFIX = "sidebar-click";
+const DEFAULT_EDGE_OPTIONS = {
+  style: EDGE_STYLE,
+};
 
 export default function Canvas() {
   const locale = getBrowserLocale();
@@ -83,6 +94,7 @@ export default function Canvas() {
     AppEdge
   > | null>(null);
   const containerIdRef = useRef(1);
+  const subnetIdRef = useRef(1);
   const serviceIdRef = useRef(1);
   const pulseIdRef = useRef(1);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -103,7 +115,8 @@ export default function Canvas() {
   );
 
   const onConnect: OnConnect = useCallback(
-    (connection) => setEdges((edges) => addEdge(connection, edges)),
+    (connection) =>
+      setEdges((edges) => addEdge({ ...connection, style: EDGE_STYLE }, edges)),
     [setEdges],
   );
 
@@ -160,7 +173,7 @@ export default function Canvas() {
                 }
               : vpcPosition;
 
-            return orderNodesForSubflows([
+            const allNodes = orderNodesForSubflows([
               ...nodes.map((node) => {
                 // Don't absorb other containers into the new VPC on drop
                 if (isNetworkContainerNode(node)) {
@@ -191,6 +204,12 @@ export default function Canvas() {
                 style: VPC_STYLE,
               },
             ]);
+
+            if (parentRegion) {
+              const { width: rw, height: rh } = getNodeSize(parentRegion);
+              return redistributeVpcNodes(parentRegion.id, rw, rh, allNodes);
+            }
+            return allNodes;
           });
           return;
         }
@@ -208,15 +227,20 @@ export default function Canvas() {
             nodes,
           );
 
-          return orderNodesForSubflows([
-            ...nodes,
-            {
-              id: nodeId,
-              type: AWS_SERVICE_NODE_TYPE,
-              ...parentedPosition,
-              data: { ...getAwsServiceNodeData(service), ...pulseData },
-            },
-          ]);
+          const newNode: AppNode = {
+            id: nodeId,
+            type: AWS_SERVICE_NODE_TYPE,
+            ...parentedPosition,
+            data: { ...getAwsServiceNodeData(service), ...pulseData },
+          };
+
+          const mirrors = mirrorNodeToSiblingAzs(
+            newNode,
+            nodes,
+            (sibAzId) => `${nodeId}-m-${sibAzId}`,
+          );
+
+          return orderNodesForSubflows([...nodes, newNode, ...mirrors]);
         });
         return;
       }
@@ -233,15 +257,21 @@ export default function Canvas() {
             { width: DEFAULT_NODE_WIDTH, height: DEFAULT_NODE_HEIGHT },
             nodes,
           );
-          return orderNodesForSubflows([
-            ...nodes,
-            {
-              id: nodeId,
-              type: "user",
-              ...parentedPosition,
-              data: { label: t.user, fields: { label: t.user }, ...pulseData },
-            },
-          ]);
+
+          const newNode: AppNode = {
+            id: nodeId,
+            type: "user",
+            ...parentedPosition,
+            data: { label: t.user, fields: { label: t.user }, ...pulseData },
+          };
+
+          const mirrors = mirrorNodeToSiblingAzs(
+            newNode,
+            nodes,
+            (sibAzId) => `${nodeId}-m-${sibAzId}`,
+          );
+
+          return orderNodesForSubflows([...nodes, newNode, ...mirrors]);
         });
         return;
       }
@@ -275,6 +305,7 @@ export default function Canvas() {
       }
 
       const containerNumber = containerIdRef.current++;
+      const subnetNumber = subnetIdRef.current++;
       const subnetPosition = {
         x: position.x - CONTAINER_WIDTH / 2,
         y: position.y - CONTAINER_HEIGHT / 2,
@@ -298,7 +329,7 @@ export default function Canvas() {
             position: subnetPosition,
             data: {
               containerType: "subnet",
-              label: t.public,
+              label: `${t.public} ${t.subnet} ${subnetNumber}`,
               subnetType: "Public",
             },
           },
@@ -307,7 +338,7 @@ export default function Canvas() {
           ? getAbsolutePosition(parentVpc, nodesById)
           : null;
 
-        return orderNodesForSubflows([
+        const allNodes = orderNodesForSubflows([
           ...nodes.map((node) => {
             if (isNetworkContainerNode(node)) {
               return node;
@@ -340,16 +371,22 @@ export default function Canvas() {
               : subnetPosition,
             data: {
               containerType: "subnet",
-              label: t.public,
+              label: `${t.public} ${t.subnet} ${subnetNumber}`,
               subnetType: "Public",
               ...pulseData,
             },
             style: CONTAINER_STYLE,
           },
         ]);
+
+        if (parentVpc) {
+          const { width: pw, height: ph } = getNodeSize(parentVpc);
+          return redistributeSubnetNodes(parentVpc.id, pw, ph, allNodes);
+        }
+        return allNodes;
       });
     },
-    [setNodes, t.public, t.user, t.region],
+    [setNodes, t.public, t.subnet, t.user, t.region],
   );
 
   const onDrop = useCallback(
@@ -486,9 +523,35 @@ export default function Canvas() {
           return nodes;
         }
 
-        return orderNodesForSubflows(
+        let result = orderNodesForSubflows(
           nodes.map((node) => updates.get(node.id) ?? node),
         );
+
+        // After reparenting a container, redistribute its siblings in new and old parent
+        if (isNetworkContainerNode(draggedNode)) {
+          const reparentedNode = updates.get(draggedNodeId);
+          const oldParentId = draggedNode.parentId;
+          const newParentId = reparentedNode?.parentId;
+          const resultById = new Map(result.map((n) => [n.id, n]));
+
+          const parentsToRedistribute = new Set<string>();
+          if (newParentId) parentsToRedistribute.add(newParentId);
+          if (oldParentId && oldParentId !== newParentId) parentsToRedistribute.add(oldParentId);
+
+          for (const parentId of parentsToRedistribute) {
+            const parent = resultById.get(parentId);
+            if (!parent) continue;
+            const { width: pw, height: ph } = getNodeSize(parent);
+
+            if (isSubnetNode(draggedNode) && (isVpcNode(parent) || isAzNode(parent))) {
+              result = redistributeSubnetNodes(parentId, pw, ph, result);
+            } else if (isVpcNode(draggedNode) && isRegionNode(parent)) {
+              result = redistributeVpcNodes(parentId, pw, ph, result);
+            }
+          }
+        }
+
+        return result;
       });
     },
     [setNodes],
@@ -548,6 +611,7 @@ export default function Canvas() {
           onNodeDrag={onNodeDrag}
           onNodeDragStop={onNodeDragStop}
           nodeTypes={nodeTypes}
+          defaultEdgeOptions={DEFAULT_EDGE_OPTIONS}
           fitView
           fitViewOptions={{ padding: INITIAL_FIT_VIEW_PADDING }}
         >

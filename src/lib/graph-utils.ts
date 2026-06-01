@@ -64,9 +64,10 @@ export function orderNodesForSubflows(nodes: AppNode[]) {
 }
 
 export function getNodeSize(node: AppNode) {
+  const style = node.style as { width?: number; height?: number } | undefined;
   return {
-    width: node.width ?? node.measured?.width ?? DEFAULT_NODE_WIDTH,
-    height: node.height ?? node.measured?.height ?? DEFAULT_NODE_HEIGHT,
+    width: node.measured?.width ?? node.width ?? style?.width ?? DEFAULT_NODE_WIDTH,
+    height: node.measured?.height ?? node.height ?? style?.height ?? DEFAULT_NODE_HEIGHT,
   };
 }
 
@@ -174,6 +175,7 @@ export function getParentedPosition(
 const REGION_HEADER_H = 28;
 const AZ_PAD = 8;
 const VPC_PAD = 12;
+const SUBNET_PAD = 8;
 
 export function buildAzNodes(
   parentId: string,
@@ -221,6 +223,8 @@ export function redistributeAzNodes(
 
     return {
       ...n,
+      width: azW,
+      height: azH,
       position: { x: AZ_PAD + azIndex * (azW + AZ_PAD), y: REGION_HEADER_H },
       style: { ...n.style, width: azW, height: azH },
     };
@@ -252,6 +256,127 @@ export function buildVpcNodes(
   })) as AppNode[];
 }
 
+export function buildSubnetNodes(
+  azId: string,
+  azW: number,
+  azH: number,
+  count: number,
+): AppNode[] {
+  const subnetW = azW - SUBNET_PAD * 2;
+  const subnetH = Math.floor(
+    (azH - REGION_HEADER_H - SUBNET_PAD * (count + 1)) / count,
+  );
+
+  return Array.from({ length: count }, (_, i) => ({
+    id: `subnet-${azId}-${i + 1}`,
+    type: "networkContainer" as const,
+    parentId: azId,
+    draggable: false,
+    selectable: true,
+    position: {
+      x: SUBNET_PAD,
+      y: REGION_HEADER_H + SUBNET_PAD + i * (subnetH + SUBNET_PAD),
+    },
+    data: {
+      containerType: "subnet" as const,
+      label: `Public Subnet ${i + 1}`,
+      subnetType: "Public" as const,
+    } as NetworkContainerNodeData,
+    style: { width: subnetW, height: subnetH },
+    extent: "parent" as const,
+  })) as AppNode[];
+}
+
+export function redistributeSubnetNodes(
+  azId: string,
+  azW: number,
+  azH: number,
+  nodes: AppNode[],
+): AppNode[] {
+  const subnetChildren = nodes.filter(
+    (n) => n.parentId === azId && isSubnetNode(n),
+  );
+  if (!subnetChildren.length) return nodes;
+
+  const count = subnetChildren.length;
+  const subnetW = azW - SUBNET_PAD * 2;
+  const subnetH = Math.floor(
+    (azH - REGION_HEADER_H - SUBNET_PAD * (count + 1)) / count,
+  );
+
+  return nodes.map((n) => {
+    const subnetIndex = subnetChildren.findIndex((s) => s.id === n.id);
+    if (subnetIndex === -1) return n;
+
+    return {
+      ...n,
+      width: subnetW,
+      height: subnetH,
+      position: {
+        x: SUBNET_PAD,
+        y: REGION_HEADER_H + SUBNET_PAD + subnetIndex * (subnetH + SUBNET_PAD),
+      },
+      style: { ...n.style, width: subnetW, height: subnetH },
+    };
+  });
+}
+
+export function mirrorNodeToSiblingAzs(
+  newNode: AppNode,
+  nodes: AppNode[],
+  makeId: (sibAzId: string) => string,
+): AppNode[] {
+  if (!newNode.parentId) return [];
+
+  const nodesById = new Map(nodes.map((n) => [n.id, n]));
+
+  const directParent = nodesById.get(newNode.parentId);
+  if (!directParent) return [];
+
+  // Walk up to find the AZ ancestor (direct parent or grandparent)
+  const findAzAncestor = (startId: string): AppNode | null => {
+    let currentId: string | undefined = startId;
+    while (currentId) {
+      const current = nodesById.get(currentId);
+      if (!current) break;
+      if (isAzNode(current)) return current;
+      currentId = current.parentId;
+    }
+    return null;
+  };
+
+  const az = isAzNode(directParent) ? directParent : findAzAncestor(newNode.parentId);
+  if (!az || !(az.data as NetworkContainerNodeData).synced) return [];
+
+  const siblingAzs = nodes.filter(
+    (n) =>
+      n.id !== az.id &&
+      n.parentId === az.parentId &&
+      isAzNode(n) &&
+      (n.data as NetworkContainerNodeData).synced,
+  );
+  if (!siblingAzs.length) return [];
+
+  const mirrors: AppNode[] = [];
+  for (const sibAz of siblingAzs) {
+    let targetParentId: string = sibAz.id;
+
+    // If node is inside a subnet (not directly in the AZ), match by subnet index
+    if (newNode.parentId !== az.id && isSubnetNode(directParent)) {
+      const azSubnets = nodes.filter((n) => n.parentId === az.id && isSubnetNode(n));
+      const subnetIdx = azSubnets.findIndex((s) => s.id === newNode.parentId);
+      const sibSubnets = nodes.filter((n) => n.parentId === sibAz.id && isSubnetNode(n));
+      if (subnetIdx >= 0 && subnetIdx < sibSubnets.length) {
+        targetParentId = sibSubnets[subnetIdx].id;
+      }
+    }
+
+    mirrors.push({ ...newNode, id: makeId(sibAz.id), parentId: targetParentId });
+  }
+
+  return mirrors;
+}
+
 export function redistributeVpcNodes(
   regionId: string,
   regionW: number,
@@ -259,7 +384,7 @@ export function redistributeVpcNodes(
   nodes: AppNode[],
 ): AppNode[] {
   const vpcChildren = nodes.filter(
-    (n) => n.parentId === regionId && isVpcNode(n) && n.draggable === false,
+    (n) => n.parentId === regionId && isVpcNode(n),
   );
   if (!vpcChildren.length) return nodes;
 
@@ -273,6 +398,8 @@ export function redistributeVpcNodes(
 
     return {
       ...n,
+      width: vpcW,
+      height: vpcH,
       position: { x: VPC_PAD + vpcIndex * (vpcW + VPC_PAD), y: REGION_HEADER_H },
       style: { ...n.style, width: vpcW, height: vpcH },
     };

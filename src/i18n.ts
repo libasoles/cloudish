@@ -17,6 +17,8 @@ export const UI_TEXT = {
     dragAndDrop: "Drag & Drop",
     subnet: "Subnet",
     dragSubnet: "Drag subnet",
+    region: "Region",
+    dragRegion: "Drag region",
     dragService: (serviceName: string) => `Drag ${serviceName}`,
     closeInspector: "Close inspector",
     openInspector: "Open inspector",
@@ -39,11 +41,18 @@ export const UI_TEXT = {
     user: "User",
     searchPlaceholder: "Search AWS services...",
     clearSearch: "Clear search",
+    availabilityZone: "AZ",
+    numberOfAZs: "Availability Zones",
+    numberOfVPCs: "VPCs",
+    numberOfSubnets: "Subnets",
+    syncAzs: "Sync AZs",
   },
   es: {
     dragAndDrop: "Arrastrar",
     subnet: "Subred",
     dragSubnet: "Arrastrar subred",
+    region: "Region",
+    dragRegion: "Arrastrar region",
     dragService: (serviceName: string) => `Arrastrar ${serviceName}`,
     closeInspector: "Cerrar inspector",
     openInspector: "Abrir inspector",
@@ -66,6 +75,11 @@ export const UI_TEXT = {
     user: "Usuario",
     searchPlaceholder: "Buscar servicios de AWS...",
     clearSearch: "Limpiar busqueda",
+    availabilityZone: "AZ",
+    numberOfAZs: "Zonas de Disponibilidad",
+    numberOfVPCs: "VPCs",
+    numberOfSubnets: "Subredes",
+    syncAzs: "Sincronizar AZs",
   },
 } as const;
 
@@ -385,6 +399,25 @@ const ES_FIELD_TRANSLATIONS: Record<string, FieldTranslations> = {
   },
   user: {
     label: { label: "Nombre", placeholder: "Usuario" },
+  },
+  region: {
+    region: {
+      label: "Region",
+      options: {
+        "us-east-1": "EE.UU. Este (N. Virginia)",
+        "us-east-2": "EE.UU. Este (Ohio)",
+        "us-west-1": "EE.UU. Oeste (N. California)",
+        "us-west-2": "EE.UU. Oeste (Oregon)",
+        "eu-west-1": "Europa (Irlanda)",
+        "eu-west-2": "Europa (Londres)",
+        "eu-central-1": "Europa (Frankfurt)",
+        "ap-southeast-1": "Asia Pacifico (Singapur)",
+        "ap-southeast-2": "Asia Pacifico (Sydney)",
+        "ap-northeast-1": "Asia Pacifico (Tokio)",
+        "sa-east-1": "Sudamerica (Sao Paulo)",
+      },
+    },
+    numberOfAZs: { label: "Zonas de Disponibilidad" },
   },
 };
 

@@ -12,11 +12,14 @@ type FlowStore = {
   nodes: AppNode[];
   edges: AppEdge[];
   inspectorOpen: boolean;
+  dropTargetNodeId: string | null;
   setNodes: (updater: AppNode[] | ((prev: AppNode[]) => AppNode[])) => void;
   onNodesChange: (changes: NodeChange<AppNode>[]) => void;
   setEdges: (updater: AppEdge[] | ((prev: AppEdge[]) => AppEdge[])) => void;
   onEdgesChange: (changes: EdgeChange[]) => void;
   setInspectorOpen: (updater: boolean | ((prev: boolean) => boolean)) => void;
+  setDropTargetNodeId: (id: string | null) => void;
+  toggleAzSync: (azId: string, synced: boolean) => void;
 };
 
 export const useFlowStore = create<FlowStore>()((set) => ({
@@ -45,4 +48,25 @@ export const useFlowStore = create<FlowStore>()((set) => ({
       inspectorOpen:
         typeof updater === "function" ? updater(s.inspectorOpen) : updater,
     })),
+
+  dropTargetNodeId: null,
+  setDropTargetNodeId: (id) => set({ dropTargetNodeId: id }),
+
+  toggleAzSync: (azId, synced) =>
+    set((s) => {
+      const az = s.nodes.find((n) => n.id === azId);
+      if (!az) return s;
+      const { parentId } = az;
+      return {
+        nodes: s.nodes.map((n) => {
+          if (
+            n.parentId === parentId &&
+            (n.data as { containerType?: string }).containerType === "az"
+          ) {
+            return { ...n, data: { ...n.data, synced } };
+          }
+          return n;
+        }),
+      };
+    }),
 }));

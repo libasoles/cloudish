@@ -87,6 +87,26 @@ body {
   color: hsl(var(--muted-foreground) / 0.45);
 }
 
+.react-flow__edge-path,
+.react-flow__connection-path {
+  stroke: #ffffff;
+  stroke-width: 2.5;
+  filter: drop-shadow(0 0 4px rgb(255 255 255 / 0.35));
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke-width: 3.5;
+  filter: drop-shadow(0 0 7px rgb(255 255 255 / 0.55));
+}
+
+.react-flow__edge-text {
+  fill: #ffffff;
+}
+
+.react-flow__edge-textbg {
+  fill: hsl(var(--background) / 0.84);
+}
+
 .react-flow__controls {
   border: 1px solid hsl(var(--border));
   box-shadow: var(--shadow);

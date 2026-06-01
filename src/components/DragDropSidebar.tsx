@@ -1,5 +1,5 @@
 import type { DragEvent } from "react";
-import { Container, User } from "lucide-react";
+import { Container, User, Globe } from "lucide-react";
 import { AwsServiceIcon } from "@/components/AwsServiceIcon";
 import { AWS_SERVICES, type AwsService } from "@/data/aws-services";
 import {
@@ -35,7 +35,9 @@ type DragDropSidebarProps = {
   labels: {
     dragAndDrop: string;
     dragSubnet: string;
+    dragRegion: string;
     subnet: string;
+    region: string;
     user: string;
     dragService: (serviceName: string) => string;
   };
@@ -68,6 +70,18 @@ export default function DragDropSidebar({
         >
           <User className="size-10 text-muted-foreground" />
           <span className="w-full break-words">{labels.user}</span>
+        </button>
+        <button
+          type="button"
+          draggable
+          onDragStart={(event) => setDragPayload(event, { type: "region" })}
+          onClick={() => onToolClick?.({ type: "region" })}
+          className="flex w-full flex-col items-center gap-1 rounded-md border border-border bg-card px-1 py-2 text-center text-[11px] font-medium leading-tight text-card-foreground shadow-sm transition hover:border-primary hover:bg-accent"
+          aria-label={labels.dragRegion}
+          title={labels.region}
+        >
+          <Globe className="h-8 w-8 text-muted-foreground" />
+          <span className="w-full wrap-break-word">{labels.region}</span>
         </button>
         {vpcService && (
           <button

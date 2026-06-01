@@ -29,13 +29,11 @@ import {
   isVpcNode,
   buildAzNodes,
   buildVpcNodes,
+  buildSubnetNodes,
   orderNodesForSubflows,
   isAzNode,
-  REGION_WIDTH,
-  REGION_HEIGHT,
-  VPC_WIDTH,
-  VPC_HEIGHT,
   getAbsolutePosition,
+  getNodeSize,
 } from "@/lib/graph-utils";
 import {
   getServiceId,
@@ -98,8 +96,7 @@ export default function Inspector() {
         const region = prevNodes.find((n) => n.id === nodeId);
         if (!region) return prevNodes;
 
-        const regionW = (region.style?.width as number) ?? REGION_WIDTH;
-        const regionH = (region.style?.height as number) ?? REGION_HEIGHT;
+        const { width: regionW, height: regionH } = getNodeSize(region);
 
         const managedVpcs = prevNodes.filter(
           (n) =>
@@ -164,8 +161,7 @@ export default function Inspector() {
         const vpc = prevNodes.find((n) => n.id === nodeId);
         if (!vpc) return prevNodes;
 
-        const vpcW = (vpc.style?.width as number) ?? VPC_WIDTH;
-        const vpcH = (vpc.style?.height as number) ?? VPC_HEIGHT;
+        const { width: vpcW, height: vpcH } = getNodeSize(vpc);
 
         const managedAzs = prevNodes.filter(
           (n) => n.parentId === vpc.id && isAzNode(n) && n.draggable === false,
@@ -217,6 +213,63 @@ export default function Inspector() {
 
         const azNodes = buildAzNodes(vpc.id, vpcW, vpcH, count);
         return orderNodesForSubflows([...withUpdatedVpc, ...azNodes]);
+      });
+    },
+    [setNodes],
+  );
+
+  const onNumberOfSubnetsChange = useCallback(
+    (nodeId: string, count: number) => {
+      setNodes((prevNodes) => {
+        const az = prevNodes.find((n) => n.id === nodeId);
+        if (!az) return prevNodes;
+
+        const { width: azW, height: azH } = getNodeSize(az);
+
+        const managedSubnets = prevNodes.filter(
+          (n) => n.parentId === az.id && isSubnetNode(n) && n.draggable === false,
+        );
+
+        const withoutSubnets = prevNodes.filter(
+          (n) => !(n.parentId === az.id && isSubnetNode(n) && n.draggable === false),
+        );
+
+        const removedSubnetIds = new Set(managedSubnets.map((n) => n.id));
+        const nodesById = new Map(prevNodes.map((n) => [n.id, n]));
+        const azAbsPos = getAbsolutePosition(az, nodesById);
+
+        const reParentedNodes = withoutSubnets.map((n) => {
+          if (!n.parentId || !removedSubnetIds.has(n.parentId)) return n;
+          const subnetAbsPos = getAbsolutePosition(nodesById.get(n.parentId)!, nodesById);
+          return {
+            ...n,
+            parentId: az.id,
+            position: {
+              x: subnetAbsPos.x + n.position.x - azAbsPos.x,
+              y: subnetAbsPos.y + n.position.y - azAbsPos.y,
+            },
+          };
+        });
+
+        const updatedAz = {
+          ...az,
+          data: {
+            ...az.data,
+            fields: {
+              ...(az.data as { fields?: Record<string, unknown> }).fields,
+              numberOfSubnets: count,
+            },
+          },
+        };
+
+        const withUpdatedAz = reParentedNodes.map((n) => (n.id === az.id ? updatedAz : n));
+
+        if (count <= 0) {
+          return withUpdatedAz;
+        }
+
+        const subnetNodes = buildSubnetNodes(az.id, azW, azH, count);
+        return orderNodesForSubflows([...withUpdatedAz, ...subnetNodes]);
       });
     },
     [setNodes],
@@ -293,6 +346,11 @@ export default function Inspector() {
       (selectedNode.data as Partial<NetworkContainerNodeData>).containerType ===
         "vpc"
     : false;
+  const selectedIsAz = selectedNode
+    ? isNetworkContainerNode(selectedNode) &&
+      (selectedNode.data as Partial<NetworkContainerNodeData>).containerType ===
+        "az"
+    : false;
   const selectedAwsNode =
     selectedNode?.type === "awsService"
       ? (selectedNode as AwsServiceNodeType)
@@ -322,6 +380,10 @@ export default function Inspector() {
 
   const childAzCount = selectedNode
     ? nodes.filter((n) => n.parentId === selectedNode.id && isAzNode(n)).length
+    : 0;
+
+  const childSubnetCount = selectedNode
+    ? nodes.filter((n) => n.parentId === selectedNode.id && isSubnetNode(n)).length
     : 0;
 
   return (
@@ -501,6 +563,25 @@ export default function Inspector() {
                       Math.min(6, parseInt(event.target.value) || 0),
                     );
                     onNumberOfAZsChange(selectedNode.id, value);
+                  }}
+                />
+              </label>
+            </div>
+          ) : selectedNode && selectedIsAz ? (
+            <div className="space-y-4 text-sm">
+              <label className="grid gap-2 text-sm font-medium text-foreground">
+                {t.numberOfSubnets}
+                <Input
+                  type="number"
+                  min={0}
+                  max={6}
+                  value={String(childSubnetCount)}
+                  onChange={(event) => {
+                    const value = Math.max(
+                      0,
+                      Math.min(6, parseInt(event.target.value) || 0),
+                    );
+                    onNumberOfSubnetsChange(selectedNode.id, value);
                   }}
                 />
               </label>
