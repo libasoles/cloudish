@@ -21,7 +21,7 @@ export const UI_TEXT = {
     newToolMenuTitle: "Add node",
     newToolConfirmTitle: "Start from scratch?",
     newToolConfirmDescription:
-      "This will remove all nodes and connections from the canvas. This action cannot be undone.",
+      "This will remove all nodes and containers from the canvas. This action cannot be undone.",
     newToolConfirmAction: "Clear canvas",
     newToolConfirmCancel: "Cancel",
     addTool: (toolName: string) => `Add ${toolName}`,
@@ -110,12 +110,14 @@ export const UI_TEXT = {
     authSwitchToRegister: "Don't have an account? Create one",
     authSwitchToLogin: "Already have an account? Sign in",
     authSavePrompt: "Sign in to save",
-    authSavePromptDescription: "Sign in or create an account to save and load your architectures.",
+    authSavePromptDescription:
+      "Sign in or create an account to save and load your architectures.",
     authErrorInvalidCredentials: "Invalid email or password.",
     authErrorEmailInUse: "This email is already in use.",
     authErrorWeakPassword: "Password must be at least 6 characters.",
     authErrorInvalidEmail: "Please enter a valid email address.",
-    authErrorProviderDisabled: "This sign-in method is not enabled. Check your Firebase Console.",
+    authErrorProviderDisabled:
+      "This sign-in method is not enabled. Check your Firebase Console.",
     authErrorGeneric: "Something went wrong. Please try again.",
     authSignedInAs: "Signed in as",
     savedProjects: "Saved projects",
@@ -130,7 +132,7 @@ export const UI_TEXT = {
     newToolMenuTitle: "Agregar nodo",
     newToolConfirmTitle: "¿Empezar desde cero?",
     newToolConfirmDescription:
-      "Esto eliminara todos los nodos y conexiones del canvas. Esta accion no se puede deshacer.",
+      "Esto eliminara todos los nodos y contenedores del canvas. Esta accion no se puede deshacer.",
     newToolConfirmAction: "Limpiar canvas",
     newToolConfirmCancel: "Cancelar",
     addTool: (toolName: string) => `Agregar ${toolName}`,
@@ -221,12 +223,14 @@ export const UI_TEXT = {
     authSwitchToRegister: "¿No tienes cuenta? Crea una",
     authSwitchToLogin: "¿Ya tienes cuenta? Inicia sesion",
     authSavePrompt: "Inicia sesion para guardar",
-    authSavePromptDescription: "Inicia sesion o crea una cuenta para guardar y cargar tus arquitecturas.",
+    authSavePromptDescription:
+      "Inicia sesion o crea una cuenta para guardar y cargar tus arquitecturas.",
     authErrorInvalidCredentials: "Email o contraseña incorrectos.",
     authErrorEmailInUse: "Este email ya esta en uso.",
     authErrorWeakPassword: "La contraseña debe tener al menos 6 caracteres.",
     authErrorInvalidEmail: "Por favor ingresa un email valido.",
-    authErrorProviderDisabled: "Este metodo de inicio de sesion no esta habilitado. Revisa Firebase Console.",
+    authErrorProviderDisabled:
+      "Este metodo de inicio de sesion no esta habilitado. Revisa Firebase Console.",
     authErrorGeneric: "Algo salio mal. Por favor intenta de nuevo.",
     authSignedInAs: "Sesion iniciada como",
     savedProjects: "Proyectos guardados",
