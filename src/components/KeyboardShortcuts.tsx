@@ -26,7 +26,7 @@ function isApplePlatform() {
     (navigator as NavigatorWithUserAgentData).userAgentData?.platform ??
     navigator.platform;
 
-  return /Mac|iPhone|iPad|iPod/.test(platform);
+  return /mac|iphone|ipad|ipod/i.test(platform);
 }
 
 function isEditableTarget(target: EventTarget | null) {
