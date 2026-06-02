@@ -70,7 +70,6 @@ export default function NetworkContainerNode({
     setNodes,
     dropTargetNodeId,
     dropPreview,
-    toggleAzSync,
     commitGraphChange,
   } = useFlowStore();
   const isVpc = data.containerType === "vpc";
@@ -182,21 +181,6 @@ export default function NetworkContainerNode({
                   : "border-emerald-500/50 bg-background text-emerald-200",
         )}
       >
-        {isAz && (
-          <span
-            className="nodrag nopan flex items-center"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <input
-              type="checkbox"
-              checked={data.synced ?? false}
-              onChange={(e) => toggleAzSync(id, e.target.checked)}
-              className="h-3 w-3 cursor-pointer accent-indigo-400"
-              title={t.syncAzs}
-              aria-label={t.syncAzs}
-            />
-          </span>
-        )}
         <EditableNodeLabel
           value={displayLabel}
           editLabel={t.editNodeName}
