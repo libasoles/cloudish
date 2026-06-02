@@ -1,5 +1,7 @@
 # AWS Architecture Drafts
 
+[![Netlify Status](https://api.netlify.com/api/v1/badges/4a16a854-293e-4b5d-88b5-dda02dc1caac/deploy-status)](https://app.netlify.com/projects/cloudish/deploys)
+
 Herramienta visual para hacer drafts de arquitecturas en AWS. Sirve para bajar rapidamente una idea a un canvas, discutirla con otras personas, mover componentes, conectar servicios, ordenar la topologia de red y exportar un primer scaffold de infraestructura.
 
 Este proyecto fue construido como un experimento de **vibe coding** con agentes de IA, principalmente **Codex** y **Claude**. La intencion no es presentar una herramienta de produccion terminada, sino explorar que tan lejos se puede llegar iterando con agentes sobre una app real: UI, estado, drag-and-drop, reglas de jerarquia, exportadores y documentacion.
