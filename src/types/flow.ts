@@ -1,8 +1,13 @@
 import type { Edge, Node } from "@xyflow/react";
 import type { AwsServiceNodeType } from "@/components/AwsServiceNode";
 import type { NetworkContainerNodeType } from "@/components/NetworkContainerNode";
+import type { PlainTextNodeType } from "@/components/PlainTextNode";
 
-export type AppNode = Node | AwsServiceNodeType | NetworkContainerNodeType;
+export type AppNode =
+  | Node
+  | AwsServiceNodeType
+  | NetworkContainerNodeType
+  | PlainTextNodeType;
 export type AppEdge = Edge;
 
 export type SubnetType = "Public" | "Private";

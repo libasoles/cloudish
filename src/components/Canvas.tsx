@@ -1,4 +1,10 @@
-import { useCallback, useRef, useState, type DragEvent } from "react";
+import {
+  useCallback,
+  useRef,
+  useState,
+  type DragEvent,
+  type MouseEvent,
+} from "react";
 import {
   ReactFlow,
   Controls,
@@ -19,6 +25,7 @@ import DragDropSidebar from "@/components/DragDropSidebar";
 import NewToolMenu from "@/components/NewToolMenu";
 import AwsServiceNode from "@/components/AwsServiceNode";
 import NetworkContainerNode from "@/components/NetworkContainerNode";
+import PlainTextNode from "@/components/PlainTextNode";
 import UserNode from "@/components/UserNode";
 import EditableEdge from "@/components/EditableEdge";
 import ServiceSearch from "@/components/ServiceSearch";
@@ -78,6 +85,7 @@ import {
 const nodeTypes: NodeTypes = {
   awsService: AwsServiceNode,
   networkContainer: NetworkContainerNode,
+  plainText: PlainTextNode,
   user: UserNode,
 };
 
@@ -86,6 +94,14 @@ const edgeTypes: EdgeTypes = {
 };
 
 const SERVICE_DROP_OFFSET = { x: 50, y: 36 };
+const TEXT_DROP_OFFSET = { x: 8, y: 14 };
+const TEXT_NODE_WIDTH = 180;
+const TEXT_NODE_HEIGHT = 56;
+const TEXT_NODE_STYLE = {
+  width: TEXT_NODE_WIDTH,
+  height: TEXT_NODE_HEIGHT,
+} as const;
+const TEXT_NODE_FONT_SIZE = Math.min(TEXT_NODE_WIDTH / 8, TEXT_NODE_HEIGHT * 0.46);
 const INITIAL_FIT_VIEW_PADDING = 1.3;
 const VPC_SERVICE_ID = "vpc";
 const CLICK_PULSE_PREFIX = "sidebar-click";
@@ -117,6 +133,7 @@ export default function Canvas() {
   const containerIdRef = useRef(1);
   const subnetIdRef = useRef(1);
   const serviceIdRef = useRef(1);
+  const textIdRef = useRef(1);
   const edgeIdRef = useRef(1);
   const pulseIdRef = useRef(1);
   const activeDragToolRef = useRef<DragTool | null>(null);
@@ -273,6 +290,7 @@ export default function Canvas() {
       pulseKey?: string,
     ) => {
       const pulseData = pulseKey ? { pulseKey } : {};
+      setInspectorOpen(true);
 
       if (tool.type === AWS_SERVICE_NODE_TYPE) {
         const service = AWS_SERVICES.find(
@@ -318,17 +336,18 @@ export default function Canvas() {
               ...nodes.map((node) => {
                 // Don't absorb other containers into the new VPC on drop
                 if (isNetworkContainerNode(node)) {
-                  return node;
+                  return { ...node, selected: false };
                 }
 
                 const nodeRect = getNodeRect(node, nodesById);
 
                 if (!isRectIntersecting(nodeRect, vpcRect)) {
-                  return node;
+                  return { ...node, selected: false };
                 }
 
                 return {
                   ...node,
+                  selected: false,
                   parentId: vpcId,
                   position: {
                     x: nodeRect.x - vpcPosition.x,
@@ -339,6 +358,7 @@ export default function Canvas() {
               {
                 id: vpcId,
                 type: "networkContainer",
+                selected: true,
                 parentId: parentRegion?.id,
                 position: vpcRelativePosition,
                 data: { containerType: "vpc", label: "VPC", ...pulseData },
@@ -371,11 +391,13 @@ export default function Canvas() {
           const newNode: AppNode = {
             id: nodeId,
             type: AWS_SERVICE_NODE_TYPE,
+            zIndex: 10,
+            selected: true,
             ...parentedPosition,
             data: { ...getAwsServiceNodeData(service), ...pulseData },
           };
 
-          return { nodes: addNodeWithAzSync(newNode, nodes), edges };
+          return { nodes: addNodeWithAzSync(newNode, nodes.map((n) => ({ ...n, selected: false }))), edges };
         });
         return;
       }
@@ -396,11 +418,47 @@ export default function Canvas() {
           const newNode: AppNode = {
             id: nodeId,
             type: "user",
+            zIndex: 10,
+            selected: true,
             ...parentedPosition,
             data: { label: t.user, fields: { label: t.user }, ...pulseData },
           };
 
-          return { nodes: addNodeWithAzSync(newNode, nodes), edges };
+          return { nodes: addNodeWithAzSync(newNode, nodes.map((n) => ({ ...n, selected: false }))), edges };
+        });
+        return;
+      }
+
+      if (tool.type === "text") {
+        const nodeId = `text-${textIdRef.current++}`;
+        const nodePosition = {
+          x: position.x - TEXT_DROP_OFFSET.x,
+          y: position.y - TEXT_DROP_OFFSET.y,
+        };
+
+        commitGraphChange(({ nodes, edges }) => {
+          const parentedPosition = getParentedPosition(
+            nodePosition,
+            { width: TEXT_NODE_WIDTH, height: TEXT_NODE_HEIGHT },
+            nodes,
+          );
+
+          const newNode: AppNode = {
+            id: nodeId,
+            type: "plainText",
+            zIndex: 10,
+            selected: true,
+            ...parentedPosition,
+            data: {
+              text: "",
+              fontSize: TEXT_NODE_FONT_SIZE,
+              isEditing: true,
+              ...pulseData,
+            },
+            style: TEXT_NODE_STYLE,
+          };
+
+          return { nodes: addNodeWithAzSync(newNode, nodes.map((n) => ({ ...n, selected: false }))), edges };
         });
         return;
       }
@@ -415,10 +473,11 @@ export default function Canvas() {
 
         commitGraphChange(({ nodes, edges }) => ({
           nodes: orderNodesForSubflows([
-            ...nodes,
+            ...nodes.map((n) => ({ ...n, selected: false })),
             {
               id: regionId,
               type: "networkContainer",
+              selected: true,
               position: regionPosition,
               data: {
                 containerType: "region",
@@ -457,10 +516,11 @@ export default function Canvas() {
 
           return {
             nodes: orderNodesForSubflows([
-              ...nodes,
+              ...nodes.map((n) => ({ ...n, selected: false })),
               {
                 id: azId,
                 type: "networkContainer",
+                selected: true,
                 parentId: parentContainer?.id,
                 position: parentPosition
                   ? { x: azPosition.x - parentPosition.x, y: azPosition.y - parentPosition.y }
@@ -516,17 +576,18 @@ export default function Canvas() {
         const allNodes = orderNodesForSubflows([
           ...nodes.map((node) => {
             if (isNetworkContainerNode(node)) {
-              return node;
+              return { ...node, selected: false };
             }
 
             const nodeRect = getNodeRect(node, nodesById);
 
             if (!isRectIntersecting(nodeRect, subnetRect)) {
-              return node;
+              return { ...node, selected: false };
             }
 
             return {
               ...node,
+              selected: false,
               parentId: subnetId,
               position: {
                 x: nodeRect.x - subnetPosition.x,
@@ -537,6 +598,7 @@ export default function Canvas() {
           {
             id: subnetId,
             type: "networkContainer",
+            selected: true,
             parentId: parentVpc?.id,
             position: parentVpcPosition
               ? {
@@ -561,7 +623,7 @@ export default function Canvas() {
         return { nodes: allNodes, edges };
       });
     },
-    [commitGraphChange, t],
+    [commitGraphChange, setInspectorOpen, t],
   );
 
   const onDrop = useCallback(
@@ -786,6 +848,36 @@ export default function Canvas() {
     [syncNodeSubnet, setDropPreview, setDropTargetNodeId],
   );
 
+  const handlePaneDoubleClick = useCallback(
+    (event: MouseEvent<HTMLDivElement>) => {
+      if (!reactFlowInstance) {
+        return;
+      }
+
+      const target = event.target;
+      if (!(target instanceof Element)) {
+        return;
+      }
+
+      if (
+        target.closest(
+          ".react-flow__node, .react-flow__edge, .react-flow__controls, .react-flow__minimap, .react-flow__panel, button, input, textarea, select",
+        )
+      ) {
+        return;
+      }
+
+      addToolAtPosition(
+        { type: "text" },
+        reactFlowInstance.screenToFlowPosition({
+          x: event.clientX,
+          y: event.clientY,
+        }),
+      );
+    },
+    [addToolAtPosition, reactFlowInstance],
+  );
+
   return (
     <TooltipProvider delayDuration={250}>
       <DragDropSidebar
@@ -793,9 +885,11 @@ export default function Canvas() {
           dragAndDrop: t.dragAndDrop,
           dragOrClickToAdd: t.dragOrClickToAdd,
           dragSubnet: t.dragSubnet,
+          dragText: t.dragText,
           dragRegion: t.dragRegion,
           dragAz: t.dragAz,
           subnet: t.subnet,
+          text: t.text,
           region: t.region,
           az: t.availabilityZone,
           user: t.user,
@@ -803,6 +897,7 @@ export default function Canvas() {
           regionDescription: t.regionDescription,
           azDescription: t.azDescription,
           subnetDescription: t.subnetDescription,
+          textDescription: t.textDescription,
           dragService: t.dragService,
           getServiceDescription: (service) =>
             getServiceDescription(service, locale),
@@ -811,7 +906,11 @@ export default function Canvas() {
         onToolDragStart={handleToolDragStart}
         onToolDragEnd={handleToolDragEnd}
       />
-      <div ref={containerRef} style={{ flex: 1, position: "relative" }}>
+      <div
+        ref={containerRef}
+        style={{ flex: 1, position: "relative" }}
+        onDoubleClickCapture={handlePaneDoubleClick}
+      >
         <ReactFlow
           className="dark"
           nodes={nodes}
@@ -824,9 +923,11 @@ export default function Canvas() {
           onInit={handleInit}
           onNodeDrag={onNodeDrag}
           onNodeDragStop={onNodeDragStop}
-          onNodeDoubleClick={() => {
+          onNodeDoubleClick={(_event, node) => {
+            if (node.type === "plainText") return;
             if (!inspectorOpen) setInspectorOpen(true);
           }}
+          zoomOnDoubleClick={false}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           defaultEdgeOptions={DEFAULT_EDGE_OPTIONS}

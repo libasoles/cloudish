@@ -5,6 +5,7 @@ export const initialNodes: AppNode[] = [
   {
     id: "route53",
     type: "awsService",
+    zIndex: 10,
     position: { x: 0, y: 100 },
     data: {
       name: "Route 53",
@@ -16,6 +17,7 @@ export const initialNodes: AppNode[] = [
   {
     id: "waf",
     type: "awsService",
+    zIndex: 10,
     position: { x: 120, y: -80 },
     data: {
       name: "WAF",
@@ -27,6 +29,7 @@ export const initialNodes: AppNode[] = [
   {
     id: "cloudfront",
     type: "awsService",
+    zIndex: 10,
     position: { x: 210, y: 100 },
     data: {
       name: "CloudFront",
@@ -38,6 +41,7 @@ export const initialNodes: AppNode[] = [
   {
     id: "acm",
     type: "awsService",
+    zIndex: 10,
     position: { x: 120, y: 280 },
     data: {
       name: "ACM",
@@ -49,6 +53,7 @@ export const initialNodes: AppNode[] = [
   {
     id: "s3",
     type: "awsService",
+    zIndex: 10,
     position: { x: 440, y: 100 },
     data: {
       name: "S3",

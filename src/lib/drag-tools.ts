@@ -1,6 +1,7 @@
 export type DragTool =
   | { type: "container" }
   | { type: "az" }
+  | { type: "text" }
   | { type: "awsService"; serviceId: string }
   | { type: "user" }
   | { type: "region" };
@@ -27,6 +28,10 @@ export function decodeDragTool(value: string): DragTool | null {
 
     if (tool.type === "az") {
       return { type: "az" };
+    }
+
+    if (tool.type === "text") {
+      return { type: "text" };
     }
 
     if (tool.type === "user") {

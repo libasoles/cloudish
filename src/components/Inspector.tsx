@@ -13,8 +13,15 @@ import {
   type AwsServiceNodeType,
   type AwsServiceNodeData,
 } from "@/components/AwsServiceNode";
+import { type PlainTextNodeData } from "@/components/PlainTextNode";
 import ChildCountSlider from "@/components/ChildCountSlider";
 import EdgeArrowDirectionOption from "@/components/EdgeArrowDirectionOption";
+import {
+  MAX_TEXT_FONT_SIZE,
+  MIN_TEXT_FONT_SIZE,
+  getTextFontSizeForNodeSize,
+  getTextNodeSizeForFont,
+} from "@/lib/text-node-utils";
 import { getNodeFields } from "@/data/aws-service-fields";
 import {
   getEdgeArrowDirection,
@@ -47,6 +54,15 @@ import {
   type FieldValue,
 } from "@/lib/node-utils";
 import { updateSyncedEdgeGroup, updateSyncedNodeGroup } from "@/lib/az-sync";
+
+function clampTextFontSize(fontSize: number) {
+  return Math.max(MIN_TEXT_FONT_SIZE, Math.min(MAX_TEXT_FONT_SIZE, fontSize));
+}
+
+function getDerivedTextFontSize(node: Parameters<typeof getNodeSize>[0]) {
+  const { width, height } = getNodeSize(node);
+  return getTextFontSizeForNodeSize(width, height);
+}
 
 export default function Inspector() {
   const locale = getBrowserLocale();
@@ -368,6 +384,54 @@ export default function Inspector() {
     [setNodes],
   );
 
+  const onPlainTextChange = useCallback(
+    (nodeId: string, text: string) => {
+      setNodes((nodes) =>
+        nodes.map((node) =>
+          node.id === nodeId
+            ? {
+                ...node,
+                data: {
+                  ...node.data,
+                  text,
+                },
+              }
+            : node,
+        ),
+      );
+    },
+    [setNodes],
+  );
+
+  const onPlainTextFontSizeChange = useCallback(
+    (nodeId: string, fontSize: number) => {
+      const nextFontSize = clampTextFontSize(fontSize);
+      const nextSize = getTextNodeSizeForFont(nextFontSize);
+
+      setNodes((nodes) =>
+        nodes.map((node) =>
+          node.id === nodeId
+            ? {
+                ...node,
+                width: nextSize.width,
+                height: nextSize.height,
+                style: {
+                  ...node.style,
+                  width: nextSize.width,
+                  height: nextSize.height,
+                },
+                data: {
+                  ...node.data,
+                  fontSize: nextFontSize,
+                },
+              }
+            : node,
+        ),
+      );
+    },
+    [setNodes],
+  );
+
   const onEdgeLabelChange = useCallback(
     (edgeId: string, label: string) => {
       setEdges((edges) =>
@@ -436,6 +500,17 @@ export default function Inspector() {
     selectedNode?.type === "awsService"
       ? (selectedNode as AwsServiceNodeType)
       : null;
+  const selectedPlainTextNode =
+    selectedNode?.type === "plainText" ? selectedNode : null;
+  const selectedPlainTextData =
+    (selectedPlainTextNode?.data as PlainTextNodeData | undefined) ?? null;
+  const selectedPlainTextFontSize =
+    selectedPlainTextNode && selectedPlainTextData
+      ? Math.round(
+          selectedPlainTextData.fontSize ??
+            getDerivedTextFontSize(selectedPlainTextNode),
+        )
+      : MIN_TEXT_FONT_SIZE;
   const selectedNodeFieldsKey = selectedAwsNode
     ? getServiceId(selectedAwsNode)
     : (selectedNode?.type ?? "");
@@ -451,6 +526,8 @@ export default function Inspector() {
   const selectedLabel =
     selectedNode?.type === "awsService"
       ? (selectedNode.data as AwsServiceNodeData).name
+      : selectedNode?.type === "plainText"
+        ? (selectedPlainTextData?.text.trim() || t.text)
       : selectedNode
         ? String((selectedNode.data as { label?: unknown })?.label ?? "")
         : "";
@@ -471,7 +548,7 @@ export default function Inspector() {
 
   return (
     <Card className="flex h-full w-72 flex-col rounded-none border-y-0 border-r-0">
-      <CardHeader className="px-4">
+      <CardHeader className="px-4 py-4">
         <CardTitle className="text-sm font-medium">
           {!selectedNode && selectedEdge ? (
             <>
@@ -549,6 +626,44 @@ export default function Inspector() {
                     </SelectItem>
                   </SelectContent>
                 </Select>
+              </label>
+            </div>
+          ) : selectedPlainTextNode && selectedPlainTextData ? (
+            <div className="space-y-4 text-sm">
+              <label className="grid gap-2 text-sm font-medium text-foreground">
+                {t.textContent}
+                <Input
+                  value={selectedPlainTextData.text}
+                  placeholder={t.textNodePlaceholder}
+                  onChange={(event) =>
+                    onPlainTextChange(
+                      selectedPlainTextNode.id,
+                      event.target.value,
+                    )
+                  }
+                />
+              </label>
+              <label className="grid gap-2 text-sm font-medium text-foreground">
+                <span className="flex items-center justify-between gap-3">
+                  <span>{t.textFontSize}</span>
+                  <output className="font-mono text-sm text-muted-foreground">
+                    {selectedPlainTextFontSize}px
+                  </output>
+                </span>
+                <input
+                  type="range"
+                  min={MIN_TEXT_FONT_SIZE}
+                  max={MAX_TEXT_FONT_SIZE}
+                  step={1}
+                  value={selectedPlainTextFontSize}
+                  className="h-0.5 w-full cursor-pointer accent-primary"
+                  onChange={(event) =>
+                    onPlainTextFontSizeChange(
+                      selectedPlainTextNode.id,
+                      Number(event.target.value),
+                    )
+                  }
+                />
               </label>
             </div>
           ) : selectedNode && selectedIsSubnet ? (

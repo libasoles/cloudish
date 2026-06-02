@@ -3,6 +3,7 @@ import {
   type Node,
   type NodeProps,
 } from "@xyflow/react";
+import { Link } from "lucide-react";
 import EditableNodeLabel from "@/components/EditableNodeLabel";
 import { cn } from "@/lib/utils";
 import { UI_TEXT, getBrowserLocale } from "@/i18n";
@@ -187,6 +188,9 @@ export default function NetworkContainerNode({
           className="max-w-48 text-current font-semibold"
           onCommit={renameNode}
         />
+        {isAz && data.synced && (
+          <Link className="h-3 w-3 shrink-0 text-indigo-300/80" />
+        )}
       </div>
     </div>
   );

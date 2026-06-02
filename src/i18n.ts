@@ -30,8 +30,11 @@ export const UI_TEXT = {
     regionDescription:
       "Top-level AWS Region container for VPCs and network scope.",
     subnetDescription: "Network segment inside a VPC or Availability Zone.",
+    textDescription: "Plain text annotation for notes and labels.",
     subnet: "Subnet",
+    text: "Text",
     dragSubnet: "Drag subnet",
+    dragText: "Drag text",
     region: "Region",
     dragRegion: "Drag region",
     dragService: (serviceName: string) => `Drag ${serviceName}`,
@@ -71,6 +74,10 @@ export const UI_TEXT = {
     syncAzsBannerDescription:
       "When enabled, subnets and services added to the first AZ will be replicated across all sibling AZs in the VPC.",
     editNodeName: "Edit node name",
+    editTextNode: "Edit text",
+    textNodePlaceholder: "Text",
+    textContent: "Text",
+    textFontSize: "Text size",
   },
   es: {
     dragAndDrop: "Arrastrar",
@@ -91,8 +98,11 @@ export const UI_TEXT = {
       "Contenedor principal de Region AWS para VPCs y alcance de red.",
     subnetDescription:
       "Segmento de red dentro de una VPC o Zona de Disponibilidad.",
+    textDescription: "Anotacion de texto plano para notas y etiquetas.",
     subnet: "Subred",
+    text: "Texto",
     dragSubnet: "Arrastrar subred",
+    dragText: "Arrastrar texto",
     region: "Region",
     dragRegion: "Arrastrar region",
     dragService: (serviceName: string) => `Arrastrar ${serviceName}`,
@@ -132,6 +142,10 @@ export const UI_TEXT = {
     syncAzsBannerDescription:
       "Cuando esta activo, las subredes y servicios agregados a la primer AZ se replicaran en todas las AZs hermanas de la VPC.",
     editNodeName: "Editar nombre del nodo",
+    editTextNode: "Editar texto",
+    textNodePlaceholder: "Texto",
+    textContent: "Texto",
+    textFontSize: "Tamano del texto",
   },
 } as const;
 

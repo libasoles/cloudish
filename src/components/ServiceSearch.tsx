@@ -12,7 +12,7 @@ import {
   getServiceDescription,
   type Locale,
 } from '@/i18n';
-import { CONTAINER_WIDTH, CONTAINER_HEIGHT } from '@/lib/graph-utils';
+import { CONTAINER_WIDTH, CONTAINER_HEIGHT, orderNodesForSubflows } from '@/lib/graph-utils';
 import { useFlowStore } from '@/store/flowStore';
 import { getAwsServiceNodeData } from '@/lib/node-utils';
 
@@ -50,6 +50,7 @@ export default function ServiceSearch() {
   const containerRef = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition } = useReactFlow<AppNode>();
   const commitGraphChange = useFlowStore((s) => s.commitGraphChange);
+  const setInspectorOpen = useFlowStore((s) => s.setInspectorOpen);
 
   const results = getSearchResults(query, locale);
 
@@ -73,6 +74,7 @@ export default function ServiceSearch() {
       const vpcNode: AppNode = {
         id: `vpc-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         type: 'networkContainer',
+        selected: true,
         position: {
           x: position.x - CONTAINER_WIDTH / 2,
           y: position.y - CONTAINER_HEIGHT / 2,
@@ -84,18 +86,30 @@ export default function ServiceSearch() {
         },
       };
 
-      commitGraphChange(({ nodes, edges }) => ({ nodes: [vpcNode, ...nodes], edges }));
+      commitGraphChange(({ nodes, edges }) => ({
+        nodes: [vpcNode, ...nodes.map((n) => ({ ...n, selected: false }))],
+        edges,
+      }));
     } else {
       const serviceNode: AppNode = {
         id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         type: 'awsService',
+        zIndex: 10,
+        selected: true,
         position,
         data: getAwsServiceNodeData(service),
       };
 
-      commitGraphChange(({ nodes, edges }) => ({ nodes: [...nodes, serviceNode], edges }));
+      commitGraphChange(({ nodes, edges }) => ({
+        nodes: orderNodesForSubflows([
+          ...nodes.map((n) => ({ ...n, selected: false })),
+          serviceNode,
+        ]),
+        edges,
+      }));
     }
 
+    setInspectorOpen(true);
     setQuery('');
     setOpen(false);
     setActiveIndex(-1);
