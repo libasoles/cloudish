@@ -1,73 +1,145 @@
-# React + TypeScript + Vite
+# AWS Architecture Drafts
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Herramienta visual para hacer drafts de arquitecturas en AWS. Sirve para bajar rapidamente una idea a un canvas, discutirla con otras personas, mover componentes, conectar servicios, ordenar la topologia de red y exportar un primer scaffold de infraestructura.
 
-Currently, two official plugins are available:
+Este proyecto fue construido como un experimento de **vibe coding** con agentes de IA, principalmente **Codex** y **Claude**. La intencion no es presentar una herramienta de produccion terminada, sino explorar que tan lejos se puede llegar iterando con agentes sobre una app real: UI, estado, drag-and-drop, reglas de jerarquia, exportadores y documentacion.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+![Canvas de drafts de arquitectura AWS](public/screenshots/app-canvas.png)
 
-## React Compiler
+## Para Que Sirve
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+AWS Architecture Drafts esta pensado para etapas tempranas de diseño:
 
-## Expanding the ESLint configuration
+- Bocetar una arquitectura antes de escribir IaC.
+- Probar distribuciones de servicios dentro de Region, VPC, AZ y Subnet.
+- Explicar flujos entre servicios AWS con nodos y conexiones.
+- Armar diagramas livianos para conversar decisiones tecnicas.
+- Generar un punto de partida en Terraform o CloudFormation para revisar y completar.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+No reemplaza una herramienta formal de diagramacion, discovery cloud o gestion de infraestructura. Es un POC para pensar arquitecturas con rapidez.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Features
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+- Canvas interactivo construido con React Flow.
+- Nodos para servicios AWS frecuentes como S3, EC2, Lambda, RDS, DynamoDB, CloudFront, API Gateway, IAM, CloudWatch y SQS.
+- Herramientas para agregar usuario externo, regiones, VPCs, zonas de disponibilidad, subredes y notas de texto.
+- Sidebar drag-and-drop y tambien click-to-add para sumar elementos al canvas.
+- Buscador de servicios AWS para agregar componentes sin recorrer toda la lista.
+- Inspector lateral para editar propiedades del nodo o conexion seleccionada.
+- Edicion de labels en nodos, notas de texto y edges.
+- Jerarquia de red modelada como `Region -> VPC -> AZ -> Subnet -> servicios`.
+- Reparenting automatico al arrastrar nodos dentro de contenedores validos.
+- Dropzone visual para indicar cuando un contenedor puede recibir un nodo.
+- Auto-subdivision de contenedores: regiones en VPCs, VPCs en AZs y AZs en subredes.
+- Recalculo de tamanos cuando se redimensionan contenedores padre.
+- Sincronizacion de AZs para replicar subredes y servicios entre zonas hermanas.
+- MiniMap, zoom, pan y controles nativos de React Flow.
+- Exportacion a Terraform (`.tf`) y CloudFormation (`.yaml`) como scaffolds.
+- Interfaz internacionalizada en ingles y espanol.
+- Tema visual con variables CSS y modo oscuro automatico.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Instalacion
+
+Requisitos recomendados:
+
+- Node.js 20 o superior.
+- npm.
+
+Clonar el repositorio e instalar dependencias:
+
+```bash
+git clone <repo-url>
+cd poc-react-flow
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Levantar el servidor de desarrollo:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run dev
 ```
+
+Vite mostrara una URL local, normalmente:
+
+```text
+http://localhost:5173/
+```
+
+Abrir esa URL en el navegador para usar el canvas.
+
+## Scripts
+
+```bash
+npm run dev
+```
+
+Inicia la app en modo desarrollo con Vite.
+
+```bash
+npm run build
+```
+
+Compila TypeScript y genera el build de produccion.
+
+```bash
+npm run lint
+```
+
+Ejecuta ESLint sobre el proyecto.
+
+```bash
+npm run preview
+```
+
+Sirve localmente el build generado.
+
+## Como Usarlo
+
+1. Arrastra servicios o contenedores desde la barra lateral al canvas.
+2. Conecta nodos usando los handles de React Flow.
+3. Selecciona un nodo o edge para editarlo desde el inspector.
+4. Usa contenedores de red para ordenar la arquitectura por Region, VPC, AZ y Subnet.
+5. Ajusta el numero de VPCs, AZs o subredes desde el inspector cuando corresponda.
+6. Exporta el draft a Terraform o CloudFormation cuando quieras un scaffold inicial.
+
+## Modelo De Red
+
+La app usa una jerarquia inspirada en topologias AWS:
+
+```text
+Region -> VPC -> AZ -> Subnet -> servicios
+```
+
+Los contenedores validan donde puede vivir cada elemento. Por ejemplo, una VPC puede estar dentro de una Region, una AZ puede estar dentro de una VPC o Region, y una Subnet puede estar dentro de una AZ o VPC. Los servicios pueden ubicarse dentro de cualquier contenedor.
+
+Cuando se arrastra un nodo dentro de un contenedor valido, la app actualiza automaticamente su parent y recalcula la posicion relativa. Esto permite mover partes del diagrama sin corregir manualmente la estructura.
+
+## Exportacion
+
+El exportador genera archivos de referencia:
+
+- Terraform (`.tf`)
+- CloudFormation (`.yaml`)
+
+Estos archivos son scaffolds generados desde el canvas. Deben revisarse antes de aplicarse en cualquier entorno real: reemplazar placeholders, validar nombres, permisos, redes, dependencias, costos e impacto operativo.
+
+## Stack Tecnico
+
+- React 19
+- TypeScript
+- Vite
+- `@xyflow/react`
+- Zustand
+- Tailwind CSS
+- Radix UI
+- Lucide React
+
+## Estado Del Proyecto
+
+Es un POC en evolucion. El foco esta en experimentar con la experiencia de disenar arquitecturas cloud asistidas por agentes de IA, manteniendo el codigo suficientemente modular para seguir iterando:
+
+- Componentes en `src/components`
+- Datos estaticos en `src/data`
+- Helpers compartidos en `src/lib`
+- Tipos compartidos en `src/types`
+- Traducciones en `src/i18n.ts`
