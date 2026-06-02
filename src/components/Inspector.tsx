@@ -3,6 +3,7 @@ import { FolderOpen, LogOut } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Skeleton } from "@/components/ui/skeleton";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { HoverOnlyTooltip } from "@/components/HoverOnlyTooltip";
 import {
@@ -32,7 +33,7 @@ export default function Inspector() {
   const locale = getBrowserLocale();
   const t = UI_TEXT[locale] as (typeof UI_TEXT)["en"];
   const { nodes, edges, inspectorOpen } = useFlowStore();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
   const [authDialogMounted, setAuthDialogMounted] = useState(false);
   const [authInitialMode, setAuthInitialMode] = useState<"login" | "register">(
@@ -139,7 +140,18 @@ export default function Inspector() {
           </div>
         )}
         <div className="mt-auto border-t border-border pt-3">
-          {user ? (
+          {authLoading ? (
+            <div className="flex items-center justify-between gap-2" aria-hidden="true">
+              <div className="min-w-0 flex-1 space-y-2">
+                <Skeleton className="h-3 w-20" />
+                <Skeleton className="h-4 w-36" />
+              </div>
+              <div className="flex shrink-0 items-center gap-1">
+                <Skeleton className="h-8 w-8 rounded-md" />
+                <Skeleton className="h-8 w-8 rounded-md" />
+              </div>
+            </div>
+          ) : user ? (
             <div className="flex items-center justify-between gap-2">
               <p className="min-w-0 text-xs text-muted-foreground">
                 <span className="block">{t.authSignedInAs}</span>
