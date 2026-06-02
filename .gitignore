@@ -11,6 +11,9 @@ node_modules
 dist
 dist-ssr
 *.local
+.env
+.env.*
+!.env.example
 
 # Editor directories and files
 .vscode/*
@@ -27,4 +30,3 @@ TODO.md
 
 # Temporary Playwright/debug scripts
 *.mjs
-

@@ -3,11 +3,9 @@
     "allow": [
       "Bash(pkill -f \"vite\")",
       "Bash(git add *)",
-      "Bash(git reset *)",
       "Bash(git commit -m ' *)",
       "Bash(curl -s http://localhost:5174/)",
       "Read(//tmp/**)",
-      "Bash(node -e ' *)",
       "Bash(pkill -f \"vite --port 5199\")",
       "Bash(pkill -f \"vite --port 5174\")",
       "Bash(grep -E \"\\(firebase|config|\\\\.tsx?$\\)\")"

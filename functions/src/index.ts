@@ -36,6 +36,23 @@ initializeApp();
 const ARCHITECTURES_COLLECTION = "architectures";
 const DEFAULT_LIST_LIMIT = 25;
 const MAX_LIST_LIMIT = 100;
+const MAX_ARCHITECTURE_NAME_LENGTH = 120;
+const MAX_ARCHITECTURE_ID_LENGTH = 128;
+const MAX_NODE_COUNT = 250;
+const MAX_EDGE_COUNT = 500;
+const MAX_SERIALIZED_ARCHITECTURE_BYTES = 900_000;
+const MAX_NODE_ID_LENGTH = 128;
+const MAX_EDGE_ID_LENGTH = 128;
+const MAX_NODE_TYPE_LENGTH = 64;
+const MAX_LABEL_LENGTH = 240;
+const MAX_FIELDS_PER_OBJECT = 80;
+const MAX_FIELD_KEY_LENGTH = 80;
+const MAX_FIELD_STRING_LENGTH = 500;
+const MAX_OBJECT_DEPTH = 8;
+
+type CallableAuth = {
+  uid?: string;
+};
 
 type SaveArchitectureData = {
   architectureId?: string;
@@ -47,18 +64,18 @@ type SaveArchitectureData = {
 /**
  * Returns the authenticated user id or rejects the callable request.
  *
- * @param {string | undefined} uid Firebase Auth user id from the request.
+ * @param {CallableAuth | undefined} auth Firebase Auth data from the request.
  * @return {string} The authenticated user id.
  */
-function assertSignedIn(uid?: string): string {
-  if (!uid) {
+function assertSignedIn(auth?: CallableAuth): string {
+  if (!auth?.uid) {
     throw new HttpsError(
       "unauthenticated",
       "You must be signed in to manage architectures.",
     );
   }
 
-  return uid;
+  return auth.uid;
 }
 
 /**
@@ -66,9 +83,14 @@ function assertSignedIn(uid?: string): string {
  *
  * @param {unknown} value Candidate field value.
  * @param {string} fieldName Field name used in error messages.
+ * @param {number} maxLength Maximum accepted string length.
  * @return {string | undefined} Trimmed string when present.
  */
-function getString(value: unknown, fieldName: string): string | undefined {
+function getString(
+  value: unknown,
+  fieldName: string,
+  maxLength: number,
+): string | undefined {
   if (value === undefined || value === null) {
     return undefined;
   }
@@ -81,7 +103,39 @@ function getString(value: unknown, fieldName: string): string | undefined {
   }
 
   const trimmedValue = value.trim();
+  if (trimmedValue.length > maxLength) {
+    throw new HttpsError(
+      "invalid-argument",
+      `${fieldName} must be ${maxLength} characters or fewer.`,
+    );
+  }
+
   return trimmedValue.length ? trimmedValue : undefined;
+}
+
+/**
+ * Reads a required non-empty string field from callable request data.
+ *
+ * @param {unknown} value Candidate field value.
+ * @param {string} fieldName Field name used in error messages.
+ * @param {number} maxLength Maximum accepted string length.
+ * @return {string} Trimmed string.
+ */
+function requireString(
+  value: unknown,
+  fieldName: string,
+  maxLength: number,
+): string {
+  const stringValue = getString(value, fieldName, maxLength);
+
+  if (!stringValue) {
+    throw new HttpsError(
+      "invalid-argument",
+      `${fieldName} must be a non-empty string.`,
+    );
+  }
+
+  return stringValue;
 }
 
 /**
@@ -103,6 +157,204 @@ function requireArray(value: unknown, fieldName: string): unknown[] {
 }
 
 /**
+ * Rejects oversized callable payloads before they are written with Admin SDK.
+ *
+ * @param {unknown} value Payload candidate.
+ */
+function assertSerializedSize(value: unknown): void {
+  const serializedValue = JSON.stringify(value);
+  const payloadBytes = Buffer.byteLength(serializedValue, "utf8");
+
+  if (payloadBytes > MAX_SERIALIZED_ARCHITECTURE_BYTES) {
+    throw new HttpsError(
+      "invalid-argument",
+      "Architecture payload is too large.",
+    );
+  }
+}
+
+/**
+ * Checks whether a value is a plain object record.
+ *
+ * @param {unknown} value Candidate value.
+ * @return {boolean} True for object records.
+ */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+/**
+ * Validates arbitrary metadata stored inside node/edge data.
+ *
+ * @param {unknown} value Candidate value.
+ * @param {string} fieldPath Field path used in error messages.
+ * @param {number} depth Current object depth.
+ */
+function assertJsonLikeValue(
+  value: unknown,
+  fieldPath: string,
+  depth = 0,
+): void {
+  if (depth > MAX_OBJECT_DEPTH) {
+    throw new HttpsError(
+      "invalid-argument",
+      `${fieldPath} is nested too deeply.`,
+    );
+  }
+
+  if (
+    value === null ||
+    typeof value === "boolean" ||
+    typeof value === "number"
+  ) {
+    if (typeof value === "number" && !Number.isFinite(value)) {
+      throw new HttpsError(
+        "invalid-argument",
+        `${fieldPath} must be a finite number.`,
+      );
+    }
+    return;
+  }
+
+  if (typeof value === "string") {
+    if (value.length > MAX_FIELD_STRING_LENGTH) {
+      throw new HttpsError(
+        "invalid-argument",
+        `${fieldPath} must be ${MAX_FIELD_STRING_LENGTH} characters or fewer.`,
+      );
+    }
+    return;
+  }
+
+  if (Array.isArray(value)) {
+    if (value.length > MAX_FIELDS_PER_OBJECT) {
+      throw new HttpsError(
+        "invalid-argument",
+        `${fieldPath} contains too many items.`,
+      );
+    }
+
+    value.forEach((item, index) => {
+      assertJsonLikeValue(item, `${fieldPath}.${index}`, depth + 1);
+    });
+    return;
+  }
+
+  if (isRecord(value)) {
+    const entries = Object.entries(value);
+
+    if (entries.length > MAX_FIELDS_PER_OBJECT) {
+      throw new HttpsError(
+        "invalid-argument",
+        `${fieldPath} contains too many fields.`,
+      );
+    }
+
+    entries.forEach(([key, nestedValue]) => {
+      if (key.length > MAX_FIELD_KEY_LENGTH) {
+        throw new HttpsError(
+          "invalid-argument",
+          `${fieldPath} contains an oversized field name.`,
+        );
+      }
+
+      assertJsonLikeValue(nestedValue, `${fieldPath}.${key}`, depth + 1);
+    });
+    return;
+  }
+
+  throw new HttpsError(
+    "invalid-argument",
+    `${fieldPath} contains an unsupported value.`,
+  );
+}
+
+/**
+ * Validates a React Flow node shape without coupling to every client field.
+ *
+ * @param {unknown} value Candidate node.
+ * @param {number} index Node index.
+ */
+function assertNode(value: unknown, index: number): void {
+  if (!isRecord(value)) {
+    throw new HttpsError(
+      "invalid-argument",
+      `nodes.${index} must be an object.`,
+    );
+  }
+
+  requireString(value.id, `nodes.${index}.id`, MAX_NODE_ID_LENGTH);
+  getString(value.type, `nodes.${index}.type`, MAX_NODE_TYPE_LENGTH);
+
+  if (!isRecord(value.position)) {
+    throw new HttpsError(
+      "invalid-argument",
+      `nodes.${index}.position must be an object.`,
+    );
+  }
+
+  const {x, y} = value.position;
+  if (typeof x !== "number" || typeof y !== "number" ||
+    !Number.isFinite(x) || !Number.isFinite(y)) {
+    throw new HttpsError(
+      "invalid-argument",
+      `nodes.${index}.position must contain finite x and y numbers.`,
+    );
+  }
+
+  if (value.parentId !== undefined) {
+    getString(value.parentId, `nodes.${index}.parentId`, MAX_NODE_ID_LENGTH);
+  }
+
+  if (value.width !== undefined &&
+    (typeof value.width !== "number" || !Number.isFinite(value.width))) {
+    throw new HttpsError(
+      "invalid-argument",
+      `nodes.${index}.width must be a finite number.`,
+    );
+  }
+
+  if (value.height !== undefined &&
+    (typeof value.height !== "number" || !Number.isFinite(value.height))) {
+    throw new HttpsError(
+      "invalid-argument",
+      `nodes.${index}.height must be a finite number.`,
+    );
+  }
+
+  if (value.data !== undefined) {
+    assertJsonLikeValue(value.data, `nodes.${index}.data`);
+  }
+}
+
+/**
+ * Validates a React Flow edge shape.
+ *
+ * @param {unknown} value Candidate edge.
+ * @param {number} index Edge index.
+ */
+function assertEdge(value: unknown, index: number): void {
+  if (!isRecord(value)) {
+    throw new HttpsError(
+      "invalid-argument",
+      `edges.${index} must be an object.`,
+    );
+  }
+
+  requireString(value.id, `edges.${index}.id`, MAX_EDGE_ID_LENGTH);
+  requireString(value.source, `edges.${index}.source`, MAX_NODE_ID_LENGTH);
+  requireString(value.target, `edges.${index}.target`, MAX_NODE_ID_LENGTH);
+
+  if (value.label !== undefined) {
+    getString(value.label, `edges.${index}.label`, MAX_LABEL_LENGTH);
+  }
+
+  if (value.data !== undefined) {
+    assertJsonLikeValue(value.data, `edges.${index}.data`);
+  }
+}
+
+/**
  * Validates the payload used to save an architecture.
  *
  * @param {unknown} value Callable request data.
@@ -119,8 +371,12 @@ function parseSaveArchitectureData(value: unknown): SaveArchitectureData {
   const data = value as Record<string, unknown>;
 
   return {
-    architectureId: getString(data.architectureId, "architectureId"),
-    name: getString(data.name, "name"),
+    architectureId: getString(
+      data.architectureId,
+      "architectureId",
+      MAX_ARCHITECTURE_ID_LENGTH,
+    ),
+    name: getString(data.name, "name", MAX_ARCHITECTURE_NAME_LENGTH),
     nodes: requireArray(data.nodes, "nodes"),
     edges: requireArray(data.edges, "edges"),
   };
@@ -159,8 +415,31 @@ function timestampToIso(value: unknown): string | null {
 }
 
 export const saveUserArchitecture = onCall(async (request) => {
-  const uid = assertSignedIn(request.auth?.uid);
+  const uid = assertSignedIn(request.auth);
   const data = parseSaveArchitectureData(request.data);
+
+  if (data.nodes.length > MAX_NODE_COUNT) {
+    throw new HttpsError(
+      "invalid-argument",
+      `Architectures can contain at most ${MAX_NODE_COUNT} nodes.`,
+    );
+  }
+
+  if (data.edges.length > MAX_EDGE_COUNT) {
+    throw new HttpsError(
+      "invalid-argument",
+      `Architectures can contain at most ${MAX_EDGE_COUNT} edges.`,
+    );
+  }
+
+  data.nodes.forEach(assertNode);
+  data.edges.forEach(assertEdge);
+  assertSerializedSize({
+    name: data.name,
+    nodes: data.nodes,
+    edges: data.edges,
+  });
+
   const db = getFirestore();
   const collectionRef = db
     .collection("users")
@@ -189,7 +468,7 @@ export const saveUserArchitecture = onCall(async (request) => {
 });
 
 export const listUserArchitectures = onCall(async (request) => {
-  const uid = assertSignedIn(request.auth?.uid);
+  const uid = assertSignedIn(request.auth);
   const requestData = request.data as Record<string, unknown> | undefined;
   const limit = parseListLimit(requestData?.limit);
   const snapshot = await getFirestore()
