@@ -8,9 +8,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { UI_TEXT, getBrowserLocale } from "@/i18n";
+import { updateSyncedNodeGroup } from "@/lib/az-sync";
 import { type FieldValue } from "@/lib/node-utils";
 import { useFlowStore } from "@/store/flowStore";
-import type { AppNode, SubnetNodeData, SubnetType, NetworkContainerNodeData } from "@/types/flow";
+import type {
+  AppNode,
+  NetworkContainerNodeData,
+  SubnetNodeData,
+  SubnetType,
+} from "@/types/flow";
 
 type SubnetInspectorPanelProps = {
   node: AppNode;
@@ -28,8 +34,7 @@ export function SubnetInspectorPanel({ node }: SubnetInspectorPanelProps) {
     (nextType: SubnetType) => {
       const typeLabel = nextType === "Public" ? t.public : t.private;
       setNodes((nodes) =>
-        nodes.map((n) => {
-          if (n.id !== node.id) return n;
+        updateSyncedNodeGroup(node.id, nodes, (n) => {
           const currentLabel = String(
             (n.data as Partial<SubnetNodeData>).label ?? "",
           );
@@ -51,8 +56,7 @@ export function SubnetInspectorPanel({ node }: SubnetInspectorPanelProps) {
   const onContainerFieldChange = useCallback(
     (fieldKey: string, value: FieldValue) => {
       setNodes((nodes) =>
-        nodes.map((n) => {
-          if (n.id !== node.id) return n;
+        updateSyncedNodeGroup(node.id, nodes, (n) => {
           return {
             ...n,
             data: {

@@ -46,7 +46,9 @@ import { UI_TEXT, getBrowserLocale, getServiceDescription } from "@/i18n";
 import { useFlowStore } from "@/store/flowStore";
 import {
   isNetworkContainerNode,
+  isAzNode,
   isRegionNode,
+  isSubnetNode,
   orderNodesForSubflows,
   getNodeRect,
   getNodeSize,
@@ -633,54 +635,77 @@ export default function Canvas() {
           ? getAbsolutePosition(parentVpc, nodesById)
           : null;
 
-        const allNodes = orderNodesForSubflows([
-          ...nodes.map((node) => {
-            if (isNetworkContainerNode(node)) {
-              return { ...node, selected: false };
-            }
+        const nodesBeforeNewSubnet = nodes.map((node) => {
+          if (isNetworkContainerNode(node)) {
+            return { ...node, selected: false };
+          }
 
-            const nodeRect = getNodeRect(node, nodesById);
+          const nodeRect = getNodeRect(node, nodesById);
 
-            if (!isRectIntersecting(nodeRect, subnetRect)) {
-              return { ...node, selected: false };
-            }
+          if (!isRectIntersecting(nodeRect, subnetRect)) {
+            return { ...node, selected: false };
+          }
 
-            return {
-              ...node,
-              selected: false,
-              parentId: subnetId,
-              position: {
-                x: nodeRect.x - subnetPosition.x,
-                y: nodeRect.y - subnetPosition.y,
-              },
-            };
-          }),
-          {
-            id: subnetId,
-            type: "networkContainer",
-            selected: true,
-            parentId: parentVpc?.id,
-            position: parentVpcPosition
-              ? {
-                  x: subnetPosition.x - parentVpcPosition.x,
-                  y: subnetPosition.y - parentVpcPosition.y,
-                }
-              : subnetPosition,
-            data: {
-              containerType: "subnet",
-              label: t.subnetLabel(t.public, subnetNumber),
-              subnetType: "Public",
-              ...pulseData,
+          return {
+            ...node,
+            selected: false,
+            parentId: subnetId,
+            position: {
+              x: nodeRect.x - subnetPosition.x,
+              y: nodeRect.y - subnetPosition.y,
             },
-            style: CONTAINER_STYLE,
+          };
+        });
+
+        const newSubnet: AppNode = {
+          id: subnetId,
+          type: "networkContainer",
+          selected: true,
+          parentId: parentVpc?.id,
+          position: parentVpcPosition
+            ? {
+                x: subnetPosition.x - parentVpcPosition.x,
+                y: subnetPosition.y - parentVpcPosition.y,
+              }
+            : subnetPosition,
+          data: {
+            containerType: "subnet",
+            label: t.subnetLabel(t.public, subnetNumber),
+            subnetType: "Public",
+            ...pulseData,
           },
-        ]);
+          style: CONTAINER_STYLE,
+        };
+
+        const absorbedNodeIds = nodesBeforeNewSubnet
+          .filter(
+            (node) =>
+              node.parentId === subnetId && !isNetworkContainerNode(node),
+          )
+          .map((node) => node.id);
+
+        let allNodes = addNodeWithAzSync(newSubnet, nodesBeforeNewSubnet);
 
         if (parentVpc) {
           const { width: pw, height: ph } = getNodeSize(parentVpc);
-          return { nodes: redistributeSubnetNodes(parentVpc.id, pw, ph, allNodes), edges };
+          allNodes = redistributeSubnetNodes(parentVpc.id, pw, ph, allNodes);
+
+          if (
+            isAzNode(parentVpc) &&
+            (parentVpc.data as { synced?: boolean }).synced
+          ) {
+            const sourceSubnetIds = allNodes
+              .filter((node) => node.parentId === parentVpc.id && isSubnetNode(node))
+              .map((node) => node.id);
+
+            for (const nodeId of [...sourceSubnetIds, ...absorbedNodeIds]) {
+              allNodes = syncNodeGroupPosition(nodeId, allNodes);
+            }
+          }
+
+          return { nodes: allNodes, edges };
         }
-        return { nodes: allNodes, edges };
+        return { nodes: orderNodesForSubflows(allNodes), edges };
       });
     },
     [commitGraphChange, setInspectorOpen, t],

@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import ChildCountSlider from "@/components/ChildCountSlider";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { UI_TEXT, getBrowserLocale } from "@/i18n";
+import { toggleAzSyncState } from "@/lib/az-sync";
 import { isSubnetNode } from "@/lib/graph-utils";
 import { setManagedChildCount } from "@/lib/network-topology/managed-children";
 import { useFlowStore } from "@/store/flowStore";
@@ -13,7 +14,7 @@ type AzInspectorPanelProps = {
 
 export function AzInspectorPanel({ node }: AzInspectorPanelProps) {
   const { nodes, commitGraphChange, toggleAzSync } = useFlowStore();
-  const t = UI_TEXT[getBrowserLocale()] as typeof UI_TEXT["en"];
+  const t = UI_TEXT[getBrowserLocale()] as (typeof UI_TEXT)["en"];
 
   const childSubnetCount = nodes.filter(
     (n) => n.parentId === node.id && isSubnetNode(n),
@@ -29,20 +30,24 @@ export function AzInspectorPanel({ node }: AzInspectorPanelProps) {
 
   const onChildCountChange = useCallback(
     (count: number) => {
-      commitGraphChange((state) =>
-        setManagedChildCount(node.id, count, state.nodes, state.edges, t.subnetLabel),
-      );
+      commitGraphChange((state) => {
+        const next = setManagedChildCount(
+          node.id,
+          count,
+          state.nodes,
+          state.edges,
+          t.subnetLabel,
+        );
+
+        if (!azSynced) return next;
+        return toggleAzSyncState(node.id, true, next.nodes, next.edges);
+      });
     },
-    [commitGraphChange, node.id, t.subnetLabel],
+    [azSynced, commitGraphChange, node.id, t.subnetLabel],
   );
 
   return (
     <div className="space-y-4 text-sm">
-      <ChildCountSlider
-        label={t.numberOfSubnets}
-        value={childSubnetCount}
-        onChange={onChildCountChange}
-      />
       {azHasSiblings && (
         <>
           <label className="flex items-center gap-3 px-1 py-2 font-medium text-foreground mb-0">
@@ -59,6 +64,12 @@ export function AzInspectorPanel({ node }: AzInspectorPanelProps) {
           </Alert>
         </>
       )}
+
+      <ChildCountSlider
+        label={t.numberOfSubnets}
+        value={childSubnetCount}
+        onChange={onChildCountChange}
+      />
     </div>
   );
 }

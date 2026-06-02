@@ -81,7 +81,7 @@ function edgeSyncGroupId(edge: AppEdge) {
 }
 
 function isSyncableNode(node: AppNode) {
-  return !isNetworkContainerNode(node);
+  return !isNetworkContainerNode(node) || isSubnetNode(node);
 }
 
 export function findAzAncestor(
@@ -324,8 +324,8 @@ export function enableAzSync(azId: string, nodes: AppNode[], edges: AppEdge[]) {
       });
     });
 
-  const syncedReferenceContent = nextNodes.filter((node) =>
-    referenceGroupByNodeId.has(node.id),
+  const syncedReferenceContent = orderNodesForSubflows(
+    nextNodes.filter((node) => referenceGroupByNodeId.has(node.id)),
   );
 
   for (const sourceNode of syncedReferenceContent) {
