@@ -76,6 +76,14 @@ export const UI_TEXT = {
     textNodePlaceholder: "Text",
     textContent: "Text",
     textFontSize: "Text size",
+    exportTooltip: "Export architecture",
+    exportTerraform: "Terraform (.tf)",
+    exportCloudFormation: "CloudFormation (.yaml)",
+    exportDisclaimerTitle: "Before you export",
+    exportDisclaimerDescription:
+      "This file is an auto-generated scaffold based on your canvas. It is provided as a starting point only. You must review every resource, replace all REPLACE_ME placeholders, and validate the configuration thoroughly before applying it to any environment. The authors of this tool accept no responsibility for any infrastructure changes, costs, outages, or data loss that may result from using this output.",
+    exportDisclaimerAction: "Download anyway",
+    exportDisclaimerCancel: "Cancel",
   },
   es: {
     dragAndDrop: "Arrastrar",
@@ -142,6 +150,14 @@ export const UI_TEXT = {
     textNodePlaceholder: "Texto",
     textContent: "Texto",
     textFontSize: "Tamano del texto",
+    exportTooltip: "Exportar arquitectura",
+    exportTerraform: "Terraform (.tf)",
+    exportCloudFormation: "CloudFormation (.yaml)",
+    exportDisclaimerTitle: "Antes de exportar",
+    exportDisclaimerDescription:
+      "Este archivo es un esqueleto generado automaticamente a partir del canvas. Se provee como punto de partida unicamente. Debes revisar cada recurso, reemplazar todos los valores REPLACE_ME, y validar la configuracion exhaustivamente antes de aplicarla a cualquier entorno. Los autores de esta herramienta no se hacen responsables de ningun cambio de infraestructura, costos, interrupciones o perdida de datos que pueda resultar del uso de este archivo.",
+    exportDisclaimerAction: "Descargar de todas formas",
+    exportDisclaimerCancel: "Cancelar",
   },
 } as const;
 

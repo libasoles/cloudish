@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { PanelRightClose, PanelRightOpen } from "lucide-react";
 import DragDropSidebar from "@/components/DragDropSidebar";
 import NewToolMenu from "@/components/NewToolMenu";
+import ExportMenu from "@/components/ExportMenu";
 import AwsServiceNode from "@/components/AwsServiceNode";
 import NetworkContainerNode from "@/components/NetworkContainerNode";
 import PlainTextNode from "@/components/PlainTextNode";
@@ -75,6 +76,7 @@ import {
 } from "@/lib/az-sync";
 import { getAwsServiceNodeData } from "@/lib/node-utils";
 import { EDGE_STYLE } from "@/lib/edge-tools";
+import { exportFlow, downloadExport } from "@/lib/export";
 import {
   Tooltip,
   TooltipContent,
@@ -138,6 +140,14 @@ export default function Canvas() {
   const pulseIdRef = useRef(1);
   const activeDragToolRef = useRef<DragTool | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const handleExport = useCallback(
+    (format: Parameters<typeof exportFlow>[0]) => {
+      const result = exportFlow(format, nodes);
+      downloadExport(result);
+    },
+    [nodes],
+  );
 
   const handleInit = useCallback(
     (instance: ReactFlowInstance<AppNode, AppEdge>) => {
@@ -965,6 +975,19 @@ export default function Canvas() {
               newToolConfirmCancel: t.newToolConfirmCancel,
             }}
             onReset={resetCanvas}
+          />
+          <ExportMenu
+            disabled={nodes.length === 0}
+            labels={{
+              exportTooltip: t.exportTooltip,
+              exportTerraform: t.exportTerraform,
+              exportCloudFormation: t.exportCloudFormation,
+              exportDisclaimerTitle: t.exportDisclaimerTitle,
+              exportDisclaimerDescription: t.exportDisclaimerDescription,
+              exportDisclaimerAction: t.exportDisclaimerAction,
+              exportDisclaimerCancel: t.exportDisclaimerCancel,
+            }}
+            onExport={handleExport}
           />
         </div>
       </div>
