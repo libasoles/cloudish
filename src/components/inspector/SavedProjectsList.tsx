@@ -1,10 +1,17 @@
 import { useEffect, useState } from "react";
 import { FolderOpen, Loader2 } from "lucide-react";
 import { UI_TEXT, getBrowserLocale } from "@/i18n";
-import { listUserArchitectures, type SavedArchitecture } from "@/lib/architectures";
+import {
+  listUserArchitectures,
+  type SavedArchitecture,
+} from "@/lib/architectures";
 import { useFlowStore } from "@/store/flowStore";
 
-export function SavedProjectsList() {
+type Props = {
+  onSelect?: () => void;
+};
+
+export function SavedProjectsList({ onSelect }: Props = {}) {
   const locale = getBrowserLocale();
   const t = UI_TEXT[locale] as (typeof UI_TEXT)["en"];
   const { loadArchitecture } = useFlowStore();
@@ -22,7 +29,7 @@ export function SavedProjectsList() {
 
   if (loading) {
     return (
-      <div className="flex justify-center pt-4">
+      <div className="flex justify-center py-4">
         <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
       </div>
     );
@@ -53,7 +60,10 @@ export function SavedProjectsList() {
         <button
           key={project.architectureId}
           className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-left transition-colors hover:bg-accent"
-          onClick={() => loadArchitecture(project.nodes, project.edges)}
+          onClick={() => {
+            loadArchitecture(project.nodes, project.edges);
+            onSelect?.();
+          }}
         >
           <FolderOpen className="h-4 w-4 shrink-0 text-muted-foreground" />
           <div className="min-w-0 flex-1">

@@ -1,6 +1,14 @@
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
+import { FolderOpen, LogOut } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   type AwsServiceNodeType,
   type AwsServiceNodeData,
@@ -10,6 +18,7 @@ import { UI_TEXT, getBrowserLocale } from "@/i18n";
 import { useFlowStore } from "@/store/flowStore";
 import { useAuth } from "@/hooks/useAuth";
 import { signOutUser } from "@/lib/auth";
+import { listUserArchitectures } from "@/lib/architectures";
 import {
   isNetworkContainerNode,
   getNetworkContainerType,
@@ -32,6 +41,18 @@ export default function Inspector() {
   const [authInitialMode, setAuthInitialMode] = useState<"login" | "register">(
     "login",
   );
+  const [savedProjectsOpen, setSavedProjectsOpen] = useState(false);
+  const [archInfo, setArchInfo] = useState<{ uid: string; count: number } | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    listUserArchitectures()
+      .then((res) => setArchInfo({ uid: user.uid, count: res.architectures.length }))
+      .catch(() => setArchInfo({ uid: user.uid, count: 0 }));
+  }, [user]);
+
+  const archCount = archInfo !== null && archInfo.uid === user?.uid ? archInfo.count : null;
+  const archLoading = !!user && archCount === null;
 
   if (!inspectorOpen) return null;
 
@@ -136,14 +157,45 @@ export default function Inspector() {
                   {user.email}
                 </span>
               </p>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="shrink-0 text-xs"
-                onClick={() => signOutUser()}
-              >
-                {t.signOut}
-              </Button>
+              <div className="flex shrink-0 items-center gap-0.5">
+                <TooltipProvider>
+                  <Popover open={savedProjectsOpen} onOpenChange={setSavedProjectsOpen}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="inline-flex">
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              disabled={archLoading || archCount === 0}
+                            >
+                              <FolderOpen className="h-4 w-4" />
+                            </Button>
+                          </PopoverTrigger>
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">{t.savedProjects}</TooltipContent>
+                    </Tooltip>
+                    <PopoverContent side="top" align="end" className="p-3">
+                      <SavedProjectsList onSelect={() => setSavedProjectsOpen(false)} />
+                    </PopoverContent>
+                  </Popover>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => signOutUser()}
+                      >
+                        <LogOut className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">{t.signOut}</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
             </div>
           ) : (
             <div className="flex flex-col gap-2">

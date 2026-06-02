@@ -127,6 +127,27 @@ While dragging a container over a valid parent, `onNodeDrag` (called continuousl
 
 The value is cleared on `onNodeDragStop`.
 
+## Icon Buttons and Tooltips
+
+All icon-only buttons must include a `<Tooltip>` (from `@/components/ui/tooltip`) so their intent is clear on hover. Never rely on the native `title` attribute.
+
+When an icon button may be `disabled`, a disabled button does not fire pointer events and the tooltip would never appear. Use a `<span className="inline-flex">` as the `TooltipTrigger` child and place the `Button` (or `PopoverTrigger asChild > Button`) inside it:
+
+```tsx
+<Tooltip>
+  <TooltipTrigger asChild>
+    <span className="inline-flex">
+      <Button variant="ghost" size="icon" disabled={...}>
+        <SomeIcon className="h-4 w-4" />
+      </Button>
+    </span>
+  </TooltipTrigger>
+  <TooltipContent side="top">{label}</TooltipContent>
+</Tooltip>
+```
+
+The span receives hover events even when the button inside is disabled, so the tooltip shows. Wrap the whole group in a single `<TooltipProvider>`.
+
 ## Before Commit
 
 - Run `npm run lint` before committing changes.
