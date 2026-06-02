@@ -21,18 +21,27 @@ type SaveArchitectureButtonLabels = {
 type SaveArchitectureButtonProps = {
   labels: SaveArchitectureButtonLabels;
   disabled?: boolean;
+  isAuthenticated: boolean;
   onSave: () => Promise<void>;
+  onAuthRequired: () => void;
 };
 
 export default function SaveArchitectureButton({
   labels,
   disabled,
+  isAuthenticated,
   onSave,
+  onAuthRequired,
 }: SaveArchitectureButtonProps) {
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
   async function handleSave() {
+    if (!isAuthenticated) {
+      onAuthRequired();
+      return;
+    }
+
     setSaving(true);
 
     try {

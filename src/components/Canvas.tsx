@@ -25,6 +25,7 @@ import DragDropSidebar from "@/components/DragDropSidebar";
 import NewToolMenu from "@/components/NewToolMenu";
 import ExportMenu from "@/components/ExportMenu";
 import SaveArchitectureButton from "@/components/SaveArchitectureButton";
+import AuthDialog from "@/components/AuthDialog";
 import AwsServiceNode from "@/components/AwsServiceNode";
 import NetworkContainerNode from "@/components/NetworkContainerNode";
 import PlainTextNode from "@/components/PlainTextNode";
@@ -79,6 +80,7 @@ import { getAwsServiceNodeData } from "@/lib/node-utils";
 import { EDGE_STYLE } from "@/lib/edge-tools";
 import { exportFlow, downloadExport } from "@/lib/export";
 import { saveUserArchitecture } from "@/lib/architectures";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Tooltip,
   TooltipContent,
@@ -138,6 +140,10 @@ export default function Canvas() {
   const [currentArchitectureId, setCurrentArchitectureId] = useState<
     string | undefined
   >();
+  const { user } = useAuth();
+  const [authDialogOpen, setAuthDialogOpen] = useState(false);
+  const [pendingSave, setPendingSave] = useState(false);
+
   const containerIdRef = useRef(1);
   const subnetIdRef = useRef(1);
   const serviceIdRef = useRef(1);
@@ -170,6 +176,19 @@ export default function Canvas() {
     setCurrentArchitectureId(undefined);
     resetCanvas();
   }, [resetCanvas]);
+
+  const handleAuthRequired = useCallback(() => {
+    setPendingSave(true);
+    setAuthDialogOpen(true);
+  }, []);
+
+  const handleAuthSuccess = useCallback(async () => {
+    setAuthDialogOpen(false);
+    if (pendingSave) {
+      setPendingSave(false);
+      await handleSave();
+    }
+  }, [pendingSave, handleSave]);
 
   const handleInit = useCallback(
     (instance: ReactFlowInstance<AppNode, AppEdge>) => {
@@ -1004,6 +1023,7 @@ export default function Canvas() {
           />
           <SaveArchitectureButton
             disabled={nodes.length === 0}
+            isAuthenticated={!!user}
             labels={{
               saveArchitecture: t.saveArchitecture,
               saveArchitectureTooltip: t.saveArchitectureTooltip,
@@ -1016,6 +1036,12 @@ export default function Canvas() {
                 t.saveArchitectureFailedDescription,
             }}
             onSave={handleSave}
+            onAuthRequired={handleAuthRequired}
+          />
+          <AuthDialog
+            open={authDialogOpen}
+            onOpenChange={setAuthDialogOpen}
+            onSuccess={handleAuthSuccess}
           />
           <ExportMenu
             disabled={nodes.length === 0}
