@@ -41,6 +41,10 @@ export const UI_TEXT = {
     dragService: (serviceName: string) => `Drag ${serviceName}`,
     closeInspector: "Close inspector",
     openInspector: "Open inspector",
+    appLogoAlt: `${APP_TITLE} logo`,
+    emptyCanvasTitle: APP_TITLE,
+    emptyCanvasDescription:
+      "Build an AWS architecture by adding a Region, VPCs, subnets, and services from the tools panel.",
     noNodeSelected: "No node selected",
     edge: "Edge",
     label: "Label",
@@ -115,6 +119,10 @@ export const UI_TEXT = {
     dragService: (serviceName: string) => `Arrastrar ${serviceName}`,
     closeInspector: "Cerrar inspector",
     openInspector: "Abrir inspector",
+    appLogoAlt: `Logo de ${APP_TITLE}`,
+    emptyCanvasTitle: APP_TITLE,
+    emptyCanvasDescription:
+      "Diseña una arquitectura AWS agregando una Region, VPCs, subredes y servicios desde el panel de herramientas.",
     noNodeSelected: "Ningun nodo seleccionado",
     edge: "Conexion",
     label: "Etiqueta",

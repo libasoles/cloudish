@@ -1,61 +1,36 @@
 import { useCallback } from "react";
-import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  type AwsServiceNodeType,
-  type AwsServiceNodeData,
-} from "@/components/AwsServiceNode";
+import { type AwsServiceNodeType, type AwsServiceNodeData } from "@/components/AwsServiceNode";
 import { type PlainTextNodeData } from "@/components/PlainTextNode";
-import ChildCountSlider from "@/components/ChildCountSlider";
 import {
   MAX_TEXT_FONT_SIZE,
   MIN_TEXT_FONT_SIZE,
   getTextFontSizeForNodeSize,
   getTextNodeSizeForFont,
 } from "@/lib/text-node-utils";
-import { getNodeFields } from "@/data/aws-service-fields";
 import {
-  getEdgeArrowDirection,
   setEdgeArrowDirection,
   type EdgeArrowDirection,
 } from "@/lib/edge-tools";
-import type {
-  SubnetNodeData,
-  SubnetType,
-  NetworkContainerNodeData,
-} from "@/types/flow";
-import { UI_TEXT, getBrowserLocale, getLocalizedField } from "@/i18n";
+import type { SubnetNodeData, SubnetType } from "@/types/flow";
+import { UI_TEXT, getBrowserLocale } from "@/i18n";
 import { useFlowStore } from "@/store/flowStore";
 import {
-  isSubnetNode,
   isNetworkContainerNode,
-  isVpcNode,
-  buildAzNodes,
-  buildVpcNodes,
-  buildSubnetNodes,
-  orderNodesForSubflows,
-  isAzNode,
-  getAbsolutePosition,
+  isSubnetNode,
   getNodeSize,
+  getNetworkContainerType,
 } from "@/lib/graph-utils";
 import {
-  getServiceId,
   getServiceDescription,
-  getFieldValue,
   type FieldValue,
 } from "@/lib/node-utils";
 import { updateSyncedEdgeGroup, updateSyncedNodeGroup } from "@/lib/az-sync";
-import { cn } from "@/lib/utils";
+import { setManagedChildCount } from "@/lib/network-topology/managed-children";
+import { ContainerInspectorRouter } from "@/components/inspector/ContainerInspectorRouter";
+import { EdgeInspectorPanel } from "@/components/inspector/EdgeInspectorPanel";
+import { PlainTextInspectorPanel } from "@/components/inspector/PlainTextInspectorPanel";
+import { AwsServiceInspectorPanel } from "@/components/inspector/AwsServiceInspectorPanel";
 
 function clampTextFontSize(fontSize: number) {
   return Math.max(MIN_TEXT_FONT_SIZE, Math.min(MAX_TEXT_FONT_SIZE, fontSize));
@@ -66,19 +41,9 @@ function getDerivedTextFontSize(node: Parameters<typeof getNodeSize>[0]) {
   return getTextFontSizeForNodeSize(width, height);
 }
 
-function getArrowDirectionFromToggles(
-  hasSourceArrow: boolean,
-  hasTargetArrow: boolean,
-): EdgeArrowDirection {
-  if (hasSourceArrow && hasTargetArrow) return "both";
-  if (hasSourceArrow) return "source";
-  if (hasTargetArrow) return "target";
-  return "none";
-}
-
 export default function Inspector() {
   const locale = getBrowserLocale();
-  const t = UI_TEXT[locale];
+  const t = UI_TEXT[locale] as typeof UI_TEXT["en"];
   const {
     nodes,
     edges,
@@ -89,18 +54,25 @@ export default function Inspector() {
     toggleAzSync,
   } = useFlowStore();
 
+  const onChildCountChange = useCallback(
+    (nodeId: string, count: number) => {
+      commitGraphChange((state) =>
+        setManagedChildCount(nodeId, count, state.nodes, state.edges, t.subnetLabel),
+      );
+    },
+    [commitGraphChange, t.subnetLabel],
+  );
+
   const onSubnetTypeChange = useCallback(
     (nodeId: string, subnetType: SubnetType) => {
       const typeLabel = subnetType === "Public" ? t.public : t.private;
       setNodes((nodes) =>
         nodes.map((node) => {
           if (node.id !== nodeId) return node;
-
           const currentLabel = String(
             (node.data as Partial<SubnetNodeData>).label ?? "",
           );
           const labelIndex = Number(currentLabel.match(/\d+$/)?.[0] ?? 1);
-
           return {
             ...node,
             data: {
@@ -126,8 +98,7 @@ export default function Inspector() {
                   ...node.data,
                   label: `${t.region} ${region}`,
                   fields: {
-                    ...(node.data as { fields?: Record<string, unknown> })
-                      .fields,
+                    ...(node.data as { fields?: Record<string, unknown> }).fields,
                     region,
                   },
                 },
@@ -144,14 +115,12 @@ export default function Inspector() {
       setNodes((nodes) =>
         nodes.map((node) => {
           if (node.id !== nodeId) return node;
-
           return {
             ...node,
             data: {
               ...node.data,
               fields: {
-                ...(node.data as { fields?: Record<string, FieldValue> })
-                  .fields,
+                ...(node.data as { fields?: Record<string, FieldValue> }).fields,
                 [fieldKey]: value,
               },
             },
@@ -162,233 +131,14 @@ export default function Inspector() {
     [setNodes],
   );
 
-  const onNumberOfVPCsChange = useCallback(
-    (nodeId: string, count: number) => {
-      commitGraphChange(({ nodes: prevNodes, edges }) => {
-        const region = prevNodes.find((n) => n.id === nodeId);
-        if (!region) return { nodes: prevNodes, edges };
-
-        const { width: regionW, height: regionH } = getNodeSize(region);
-
-        const managedVpcs = prevNodes.filter(
-          (n) =>
-            n.parentId === region.id && isVpcNode(n) && n.draggable === false,
-        );
-
-        const withoutVpcs = prevNodes.filter(
-          (n) =>
-            !(
-              n.parentId === region.id &&
-              isVpcNode(n) &&
-              n.draggable === false
-            ),
-        );
-
-        const removedVpcIds = new Set(managedVpcs.map((n) => n.id));
-        const nodesById = new Map(prevNodes.map((n) => [n.id, n]));
-        const regionAbsPos = getAbsolutePosition(region, nodesById);
-
-        // Re-parent orphaned children of removed managed VPCs to the Region
-        const reParentedNodes = withoutVpcs.map((n) => {
-          if (!n.parentId || !removedVpcIds.has(n.parentId)) return n;
-          const vpcAbsPos = getAbsolutePosition(
-            nodesById.get(n.parentId)!,
-            nodesById,
-          );
-          return {
-            ...n,
-            parentId: region.id,
-            position: {
-              x: vpcAbsPos.x + n.position.x - regionAbsPos.x,
-              y: vpcAbsPos.y + n.position.y - regionAbsPos.y,
-            },
-          };
-        });
-
-        const updatedRegion = {
-          ...region,
-          data: {
-            ...region.data,
-            fields: {
-              ...(region.data as { fields?: Record<string, unknown> }).fields,
-              numberOfVPCs: count,
-            },
-          },
-        };
-
-        const withUpdatedRegion = reParentedNodes.map((n) =>
-          n.id === region.id ? updatedRegion : n,
-        );
-
-        if (count <= 0) {
-          return { nodes: withUpdatedRegion, edges };
-        }
-
-        const vpcNodes = buildVpcNodes(region.id, regionW, regionH, count);
-        return {
-          nodes: orderNodesForSubflows([...withUpdatedRegion, ...vpcNodes]),
-          edges,
-        };
-      });
-    },
-    [commitGraphChange],
-  );
-
-  const onNumberOfAZsChange = useCallback(
-    (nodeId: string, count: number) => {
-      commitGraphChange(({ nodes: prevNodes, edges }) => {
-        const vpc = prevNodes.find((n) => n.id === nodeId);
-        if (!vpc) return { nodes: prevNodes, edges };
-
-        const { width: vpcW, height: vpcH } = getNodeSize(vpc);
-
-        const managedAzs = prevNodes.filter(
-          (n) => n.parentId === vpc.id && isAzNode(n) && n.draggable === false,
-        );
-
-        const withoutAzs = prevNodes.filter(
-          (n) =>
-            !(n.parentId === vpc.id && isAzNode(n) && n.draggable === false),
-        );
-
-        const removedAzIds = new Set(managedAzs.map((n) => n.id));
-        const nodesById = new Map(prevNodes.map((n) => [n.id, n]));
-        const vpcAbsPos = getAbsolutePosition(vpc, nodesById);
-
-        // Re-parent orphaned children of removed managed AZs to the VPC
-        const reParentedNodes = withoutAzs.map((n) => {
-          if (!n.parentId || !removedAzIds.has(n.parentId)) return n;
-          const azAbsPos = getAbsolutePosition(
-            nodesById.get(n.parentId)!,
-            nodesById,
-          );
-          return {
-            ...n,
-            parentId: vpc.id,
-            position: {
-              x: azAbsPos.x + n.position.x - vpcAbsPos.x,
-              y: azAbsPos.y + n.position.y - vpcAbsPos.y,
-            },
-          };
-        });
-
-        const updatedVpc = {
-          ...vpc,
-          data: {
-            ...vpc.data,
-            fields: {
-              ...(vpc.data as { fields?: Record<string, unknown> }).fields,
-              numberOfAZs: count,
-            },
-          },
-        };
-
-        const withUpdatedVpc = reParentedNodes.map((n) =>
-          n.id === vpc.id ? updatedVpc : n,
-        );
-
-        if (count <= 0) {
-          return { nodes: withUpdatedVpc, edges };
-        }
-
-        const azNodes = buildAzNodes(vpc.id, vpcW, vpcH, count);
-        return {
-          nodes: orderNodesForSubflows([...withUpdatedVpc, ...azNodes]),
-          edges,
-        };
-      });
-    },
-    [commitGraphChange],
-  );
-
-  const onNumberOfSubnetsChange = useCallback(
-    (nodeId: string, count: number) => {
-      commitGraphChange(({ nodes: prevNodes, edges }) => {
-        const az = prevNodes.find((n) => n.id === nodeId);
-        if (!az) return { nodes: prevNodes, edges };
-
-        const { width: azW, height: azH } = getNodeSize(az);
-
-        const managedSubnets = prevNodes.filter(
-          (n) =>
-            n.parentId === az.id && isSubnetNode(n) && n.draggable === false,
-        );
-
-        const withoutSubnets = prevNodes.filter(
-          (n) =>
-            !(n.parentId === az.id && isSubnetNode(n) && n.draggable === false),
-        );
-
-        const removedSubnetIds = new Set(managedSubnets.map((n) => n.id));
-        const nodesById = new Map(prevNodes.map((n) => [n.id, n]));
-        const azAbsPos = getAbsolutePosition(az, nodesById);
-
-        const reParentedNodes = withoutSubnets.map((n) => {
-          if (!n.parentId || !removedSubnetIds.has(n.parentId)) return n;
-          const subnetAbsPos = getAbsolutePosition(
-            nodesById.get(n.parentId)!,
-            nodesById,
-          );
-          return {
-            ...n,
-            parentId: az.id,
-            position: {
-              x: subnetAbsPos.x + n.position.x - azAbsPos.x,
-              y: subnetAbsPos.y + n.position.y - azAbsPos.y,
-            },
-          };
-        });
-
-        const updatedAz = {
-          ...az,
-          data: {
-            ...az.data,
-            fields: {
-              ...(az.data as { fields?: Record<string, unknown> }).fields,
-              numberOfSubnets: count,
-            },
-          },
-        };
-
-        const withUpdatedAz = reParentedNodes.map((n) =>
-          n.id === az.id ? updatedAz : n,
-        );
-
-        if (count <= 0) {
-          return { nodes: withUpdatedAz, edges };
-        }
-
-        const subnetNodes = buildSubnetNodes(
-          az.id,
-          azW,
-          azH,
-          count,
-          t.subnetLabel,
-        );
-        return {
-          nodes: orderNodesForSubflows([...withUpdatedAz, ...subnetNodes]),
-          edges,
-        };
-      });
-    },
-    [commitGraphChange, t.subnetLabel],
-  );
-
   const onServiceFieldChange = useCallback(
     (nodeId: string, fieldKey: string, value: FieldValue) => {
       setNodes((nodes) =>
         updateSyncedNodeGroup(nodeId, nodes, (node) => {
           const data = node.data as { fields?: Record<string, FieldValue> };
-
           return {
             ...node,
-            data: {
-              ...data,
-              fields: {
-                ...data.fields,
-                [fieldKey]: value,
-              },
-            },
+            data: { ...data, fields: { ...data.fields, [fieldKey]: value } },
           };
         }),
       );
@@ -401,13 +151,7 @@ export default function Inspector() {
       setNodes((nodes) =>
         nodes.map((node) =>
           node.id === nodeId
-            ? {
-                ...node,
-                data: {
-                  ...node.data,
-                  text,
-                },
-              }
+            ? { ...node, data: { ...node.data, text } }
             : node,
         ),
       );
@@ -419,7 +163,6 @@ export default function Inspector() {
     (nodeId: string, fontSize: number) => {
       const nextFontSize = clampTextFontSize(fontSize);
       const nextSize = getTextNodeSizeForFont(nextFontSize);
-
       setNodes((nodes) =>
         nodes.map((node) =>
           node.id === nodeId
@@ -432,10 +175,7 @@ export default function Inspector() {
                   width: nextSize.width,
                   height: nextSize.height,
                 },
-                data: {
-                  ...node.data,
-                  fontSize: nextFontSize,
-                },
+                data: { ...node.data, fontSize: nextFontSize },
               }
             : node,
         ),
@@ -464,49 +204,30 @@ export default function Inspector() {
     [setEdges],
   );
 
-  if (!inspectorOpen) {
-    return null;
-  }
+  if (!inspectorOpen) return null;
 
   const selectedNode = nodes.find((n) => n.selected);
   const selectedEdge = edges.find((edge) => edge.selected);
-  const selectedEdgeArrowDirection = selectedEdge
-    ? getEdgeArrowDirection(selectedEdge)
-    : "none";
-  const selectedEdgeHasSourceArrow =
-    selectedEdgeArrowDirection === "source" ||
-    selectedEdgeArrowDirection === "both";
-  const selectedEdgeHasTargetArrow =
-    selectedEdgeArrowDirection === "target" ||
-    selectedEdgeArrowDirection === "both";
-  const selectedIsSubnet = selectedNode ? isSubnetNode(selectedNode) : false;
-  const selectedIsRegion = selectedNode
-    ? isNetworkContainerNode(selectedNode) &&
-      (selectedNode.data as Partial<NetworkContainerNodeData>).containerType ===
-        "region"
-    : false;
-  const selectedIsVpc = selectedNode
-    ? isNetworkContainerNode(selectedNode) &&
-      (selectedNode.data as Partial<NetworkContainerNodeData>).containerType ===
-        "vpc"
-    : false;
-  const selectedIsAz = selectedNode
-    ? isNetworkContainerNode(selectedNode) &&
-      (selectedNode.data as Partial<NetworkContainerNodeData>).containerType ===
-        "az"
-    : false;
-  const selectedAzParentId = selectedIsAz ? selectedNode?.parentId : undefined;
+  const hasCanvasNodes = nodes.length > 0;
+
+  const selectedContainerType = selectedNode
+    ? getNetworkContainerType(selectedNode)
+    : null;
+
+  const selectedAzParentId =
+    selectedContainerType === "az" ? selectedNode?.parentId : undefined;
   const selectedAzHasSiblings =
-    selectedIsAz &&
+    selectedContainerType === "az" &&
     selectedAzParentId != null &&
     nodes.filter(
       (n) =>
         n.parentId === selectedAzParentId &&
         (n.data as { containerType?: string }).containerType === "az",
     ).length > 1;
-  const selectedAzSynced = selectedIsAz
-    ? Boolean((selectedNode?.data as { synced?: boolean })?.synced)
-    : false;
+  const selectedAzSynced =
+    selectedContainerType === "az"
+      ? Boolean((selectedNode?.data as { synced?: boolean })?.synced)
+      : false;
 
   const selectedAwsNode =
     selectedNode?.type === "awsService"
@@ -523,11 +244,7 @@ export default function Inspector() {
             getDerivedTextFontSize(selectedPlainTextNode),
         )
       : MIN_TEXT_FONT_SIZE;
-  const selectedNodeFieldsKey = selectedAwsNode
-    ? getServiceId(selectedAwsNode)
-    : (selectedNode?.type ?? "");
-  const selectedNodeFields = getNodeFields(selectedNodeFieldsKey);
-  const selectedHasFields = selectedNodeFields.length > 0;
+
   const selectedAwsDescription = selectedAwsNode
     ? getServiceDescription(selectedAwsNode, locale)
     : "";
@@ -535,412 +252,163 @@ export default function Inspector() {
     (selectedNode?.data as { fields?: Record<string, FieldValue> } | undefined)
       ?.fields ?? {};
 
-  const selectedLabel =
-    selectedNode?.type === "awsService"
-      ? (selectedNode.data as AwsServiceNodeData).name
-      : selectedNode?.type === "plainText"
-        ? (selectedPlainTextData?.text.trim() || t.text)
-      : selectedNode
-        ? String((selectedNode.data as { label?: unknown })?.label ?? "")
-        : "";
-
-  // Calculate dynamic child counts
   const childVpcCount = selectedNode
-    ? nodes.filter((n) => n.parentId === selectedNode.id && isVpcNode(n)).length
+    ? nodes.filter(
+        (n) =>
+          n.parentId === selectedNode.id &&
+          getNetworkContainerType(n) === "vpc",
+      ).length
     : 0;
-
   const childAzCount = selectedNode
-    ? nodes.filter((n) => n.parentId === selectedNode.id && isAzNode(n)).length
+    ? nodes.filter(
+        (n) =>
+          n.parentId === selectedNode.id &&
+          getNetworkContainerType(n) === "az",
+      ).length
     : 0;
-
   const childSubnetCount = selectedNode
     ? nodes.filter((n) => n.parentId === selectedNode.id && isSubnetNode(n))
         .length
     : 0;
 
+  let selectedLabel = "";
+  if (selectedNode?.type === "awsService") {
+    selectedLabel = (selectedNode.data as AwsServiceNodeData).name;
+  } else if (selectedNode?.type === "plainText") {
+    selectedLabel = selectedPlainTextData?.text.trim() || t.text;
+  } else if (selectedNode) {
+    selectedLabel = String(
+      (selectedNode.data as { label?: unknown })?.label ?? "",
+    );
+  }
+
+  const inspectorTitle = (() => {
+    if (!selectedNode && selectedEdge) {
+      return (
+        <>
+          {t.edge}
+          <br />
+          <span className="font-normal text-muted-foreground">
+            {selectedEdge.source} → {selectedEdge.target}
+          </span>
+        </>
+      );
+    }
+
+    if (selectedNode || selectedEdge) {
+      return selectedLabel;
+    }
+
+    if (!hasCanvasNodes) {
+      return t.emptyCanvasTitle;
+    }
+
+    return t.noNodeSelected;
+  })();
+
   return (
     <Card className="flex h-full w-72 flex-col rounded-none border-y-0 border-r-0">
       <CardHeader className="px-4 py-4">
         <CardTitle className="text-sm font-medium">
-          {!selectedNode && selectedEdge ? (
-            <>
-              {t.edge}
-              <br />
-              <span className="font-normal text-muted-foreground">
-                {selectedEdge.source} → {selectedEdge.target}
-              </span>
-            </>
-          ) : selectedNode || selectedEdge ? (
-            selectedLabel
-          ) : (
-            t.noNodeSelected
-          )}
+          {inspectorTitle}
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-1 flex-col overflow-hidden px-4">
         <div className="flex-1 overflow-y-auto px-0.5">
           {!selectedNode && selectedEdge ? (
-            <div className="space-y-4 text-sm">
-              <label className="grid gap-2 text-sm font-medium text-foreground">
-                {t.label}
-                <Input
-                  value={String(selectedEdge.label ?? "")}
-                  onChange={(event) =>
-                    onEdgeLabelChange(selectedEdge.id, event.target.value)
-                  }
-                />
-              </label>
-              <div className="grid gap-2 text-sm font-medium text-foreground">
-                <span>{t.arrows}</span>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    aria-label={t.sourceArrowToggle}
-                    aria-pressed={selectedEdgeHasSourceArrow}
-                    title={t.sourceArrowToggle}
-                    className={cn(
-                      "h-10 w-10",
-                      selectedEdgeHasSourceArrow &&
-                        "border-primary bg-primary/20 text-primary shadow-[0_0_0_1px_hsl(var(--primary))] hover:text-primary",
-                    )}
-                    onClick={() =>
-                      onEdgeArrowDirectionChange(
-                        selectedEdge.id,
-                        getArrowDirectionFromToggles(
-                          !selectedEdgeHasSourceArrow,
-                          selectedEdgeHasTargetArrow,
-                        ),
-                      )
-                    }
-                  >
-                    <ArrowLeft className="h-5 w-5" aria-hidden="true" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    aria-label={t.targetArrowToggle}
-                    aria-pressed={selectedEdgeHasTargetArrow}
-                    title={t.targetArrowToggle}
-                    className={cn(
-                      "h-10 w-10",
-                      selectedEdgeHasTargetArrow &&
-                        "border-primary bg-primary/20 text-primary shadow-[0_0_0_1px_hsl(var(--primary))] hover:text-primary",
-                    )}
-                    onClick={() =>
-                      onEdgeArrowDirectionChange(
-                        selectedEdge.id,
-                        getArrowDirectionFromToggles(
-                          selectedEdgeHasSourceArrow,
-                          !selectedEdgeHasTargetArrow,
-                        ),
-                      )
-                    }
-                  >
-                    <ArrowRight className="h-5 w-5" aria-hidden="true" />
-                  </Button>
-                </div>
-              </div>
-            </div>
+            <EdgeInspectorPanel
+              edge={selectedEdge}
+              onLabelChange={(label) =>
+                onEdgeLabelChange(selectedEdge.id, label)
+              }
+              onArrowDirectionChange={(dir) =>
+                onEdgeArrowDirectionChange(selectedEdge.id, dir)
+              }
+              t={t}
+            />
           ) : selectedPlainTextNode && selectedPlainTextData ? (
-            <div className="space-y-4 text-sm">
-              <label className="grid gap-2 text-sm font-medium text-foreground">
-                {t.textContent}
-                <Input
-                  value={selectedPlainTextData.text}
-                  placeholder={t.textNodePlaceholder}
-                  onChange={(event) =>
-                    onPlainTextChange(
-                      selectedPlainTextNode.id,
-                      event.target.value,
-                    )
-                  }
-                />
-              </label>
-              <label className="grid gap-2 text-sm font-medium text-foreground">
-                <span className="flex items-center justify-between gap-3">
-                  <span>{t.textFontSize}</span>
-                  <output className="font-mono text-sm text-muted-foreground">
-                    {selectedPlainTextFontSize}px
-                  </output>
-                </span>
-                <input
-                  type="range"
-                  min={MIN_TEXT_FONT_SIZE}
-                  max={MAX_TEXT_FONT_SIZE}
-                  step={1}
-                  value={selectedPlainTextFontSize}
-                  className="h-0.5 w-full cursor-pointer accent-primary"
-                  onChange={(event) =>
-                    onPlainTextFontSizeChange(
-                      selectedPlainTextNode.id,
-                      Number(event.target.value),
-                    )
-                  }
-                />
-              </label>
-            </div>
-          ) : selectedNode && selectedIsSubnet ? (
-            <div className="space-y-4 text-sm">
-              <label className="grid gap-2 text-sm font-medium text-foreground">
-                {t.type}
-                <Select
-                  value={
-                    ((selectedNode.data as Partial<SubnetNodeData>)
-                      .subnetType ?? "Public") as SubnetType
-                  }
-                  onValueChange={(value) =>
-                    onSubnetTypeChange(selectedNode.id, value as SubnetType)
-                  }
-                >
-                  <SelectTrigger className="font-normal">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Public">{t.public}</SelectItem>
-                    <SelectItem value="Private">{t.private}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </label>
-              <label className="grid gap-2 text-sm font-medium text-foreground">
-                {t.cidrBlock}
-                <Input
-                  value={String(selectedContainerFields.cidrBlock ?? "")}
-                  placeholder={t.subnetCidrBlockPlaceholder}
-                  onChange={(event) =>
-                    onContainerFieldChange(
-                      selectedNode.id,
-                      "cidrBlock",
-                      event.target.value,
-                    )
-                  }
-                />
-              </label>
-            </div>
-          ) : selectedNode && selectedIsRegion ? (
-            <div className="space-y-4 text-sm">
-              <label className="grid gap-2 text-sm font-medium text-foreground">
-                {t.region}
-                <Select
-                  value={
-                    ((
-                      selectedNode.data as Partial<NetworkContainerNodeData> & {
-                        fields?: Record<string, unknown>;
-                      }
-                    )?.fields?.region as string) ?? "us-east-1"
-                  }
-                  onValueChange={(value) =>
-                    onRegionChange(selectedNode.id, value)
-                  }
-                >
-                  <SelectTrigger className="font-normal">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="us-east-1">
-                      US East (N. Virginia)
-                    </SelectItem>
-                    <SelectItem value="us-east-2">US East (Ohio)</SelectItem>
-                    <SelectItem value="us-west-1">
-                      US West (N. California)
-                    </SelectItem>
-                    <SelectItem value="us-west-2">US West (Oregon)</SelectItem>
-                    <SelectItem value="eu-west-1">Europe (Ireland)</SelectItem>
-                    <SelectItem value="eu-west-2">Europe (London)</SelectItem>
-                    <SelectItem value="eu-central-1">
-                      Europe (Frankfurt)
-                    </SelectItem>
-                    <SelectItem value="ap-southeast-1">
-                      Asia Pacific (Singapore)
-                    </SelectItem>
-                    <SelectItem value="ap-southeast-2">
-                      Asia Pacific (Sydney)
-                    </SelectItem>
-                    <SelectItem value="ap-northeast-1">
-                      Asia Pacific (Tokyo)
-                    </SelectItem>
-                    <SelectItem value="sa-east-1">
-                      South America (São Paulo)
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </label>
-              <ChildCountSlider
-                label={t.numberOfVPCs}
-                value={childVpcCount}
-                onChange={(value) =>
-                  onNumberOfVPCsChange(selectedNode.id, value)
-                }
+            <PlainTextInspectorPanel
+              text={selectedPlainTextData.text}
+              fontSize={selectedPlainTextFontSize}
+              onTextChange={(text) =>
+                onPlainTextChange(selectedPlainTextNode.id, text)
+              }
+              onFontSizeChange={(fontSize) =>
+                onPlainTextFontSizeChange(selectedPlainTextNode.id, fontSize)
+              }
+              t={t}
+            />
+          ) : selectedNode &&
+            isNetworkContainerNode(selectedNode) &&
+            selectedContainerType ? (
+            <ContainerInspectorRouter
+              containerType={selectedContainerType}
+              regionProps={{
+                node: selectedNode,
+                childCount: childVpcCount,
+                containerFields: selectedContainerFields,
+                onChildCountChange: (count) =>
+                  onChildCountChange(selectedNode.id, count),
+                onContainerFieldChange: (key, value) =>
+                  onContainerFieldChange(selectedNode.id, key, value),
+                onRegionChange: (region) =>
+                  onRegionChange(selectedNode.id, region),
+                t,
+              }}
+              vpcProps={{
+                childCount: childAzCount,
+                containerFields: selectedContainerFields,
+                onChildCountChange: (count) =>
+                  onChildCountChange(selectedNode.id, count),
+                onContainerFieldChange: (key, value) =>
+                  onContainerFieldChange(selectedNode.id, key, value),
+                t,
+              }}
+              azProps={{
+                childCount: childSubnetCount,
+                containerFields: selectedContainerFields,
+                onChildCountChange: (count) =>
+                  onChildCountChange(selectedNode.id, count),
+                onContainerFieldChange: (key, value) =>
+                  onContainerFieldChange(selectedNode.id, key, value),
+                onToggleAzSync: (synced) =>
+                  toggleAzSync(selectedNode.id, synced),
+                azHasSiblings: selectedAzHasSiblings,
+                azSynced: selectedAzSynced,
+                t,
+              }}
+              subnetProps={{
+                node: selectedNode,
+                containerFields: selectedContainerFields,
+                onContainerFieldChange: (key, value) =>
+                  onContainerFieldChange(selectedNode.id, key, value),
+                onSubnetTypeChange: (type) =>
+                  onSubnetTypeChange(selectedNode.id, type),
+                t,
+              }}
+            />
+          ) : selectedAwsNode ? (
+            <AwsServiceInspectorPanel
+              node={selectedAwsNode}
+              locale={locale}
+              onFieldChange={(key, value) =>
+                onServiceFieldChange(selectedAwsNode.id, key, value)
+              }
+              t={t}
+            />
+          ) : selectedNode ? null : (
+            <div className="flex flex-col items-center gap-4 pt-6 text-center">
+              <img
+                src="/cloudish-logo.png"
+                alt={t.appLogoAlt}
+                className="h-auto w-32"
               />
+              <p className="text-sm leading-5 text-muted-foreground">
+                {hasCanvasNodes
+                  ? t.clickNodeDetails
+                  : t.emptyCanvasDescription}
+              </p>
             </div>
-          ) : selectedNode && selectedIsVpc ? (
-            <div className="space-y-4 text-sm">
-              <label className="grid gap-2 text-sm font-medium text-foreground">
-                {t.cidrBlock}
-                <Input
-                  value={String(selectedContainerFields.cidrBlock ?? "")}
-                  placeholder={t.vpcCidrBlockPlaceholder}
-                  onChange={(event) =>
-                    onContainerFieldChange(
-                      selectedNode.id,
-                      "cidrBlock",
-                      event.target.value,
-                    )
-                  }
-                />
-              </label>
-              <ChildCountSlider
-                label={t.numberOfAZs}
-                value={childAzCount}
-                onChange={(value) =>
-                  onNumberOfAZsChange(selectedNode.id, value)
-                }
-              />
-            </div>
-          ) : selectedNode && selectedIsAz ? (
-            <div className="space-y-4 text-sm">
-              <ChildCountSlider
-                label={t.numberOfSubnets}
-                value={childSubnetCount}
-                onChange={(value) =>
-                  onNumberOfSubnetsChange(selectedNode.id, value)
-                }
-              />
-              {selectedAzHasSiblings && (
-                <>
-                  <label className="flex items-center gap-3 px-1 py-2 font-medium text-foreground mb-0">
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 accent-primary"
-                      checked={selectedAzSynced}
-                      onChange={(e) =>
-                        toggleAzSync(selectedNode.id, e.target.checked)
-                      }
-                    />
-                    <span>{t.syncAzs}</span>
-                  </label>
-                  <Alert>
-                    <AlertDescription>
-                      {t.syncAzsBannerDescription}
-                    </AlertDescription>
-                  </Alert>
-                </>
-              )}
-            </div>
-          ) : selectedNode && selectedHasFields ? (
-            <div className="space-y-4">
-              {selectedNodeFields.map((field) => {
-                const localizedField = getLocalizedField(
-                  selectedNodeFieldsKey,
-                  field,
-                  locale,
-                );
-                const value = getFieldValue(
-                  selectedNode.data as AwsServiceNodeData,
-                  field,
-                );
-
-                if (field.type === "select") {
-                  return (
-                    <label
-                      key={field.key}
-                      className="grid gap-2 text-sm font-medium text-foreground"
-                    >
-                      {localizedField.label}
-                      <Select
-                        value={String(value)}
-                        onValueChange={(nextValue) =>
-                          onServiceFieldChange(
-                            selectedNode.id,
-                            field.key,
-                            nextValue,
-                          )
-                        }
-                      >
-                        <SelectTrigger className="font-normal">
-                          <SelectValue
-                            placeholder={localizedField.placeholder}
-                          />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {(localizedField.options ?? []).map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </label>
-                  );
-                }
-
-                if (field.type === "boolean") {
-                  return (
-                    <label
-                      key={field.key}
-                      className="flex items-center gap-3 px-1 py-2 text-sm font-medium text-foreground"
-                    >
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 accent-primary"
-                        checked={Boolean(value)}
-                        onChange={(event) =>
-                          onServiceFieldChange(
-                            selectedNode.id,
-                            field.key,
-                            event.target.checked,
-                          )
-                        }
-                      />
-                      <span>{localizedField.label}</span>
-                    </label>
-                  );
-                }
-
-                return (
-                  <label
-                    key={field.key}
-                    className="grid gap-2 text-sm font-medium text-foreground"
-                  >
-                    {localizedField.label}
-                    <Input
-                      type={field.type === "number" ? "number" : "text"}
-                      value={String(value)}
-                      placeholder={localizedField.placeholder}
-                      onChange={(event) => {
-                        const nextValue =
-                          field.type === "number"
-                            ? event.target.value === ""
-                              ? ""
-                              : Number(event.target.value)
-                            : event.target.value;
-
-                        onServiceFieldChange(
-                          selectedNode.id,
-                          field.key,
-                          nextValue,
-                        );
-                      }}
-                    />
-                  </label>
-                );
-              })}
-            </div>
-          ) : selectedNode ? (
-            <div className="space-y-4 text-sm text-muted-foreground">
-              {selectedAwsNode && (
-                <Alert>
-                  <AlertTitle>{t.comingSoon}</AlertTitle>
-                  <AlertDescription>{t.fieldsUnavailable}</AlertDescription>
-                </Alert>
-              )}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              {t.clickNodeDetails}
-            </p>
           )}
         </div>
         {selectedAwsNode && selectedAwsDescription && (
