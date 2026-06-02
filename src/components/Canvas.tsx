@@ -126,6 +126,8 @@ export default function Canvas() {
     onEdgesChange,
     setNodes,
     commitGraphChange,
+    isDirty,
+    markSaved,
     inspectorOpen,
     setInspectorOpen,
     dropTargetNodeId,
@@ -174,7 +176,8 @@ export default function Canvas() {
     });
 
     setCurrentArchitectureId(result.architectureId);
-  }, [currentArchitectureId, edges, nodes, t.defaultArchitectureName]);
+    markSaved();
+  }, [currentArchitectureId, edges, markSaved, nodes, t.defaultArchitectureName]);
 
   const handleReset = useCallback(() => {
     setCurrentArchitectureId(undefined);
@@ -1027,7 +1030,7 @@ export default function Canvas() {
             onReset={handleReset}
           />
           <SaveArchitectureButton
-            disabled={nodes.length === 0}
+            disabled={nodes.length === 0 || !isDirty}
             isAuthenticated={!!user}
             labels={{
               saveArchitecture: t.saveArchitecture,

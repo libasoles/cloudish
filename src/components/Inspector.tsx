@@ -19,6 +19,7 @@ import { ContainerInspectorRouter } from "@/components/inspector/ContainerInspec
 import { EdgeInspectorPanel } from "@/components/inspector/EdgeInspectorPanel";
 import { PlainTextInspectorPanel } from "@/components/inspector/PlainTextInspectorPanel";
 import { AwsServiceInspectorPanel } from "@/components/inspector/AwsServiceInspectorPanel";
+import { SavedProjectsList } from "@/components/inspector/SavedProjectsList";
 const AuthDialog = lazy(() => import("@/components/AuthDialog"));
 
 export default function Inspector() {
@@ -104,15 +105,20 @@ export default function Inspector() {
           ) : selectedAwsNode ? (
             <AwsServiceInspectorPanel node={selectedAwsNode} />
           ) : selectedNode ? null : (
-            <div className="flex flex-col items-center gap-4 pt-6 text-center">
-              <img
-                src="/cloudish-logo.png"
-                alt={t.appLogoAlt}
-                className="h-auto w-32"
-              />
-              <p className="text-sm leading-5 text-muted-foreground">
-                {hasCanvasNodes ? t.clickNodeDetails : t.emptyCanvasDescription}
-              </p>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col items-center gap-4 pt-6 text-center">
+                <img
+                  src="/cloudish-logo.png"
+                  alt={t.appLogoAlt}
+                  className="h-auto w-32"
+                />
+                <p className="text-sm leading-5 text-muted-foreground">
+                  {hasCanvasNodes
+                    ? t.clickNodeDetails
+                    : t.emptyCanvasDescription}
+                </p>
+              </div>
+              {!hasCanvasNodes && user && <SavedProjectsList />}
             </div>
           )}
         </div>

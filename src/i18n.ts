@@ -118,6 +118,10 @@ export const UI_TEXT = {
     authErrorProviderDisabled: "This sign-in method is not enabled. Check your Firebase Console.",
     authErrorGeneric: "Something went wrong. Please try again.",
     authSignedInAs: "Signed in as",
+    savedProjects: "Saved projects",
+    savedProjectsEmpty: "No saved architectures yet.",
+    savedProjectsError: "Could not load projects.",
+    loadProject: "Load",
   },
   es: {
     dragAndDrop: APP_TITLE,
@@ -225,6 +229,10 @@ export const UI_TEXT = {
     authErrorProviderDisabled: "Este metodo de inicio de sesion no esta habilitado. Revisa Firebase Console.",
     authErrorGeneric: "Algo salio mal. Por favor intenta de nuevo.",
     authSignedInAs: "Sesion iniciada como",
+    savedProjects: "Proyectos guardados",
+    savedProjectsEmpty: "Aun no tienes arquitecturas guardadas.",
+    savedProjectsError: "No se pudieron cargar los proyectos.",
+    loadProject: "Cargar",
   },
 } as const;
 

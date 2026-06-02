@@ -30,3 +30,6 @@ TODO.md
 
 # Temporary Playwright/debug scripts
 *.mjs
+
+# Local Netlify folder
+.netlify

@@ -25,6 +25,7 @@ type FlowStore = {
   nodes: AppNode[];
   edges: AppEdge[];
   history: HistoryEntry[];
+  isDirty: boolean;
   inspectorOpen: boolean;
   dropTargetNodeId: string | null;
   dropPreview: ContainerDropPreview | null;
@@ -41,7 +42,9 @@ type FlowStore = {
   ) => void;
   undo: () => void;
   resetCanvas: () => void;
+  loadArchitecture: (nodes: AppNode[], edges: AppEdge[]) => void;
   duplicateSelectedNodes: () => void;
+  markSaved: () => void;
   setInspectorOpen: (updater: boolean | ((prev: boolean) => boolean)) => void;
   setDropTargetNodeId: (id: string | null) => void;
   setDropPreview: (preview: ContainerDropPreview | null) => void;
@@ -80,16 +83,21 @@ export const useFlowStore = create<FlowStore>()((set) => ({
   nodes: initialNodes,
   edges: initialEdges,
   history: [],
+  isDirty: false,
   inspectorOpen: true,
 
   setNodes: (updater) =>
     set((s) => ({
       nodes: typeof updater === "function" ? updater(s.nodes) : updater,
+      isDirty: true,
     })),
 
   onNodesChange: (changes) =>
     set((s) => {
       const hasRemoves = changes.some((c) => c.type === "remove");
+      const hasMeaningfulChanges = changes.some(
+        (c) => c.type === "remove" || c.type === "position" || c.type === "dimensions",
+      );
 
       let history = s.history;
       if (hasRemoves && !_removeSnapshotPending) {
@@ -110,15 +118,16 @@ export const useFlowStore = create<FlowStore>()((set) => ({
       );
 
       if (!removedNodeIds.length) {
-        return { nodes: nextNodes, history };
+        return { nodes: nextNodes, history, isDirty: s.isDirty || hasMeaningfulChanges };
       }
 
-      return { ...removeSyncedNodes(removedNodeIds, s.nodes, nextNodes, s.edges), history };
+      return { ...removeSyncedNodes(removedNodeIds, s.nodes, nextNodes, s.edges), history, isDirty: true };
     }),
 
   setEdges: (updater) =>
     set((s) => ({
       edges: typeof updater === "function" ? updater(s.edges) : updater,
+      isDirty: true,
     })),
 
   onEdgesChange: (changes) =>
@@ -139,6 +148,7 @@ export const useFlowStore = create<FlowStore>()((set) => ({
       return {
         edges: removeSyncedEdges(removedEdgeIds, s.edges, nextEdges),
         history,
+        isDirty: s.isDirty || hasRemoves,
       };
     }),
 
@@ -148,7 +158,7 @@ export const useFlowStore = create<FlowStore>()((set) => ({
       if (next.nodes === s.nodes && next.edges === s.edges) return {};
       const entry: HistoryEntry = { before: { nodes: s.nodes, edges: s.edges } };
       const history = [...s.history, entry].slice(-MAX_HISTORY);
-      return { nodes: next.nodes, edges: next.edges, history };
+      return { nodes: next.nodes, edges: next.edges, history, isDirty: true };
     }),
 
   undo: () =>
@@ -156,11 +166,14 @@ export const useFlowStore = create<FlowStore>()((set) => ({
       const last = s.history.at(-1);
       if (!last) return {};
       const nodes = last.before.nodes.map((n) => ({ ...n, selected: false }));
-      return { nodes, edges: last.before.edges, history: s.history.slice(0, -1) };
+      return { nodes, edges: last.before.edges, history: s.history.slice(0, -1), isDirty: true };
     }),
 
   resetCanvas: () =>
-    set({ nodes: [], edges: [], history: [] }),
+    set({ nodes: [], edges: [], history: [], isDirty: false }),
+
+  loadArchitecture: (nodes, edges) =>
+    set({ nodes, edges, history: [], isDirty: false }),
 
   duplicateSelectedNodes: () =>
     set((s) => {
@@ -169,8 +182,10 @@ export const useFlowStore = create<FlowStore>()((set) => ({
 
       const entry: HistoryEntry = { before: { nodes: s.nodes, edges: s.edges } };
       const history = [...s.history, entry].slice(-MAX_HISTORY);
-      return { nodes: next.nodes, edges: next.edges, history };
+      return { nodes: next.nodes, edges: next.edges, history, isDirty: true };
     }),
+
+  markSaved: () => set({ isDirty: false }),
 
   setInspectorOpen: (updater) =>
     set((s) => ({
@@ -186,5 +201,5 @@ export const useFlowStore = create<FlowStore>()((set) => ({
   setEditingEdgeId: (id) => set({ editingEdgeId: id }),
 
   toggleAzSync: (azId, synced) =>
-    set((s) => toggleAzSyncState(azId, synced, s.nodes, s.edges)),
+    set((s) => ({ ...toggleAzSyncState(azId, synced, s.nodes, s.edges), isDirty: true })),
 }));
