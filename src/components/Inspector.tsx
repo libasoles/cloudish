@@ -28,6 +28,7 @@ import { ContainerInspectorRouter } from "@/components/inspector/ContainerInspec
 import { EdgeInspectorPanel } from "@/components/inspector/EdgeInspectorPanel";
 import { PlainTextInspectorPanel } from "@/components/inspector/PlainTextInspectorPanel";
 import { AwsServiceInspectorPanel } from "@/components/inspector/AwsServiceInspectorPanel";
+import { NoOptionsInspectorPanel } from "@/components/inspector/NoOptionsInspectorPanel";
 import { SavedProjectsList } from "@/components/inspector/SavedProjectsList";
 const AuthDialog = lazy(() => import("@/components/AuthDialog"));
 
@@ -116,7 +117,9 @@ export default function Inspector() {
             />
           ) : selectedAwsNode ? (
             <AwsServiceInspectorPanel node={selectedAwsNode} />
-          ) : selectedNode ? null : (
+          ) : selectedNode ? (
+            <NoOptionsInspectorPanel />
+          ) : (
             <div className="flex flex-col gap-4">
               <div className="flex flex-col items-center gap-4 pt-6 text-center">
                 <img

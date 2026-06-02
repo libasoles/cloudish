@@ -22,6 +22,8 @@ type HistoryEntry = {
 };
 
 type FlowStore = {
+  currentArchitectureId?: string;
+  projectName: string | null;
   nodes: AppNode[];
   edges: AppEdge[];
   history: HistoryEntry[];
@@ -42,7 +44,13 @@ type FlowStore = {
   ) => void;
   undo: () => void;
   resetCanvas: () => void;
-  loadArchitecture: (nodes: AppNode[], edges: AppEdge[]) => void;
+  loadArchitecture: (
+    nodes: AppNode[],
+    edges: AppEdge[],
+    metadata?: { architectureId?: string; name?: string },
+  ) => void;
+  setCurrentArchitectureId: (architectureId: string | undefined) => void;
+  setProjectName: (projectName: string | null) => void;
   duplicateSelectedNodes: () => void;
   markSaved: () => void;
   setInspectorOpen: (updater: boolean | ((prev: boolean) => boolean)) => void;
@@ -80,6 +88,8 @@ function resizeChangedContainers(
 let _removeSnapshotPending = false;
 
 export const useFlowStore = create<FlowStore>()((set) => ({
+  currentArchitectureId: undefined,
+  projectName: null,
   nodes: initialNodes,
   edges: initialEdges,
   history: [],
@@ -170,10 +180,33 @@ export const useFlowStore = create<FlowStore>()((set) => ({
     }),
 
   resetCanvas: () =>
-    set({ nodes: [], edges: [], history: [], isDirty: false }),
+    set({
+      currentArchitectureId: undefined,
+      projectName: null,
+      nodes: [],
+      edges: [],
+      history: [],
+      isDirty: false,
+    }),
 
-  loadArchitecture: (nodes, edges) =>
-    set({ nodes, edges, history: [], isDirty: false }),
+  loadArchitecture: (nodes, edges, metadata) =>
+    set({
+      currentArchitectureId: metadata?.architectureId,
+      projectName: metadata?.name ?? null,
+      nodes,
+      edges,
+      history: [],
+      isDirty: false,
+    }),
+
+  setCurrentArchitectureId: (architectureId) =>
+    set({ currentArchitectureId: architectureId }),
+
+  setProjectName: (projectName) =>
+    set((s) => {
+      if (s.projectName === projectName) return {};
+      return { projectName, isDirty: true };
+    }),
 
   duplicateSelectedNodes: () =>
     set((s) => {

@@ -59,6 +59,9 @@ export const UI_TEXT = {
     comingSoon: "Coming Soon",
     fieldsUnavailable:
       "Configuration fields for this service are not available yet.",
+    inspectorNoOptionsTitle: "No configurable options",
+    inspectorNoOptionsDescription:
+      "This node does not have editable settings in the inspector.",
     position: "Position",
     clickNodeDetails: "Click a node or edge to see its details.",
     user: "User",
@@ -81,6 +84,7 @@ export const UI_TEXT = {
     textNodePlaceholder: "Text",
     textContent: "Text",
     textFontSize: "Text size",
+    editProjectName: "Edit project name",
     defaultArchitectureName: "Untitled architecture",
     saveArchitecture: "Save",
     saveArchitectureTooltip: "Save architecture",
@@ -172,6 +176,9 @@ export const UI_TEXT = {
     comingSoon: "Proximamente",
     fieldsUnavailable:
       "Los campos de configuracion para este servicio todavia no estan disponibles.",
+    inspectorNoOptionsTitle: "Sin opciones configurables",
+    inspectorNoOptionsDescription:
+      "Este nodo no tiene ajustes editables en el inspector.",
     position: "Posicion",
     clickNodeDetails: "Selecciona un nodo o conexion para ver sus detalles.",
     user: "Usuario",
@@ -194,7 +201,8 @@ export const UI_TEXT = {
     textNodePlaceholder: "Texto",
     textContent: "Texto",
     textFontSize: "Tamano del texto",
-    defaultArchitectureName: "Arquitectura sin titulo",
+    editProjectName: "Editar nombre del proyecto",
+    defaultArchitectureName: "Arquitectura sin nombre",
     saveArchitecture: "Guardar",
     saveArchitectureTooltip: "Guardar arquitectura",
     saveArchitectureSaving: "Guardando arquitectura...",

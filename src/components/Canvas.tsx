@@ -27,6 +27,7 @@ import DragDropSidebar from "@/components/DragDropSidebar";
 import NewToolMenu from "@/components/NewToolMenu";
 import ExportMenu from "@/components/ExportMenu";
 import SaveArchitectureButton from "@/components/SaveArchitectureButton";
+import { ProjectNameEditor } from "@/components/ProjectNameEditor";
 const AuthDialog = lazy(() => import("@/components/AuthDialog"));
 import AwsServiceNode from "@/components/AwsServiceNode";
 import NetworkContainerNode from "@/components/NetworkContainerNode";
@@ -125,9 +126,13 @@ export default function Canvas() {
   const {
     nodes,
     edges,
+    currentArchitectureId,
+    projectName,
     onNodesChange,
     onEdgesChange,
     setNodes,
+    setCurrentArchitectureId,
+    setProjectName,
     commitGraphChange,
     isDirty,
     markSaved,
@@ -143,9 +148,6 @@ export default function Canvas() {
     AppNode,
     AppEdge
   > | null>(null);
-  const [currentArchitectureId, setCurrentArchitectureId] = useState<
-    string | undefined
-  >();
   const { user } = useAuth();
   const saveArchitectureMutation = useSaveArchitecture();
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
@@ -173,17 +175,25 @@ export default function Canvas() {
   const handleSave = useCallback(async () => {
     const result = await saveArchitectureMutation.mutateAsync({
       architectureId: currentArchitectureId,
-      name: t.defaultArchitectureName,
+      name: projectName?.trim() || t.defaultArchitectureName,
       nodes,
       edges,
     });
 
     setCurrentArchitectureId(result.architectureId);
     markSaved();
-  }, [saveArchitectureMutation, currentArchitectureId, edges, markSaved, nodes, t.defaultArchitectureName]);
+  }, [
+    saveArchitectureMutation,
+    currentArchitectureId,
+    edges,
+    markSaved,
+    nodes,
+    projectName,
+    setCurrentArchitectureId,
+    t.defaultArchitectureName,
+  ]);
 
   const handleReset = useCallback(() => {
-    setCurrentArchitectureId(undefined);
     resetCanvas();
   }, [resetCanvas]);
 
@@ -1028,6 +1038,7 @@ export default function Canvas() {
           <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
           <ServiceSearch />
         </ReactFlow>
+        <ProjectNameEditor value={projectName} onChange={setProjectName} />
         <div className="absolute top-2 right-2 z-10 flex flex-col items-end gap-2">
           <div className="hidden md:block">
             <Tooltip>

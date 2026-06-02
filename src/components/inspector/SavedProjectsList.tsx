@@ -48,7 +48,10 @@ export function SavedProjectsList({ onSelect }: Props = {}) {
           key={project.architectureId}
           className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-left transition-colors hover:bg-accent"
           onClick={() => {
-            loadArchitecture(project.nodes, project.edges);
+            loadArchitecture(project.nodes, project.edges, {
+              architectureId: project.architectureId,
+              name: project.name,
+            });
             onSelect?.();
           }}
         >
