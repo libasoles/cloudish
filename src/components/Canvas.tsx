@@ -625,13 +625,18 @@ export default function Canvas() {
       }
 
       if (tool.type === "text") {
-        const nodeId = `text-${textIdRef.current++}`;
         const nodePosition = {
           x: position.x - TEXT_DROP_OFFSET.x,
           y: position.y - TEXT_DROP_OFFSET.y,
         };
 
         commitGraphChange(({ nodes, edges }) => {
+          const existingIds = new Set(nodes.map((n) => n.id));
+          let nodeId = `text-${textIdRef.current++}`;
+          while (existingIds.has(nodeId)) {
+            nodeId = `text-${textIdRef.current++}`;
+          }
+
           const parentedPosition = getParentedPosition(
             nodePosition,
             { width: TEXT_NODE_WIDTH, height: TEXT_NODE_HEIGHT },
