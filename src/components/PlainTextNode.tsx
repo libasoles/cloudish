@@ -22,6 +22,7 @@ const DEFAULT_TEXT_NODE_HEIGHT = 56;
 const TEXT_HORIZONTAL_PADDING = 16;
 const TEXT_VERTICAL_PADDING = 8;
 const CARET_SPACE = 4;
+const TEXT_MEASUREMENT_BUFFER = 8;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -45,7 +46,11 @@ function measureTextWidth(text: string, fontSize: number) {
 function getFittedTextNodeSize(text: string, fontSize: number) {
   return {
     width: Math.max(
-      Math.ceil(measureTextWidth(text, fontSize) + TEXT_HORIZONTAL_PADDING),
+      Math.ceil(
+        measureTextWidth(text, fontSize) +
+          TEXT_HORIZONTAL_PADDING +
+          TEXT_MEASUREMENT_BUFFER,
+      ),
       MIN_TEXT_NODE_WIDTH,
     ),
     height: clamp(
@@ -262,7 +267,7 @@ export default function PlainTextNode({
             ref={inputRef}
             autoFocus
             aria-label={t.editTextNode}
-            className="nodrag border-0 border-b border-primary bg-transparent px-0 py-0 font-medium leading-tight text-foreground outline-none selection:bg-node-label-selection selection:text-node-label-selection-text"
+            className="nodrag rounded border border-primary/60 bg-background/95 px-1.5 py-0.5 font-medium leading-tight text-foreground shadow-sm outline-none selection:bg-node-label-selection selection:text-node-label-selection-text"
             style={{ fontSize, width: inputWidth }}
             value={draft}
             placeholder={t.textNodePlaceholder}
@@ -295,7 +300,7 @@ export default function PlainTextNode({
         <div className="flex h-full w-full cursor-grab items-center px-2 py-1 active:cursor-grabbing">
           <span
             ref={displayTextRef}
-            className="block min-w-0 flex-1 whitespace-pre-wrap break-words font-medium leading-tight"
+            className="block min-w-0 flex-1 whitespace-pre font-medium leading-tight"
             style={{ fontSize }}
           >
             {data.text}

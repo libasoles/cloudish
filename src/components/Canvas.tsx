@@ -126,6 +126,7 @@ export default function Canvas() {
     dropTargetNodeId,
     setDropTargetNodeId,
     setDropPreview,
+    setEditingEdgeId,
     resetCanvas,
   } = useFlowStore();
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance<
@@ -919,7 +920,7 @@ export default function Canvas() {
       <div
         ref={containerRef}
         style={{ flex: 1, position: "relative" }}
-        onDoubleClickCapture={handlePaneDoubleClick}
+        onDoubleClick={handlePaneDoubleClick}
       >
         <ReactFlow
           className="dark"
@@ -933,6 +934,10 @@ export default function Canvas() {
           onInit={handleInit}
           onNodeDrag={onNodeDrag}
           onNodeDragStop={onNodeDragStop}
+          onEdgeDoubleClick={(event, edge) => {
+            event.stopPropagation();
+            setEditingEdgeId(edge.id);
+          }}
           onNodeDoubleClick={(_event, node) => {
             if (node.type === "plainText") return;
             if (!inspectorOpen) setInspectorOpen(true);

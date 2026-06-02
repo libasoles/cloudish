@@ -1,5 +1,6 @@
 import type { AwsCategory, AwsService } from "@/data/aws-services";
 import type { ServiceField } from "@/data/aws-service-fields";
+import { APP_TITLE } from "@/config/app";
 
 export type Locale = "en" | "es";
 
@@ -14,7 +15,7 @@ type FieldTranslations = Record<
 
 export const UI_TEXT = {
   en: {
-    dragAndDrop: "Drag & Drop",
+    dragAndDrop: APP_TITLE,
     newTool: "New",
     newToolTooltip: "Clear the canvas and start from scratch",
     newToolMenuTitle: "Add node",
@@ -86,7 +87,7 @@ export const UI_TEXT = {
     exportDisclaimerCancel: "Cancel",
   },
   es: {
-    dragAndDrop: "Arrastrar",
+    dragAndDrop: APP_TITLE,
     newTool: "Nuevo",
     newToolTooltip: "Limpiar el canvas y empezar desde cero",
     newToolMenuTitle: "Agregar nodo",

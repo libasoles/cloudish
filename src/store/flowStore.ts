@@ -28,6 +28,7 @@ type FlowStore = {
   inspectorOpen: boolean;
   dropTargetNodeId: string | null;
   dropPreview: ContainerDropPreview | null;
+  editingEdgeId: string | null;
   setNodes: (updater: AppNode[] | ((prev: AppNode[]) => AppNode[])) => void;
   onNodesChange: (changes: NodeChange<AppNode>[]) => void;
   setEdges: (updater: AppEdge[] | ((prev: AppEdge[]) => AppEdge[])) => void;
@@ -44,6 +45,7 @@ type FlowStore = {
   setInspectorOpen: (updater: boolean | ((prev: boolean) => boolean)) => void;
   setDropTargetNodeId: (id: string | null) => void;
   setDropPreview: (preview: ContainerDropPreview | null) => void;
+  setEditingEdgeId: (id: string | null) => void;
   toggleAzSync: (azId: string, synced: boolean) => void;
 };
 
@@ -180,6 +182,8 @@ export const useFlowStore = create<FlowStore>()((set) => ({
   setDropTargetNodeId: (id) => set({ dropTargetNodeId: id }),
   dropPreview: null,
   setDropPreview: (preview) => set({ dropPreview: preview }),
+  editingEdgeId: null,
+  setEditingEdgeId: (id) => set({ editingEdgeId: id }),
 
   toggleAzSync: (azId, synced) =>
     set((s) => toggleAzSyncState(azId, synced, s.nodes, s.edges)),

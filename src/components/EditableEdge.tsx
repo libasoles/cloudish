@@ -42,6 +42,21 @@ export default function EditableEdge({
     }
   }, [isEditing]);
 
+  useEffect(() => {
+    return useFlowStore.subscribe((state, previousState) => {
+      if (
+        state.editingEdgeId !== id ||
+        state.editingEdgeId === previousState.editingEdgeId
+      ) {
+        return;
+      }
+
+      setDraft(String(label ?? ""));
+      setIsEditing(true);
+      state.setEditingEdgeId(null);
+    });
+  }, [id, label]);
+
   function startEditing() {
     setDraft(String(label ?? ""));
     setIsEditing(true);
@@ -67,7 +82,10 @@ export default function EditableEdge({
         style={style}
         markerStart={markerStart}
         markerEnd={markerEnd}
-        onDoubleClick={startEditing}
+        onDoubleClick={(event) => {
+          event.stopPropagation();
+          startEditing();
+        }}
       />
       <EdgeLabelRenderer>
         <div
@@ -83,9 +101,9 @@ export default function EditableEdge({
               ref={inputRef}
               aria-label="Edge label"
               className={cn(
-                "border-0 border-b border-blue-400 bg-transparent px-1 py-0.5 text-center text-xs font-medium text-white outline-none",
+                "rounded border border-blue-400/70 bg-background/95 px-1.5 py-0.5 text-center text-xs font-medium text-foreground shadow-sm outline-none",
                 "selection:bg-node-label-selection selection:text-node-label-selection-text",
-                "focus:border-blue-600",
+                "focus:border-blue-500",
               )}
               style={{ width: `${inputCharacterWidth}ch` }}
               value={draft}
