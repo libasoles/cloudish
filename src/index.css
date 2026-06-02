@@ -143,6 +143,33 @@ body {
   border: 1px solid hsl(var(--border));
 }
 
+@media (max-width: 767px) {
+  .react-flow__controls,
+  .react-flow__minimap {
+    display: none;
+  }
+}
+
+@media (max-width: 767px) and (orientation: portrait) {
+  html,
+  body,
+  #root {
+    height: 100dvh;
+    overflow: hidden;
+    width: 100dvw;
+  }
+
+  .mobile-landscape-shell {
+    height: 100dvw;
+    right: 0;
+    position: fixed;
+    top: 0;
+    transform: rotate(-90deg) translateY(-100%);
+    transform-origin: top right;
+    width: 100dvh;
+  }
+}
+
 /* Handles: large transparent hit area, small visual dot via ::after */
 .react-flow__handle {
   width: 24px !important;

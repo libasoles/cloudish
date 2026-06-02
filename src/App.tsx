@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 
 export default function App() {
   return (
-    <div className="bg-background text-foreground flex w-dvw h-dvh">
+    <div className="mobile-landscape-shell bg-background text-foreground flex w-dvw h-dvh">
       <KeyboardShortcuts />
       <Canvas />
       <Inspector />

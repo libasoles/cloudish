@@ -1023,27 +1023,29 @@ export default function Canvas() {
           fitView
           fitViewOptions={{ padding: INITIAL_FIT_VIEW_PADDING }}
         >
-          <Controls />
-          <MiniMap />
+          <Controls className="max-md:!hidden" />
+          <MiniMap className="max-md:!hidden" />
           <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
           <ServiceSearch />
         </ReactFlow>
         <div className="absolute top-2 right-2 z-10 flex flex-col items-end gap-2">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setInspectorOpen((v) => !v)}
-                aria-label={inspectorOpen ? t.closeInspector : t.openInspector}
-              >
-                {inspectorOpen ? <PanelRightClose /> : <PanelRightOpen />}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="left">
-              {inspectorOpen ? t.closeInspector : t.openInspector}
-            </TooltipContent>
-          </Tooltip>
+          <div className="hidden md:block">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setInspectorOpen((v) => !v)}
+                  aria-label={inspectorOpen ? t.closeInspector : t.openInspector}
+                >
+                  {inspectorOpen ? <PanelRightClose /> : <PanelRightOpen />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="left">
+                {inspectorOpen ? t.closeInspector : t.openInspector}
+              </TooltipContent>
+            </Tooltip>
+          </div>
           <NewToolMenu
             labels={{
               newTool: t.newTool,

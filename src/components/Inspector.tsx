@@ -97,7 +97,7 @@ export default function Inspector() {
   })();
 
   return (
-    <Card className="flex h-full w-72 flex-col rounded-none border-y-0 border-r-0">
+    <Card className="hidden h-full w-72 flex-col rounded-none border-y-0 border-r-0 max-md:!hidden md:flex">
       <CardHeader className="px-4 py-4">
         <CardTitle className="text-sm font-medium">{inspectorTitle}</CardTitle>
       </CardHeader>
