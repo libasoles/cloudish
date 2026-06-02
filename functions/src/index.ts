@@ -8,11 +8,7 @@
  */
 
 import {initializeApp} from "firebase-admin/app";
-import {
-  FieldValue,
-  Timestamp,
-  getFirestore,
-} from "firebase-admin/firestore";
+import {FieldValue, Timestamp, getFirestore} from "firebase-admin/firestore";
 import {setGlobalOptions} from "firebase-functions";
 import {HttpsError, onCall} from "firebase-functions/v2/https";
 
@@ -34,6 +30,7 @@ setGlobalOptions({maxInstances: 10});
 initializeApp();
 
 const ARCHITECTURES_COLLECTION = "architectures";
+const RATE_LIMITS_COLLECTION = "rateLimits";
 const DEFAULT_LIST_LIMIT = 25;
 const MAX_LIST_LIMIT = 100;
 const MAX_ARCHITECTURE_NAME_LENGTH = 120;
@@ -49,6 +46,18 @@ const MAX_FIELDS_PER_OBJECT = 80;
 const MAX_FIELD_KEY_LENGTH = 80;
 const MAX_FIELD_STRING_LENGTH = 500;
 const MAX_OBJECT_DEPTH = 8;
+const ONE_MINUTE_MS = 60_000;
+
+const RATE_LIMITS = {
+  saveUserArchitecture: {
+    limit: 10,
+    windowMs: ONE_MINUTE_MS,
+  },
+  listUserArchitectures: {
+    limit: 25,
+    windowMs: ONE_MINUTE_MS,
+  },
+} as const;
 
 type CallableAuth = {
   uid?: string;
@@ -59,6 +68,16 @@ type SaveArchitectureData = {
   name?: string;
   nodes: unknown[];
   edges: unknown[];
+};
+
+type RateLimitConfig = {
+  limit: number;
+  windowMs: number;
+};
+
+type RateLimitState = {
+  count?: unknown;
+  windowStartMs?: unknown;
 };
 
 /**
@@ -79,6 +98,66 @@ function assertSignedIn(auth?: CallableAuth): string {
 }
 
 /**
+ * Enforces a fixed-window rate limit for an authenticated callable action.
+ *
+ * @param {string} uid Authenticated user id.
+ * @param {string} action Callable action name.
+ * @param {RateLimitConfig} config Fixed-window limit settings.
+ */
+async function enforceRateLimit(
+  uid: string,
+  action: string,
+  config: RateLimitConfig,
+): Promise<void> {
+  const nowMs = Date.now();
+  const db = getFirestore();
+  const rateLimitRef = db
+    .collection("users")
+    .doc(uid)
+    .collection(RATE_LIMITS_COLLECTION)
+    .doc(action);
+
+  await db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(rateLimitRef);
+    const data = snapshot.data() as RateLimitState | undefined;
+    const existingWindowStartMs =
+      typeof data?.windowStartMs === "number" ? data.windowStartMs : 0;
+    const existingCount = typeof data?.count === "number" ? data.count : 0;
+    const isCurrentWindow =
+      nowMs - existingWindowStartMs >= 0 &&
+      nowMs - existingWindowStartMs < config.windowMs;
+    const nextWindowStartMs = isCurrentWindow ? existingWindowStartMs : nowMs;
+    const nextCount = isCurrentWindow ? existingCount + 1 : 1;
+
+    if (nextCount > config.limit) {
+      const retryAfterSeconds = Math.max(
+        1,
+        Math.ceil((existingWindowStartMs + config.windowMs - nowMs) / 1000),
+      );
+
+      throw new HttpsError(
+        "resource-exhausted",
+        "Too many requests. Please try again later.",
+        {retryAfterSeconds},
+      );
+    }
+
+    transaction.set(
+      rateLimitRef,
+      {
+        action,
+        count: nextCount,
+        limit: config.limit,
+        windowMs: config.windowMs,
+        windowStartMs: nextWindowStartMs,
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      {merge: true},
+    );
+  });
+}
+
+/**
  * Reads an optional string field from callable request data.
  *
  * @param {unknown} value Candidate field value.
@@ -96,10 +175,7 @@ function getString(
   }
 
   if (typeof value !== "string") {
-    throw new HttpsError(
-      "invalid-argument",
-      `${fieldName} must be a string.`,
-    );
+    throw new HttpsError("invalid-argument", `${fieldName} must be a string.`);
   }
 
   const trimmedValue = value.trim();
@@ -147,10 +223,7 @@ function requireString(
  */
 function requireArray(value: unknown, fieldName: string): unknown[] {
   if (!Array.isArray(value)) {
-    throw new HttpsError(
-      "invalid-argument",
-      `${fieldName} must be an array.`,
-    );
+    throw new HttpsError("invalid-argument", `${fieldName} must be an array.`);
   }
 
   return value;
@@ -294,8 +367,12 @@ function assertNode(value: unknown, index: number): void {
   }
 
   const {x, y} = value.position;
-  if (typeof x !== "number" || typeof y !== "number" ||
-    !Number.isFinite(x) || !Number.isFinite(y)) {
+  if (
+    typeof x !== "number" ||
+    typeof y !== "number" ||
+    !Number.isFinite(x) ||
+    !Number.isFinite(y)
+  ) {
     throw new HttpsError(
       "invalid-argument",
       `nodes.${index}.position must contain finite x and y numbers.`,
@@ -306,16 +383,20 @@ function assertNode(value: unknown, index: number): void {
     getString(value.parentId, `nodes.${index}.parentId`, MAX_NODE_ID_LENGTH);
   }
 
-  if (value.width !== undefined &&
-    (typeof value.width !== "number" || !Number.isFinite(value.width))) {
+  if (
+    value.width !== undefined &&
+    (typeof value.width !== "number" || !Number.isFinite(value.width))
+  ) {
     throw new HttpsError(
       "invalid-argument",
       `nodes.${index}.width must be a finite number.`,
     );
   }
 
-  if (value.height !== undefined &&
-    (typeof value.height !== "number" || !Number.isFinite(value.height))) {
+  if (
+    value.height !== undefined &&
+    (typeof value.height !== "number" || !Number.isFinite(value.height))
+  ) {
     throw new HttpsError(
       "invalid-argument",
       `nodes.${index}.height must be a finite number.`,
@@ -416,6 +497,11 @@ function timestampToIso(value: unknown): string | null {
 
 export const saveUserArchitecture = onCall(async (request) => {
   const uid = assertSignedIn(request.auth);
+  await enforceRateLimit(
+    uid,
+    "saveUserArchitecture",
+    RATE_LIMITS.saveUserArchitecture,
+  );
   const data = parseSaveArchitectureData(request.data);
 
   if (data.nodes.length > MAX_NODE_COUNT) {
@@ -454,13 +540,16 @@ export const saveUserArchitecture = onCall(async (request) => {
     existingSnapshot.get("createdAt") :
     FieldValue.serverTimestamp();
 
-  await documentRef.set({
-    name: data.name ?? "Untitled architecture",
-    nodes: data.nodes,
-    edges: data.edges,
-    createdAt,
-    updatedAt: FieldValue.serverTimestamp(),
-  }, {merge: true});
+  await documentRef.set(
+    {
+      name: data.name ?? "Untitled architecture",
+      nodes: data.nodes,
+      edges: data.edges,
+      createdAt,
+      updatedAt: FieldValue.serverTimestamp(),
+    },
+    {merge: true},
+  );
 
   return {
     architectureId: documentRef.id,
@@ -469,6 +558,11 @@ export const saveUserArchitecture = onCall(async (request) => {
 
 export const listUserArchitectures = onCall(async (request) => {
   const uid = assertSignedIn(request.auth);
+  await enforceRateLimit(
+    uid,
+    "listUserArchitectures",
+    RATE_LIMITS.listUserArchitectures,
+  );
   const requestData = request.data as Record<string, unknown> | undefined;
   const limit = parseListLimit(requestData?.limit);
   const snapshot = await getFirestore()
