@@ -19,14 +19,16 @@ export const UI_TEXT = {
     newToolTooltip: "Clear the canvas and start from scratch",
     newToolMenuTitle: "Add node",
     newToolConfirmTitle: "Start from scratch?",
-    newToolConfirmDescription: "This will remove all nodes and connections from the canvas. This action cannot be undone.",
+    newToolConfirmDescription:
+      "This will remove all nodes and connections from the canvas. This action cannot be undone.",
     newToolConfirmAction: "Clear canvas",
     newToolConfirmCancel: "Cancel",
     addTool: (toolName: string) => `Add ${toolName}`,
     dragOrClickToAdd: "Drag onto the canvas or click to add it to the center.",
     clickToAdd: "Click to add it to the center of the canvas.",
     userDescription: "External actor or client that interacts with the system.",
-    regionDescription: "Top-level AWS Region container for VPCs and network scope.",
+    regionDescription:
+      "Top-level AWS Region container for VPCs and network scope.",
     subnetDescription: "Network segment inside a VPC or Availability Zone.",
     subnet: "Subnet",
     dragSubnet: "Drag subnet",
@@ -66,6 +68,8 @@ export const UI_TEXT = {
     vpcCidrBlockPlaceholder: "10.0.0.0/16",
     subnetCidrBlockPlaceholder: "10.0.1.0/24",
     syncAzs: "Sync AZs",
+    syncAzsBannerDescription:
+      "When enabled, subnets and services added to the first AZ will be replicated across all sibling AZs in the VPC.",
     editNodeName: "Edit node name",
   },
   es: {
@@ -74,15 +78,19 @@ export const UI_TEXT = {
     newToolTooltip: "Limpiar el canvas y empezar desde cero",
     newToolMenuTitle: "Agregar nodo",
     newToolConfirmTitle: "¿Empezar desde cero?",
-    newToolConfirmDescription: "Esto eliminara todos los nodos y conexiones del canvas. Esta accion no se puede deshacer.",
+    newToolConfirmDescription:
+      "Esto eliminara todos los nodos y conexiones del canvas. Esta accion no se puede deshacer.",
     newToolConfirmAction: "Limpiar canvas",
     newToolConfirmCancel: "Cancelar",
     addTool: (toolName: string) => `Agregar ${toolName}`,
-    dragOrClickToAdd: "Arrastralo al canvas o haz click para agregarlo al centro.",
+    dragOrClickToAdd:
+      "Arrastralo al canvas o haz click para agregarlo al centro.",
     clickToAdd: "Haz click para agregarlo al centro del canvas.",
     userDescription: "Actor externo o cliente que interactua con el sistema.",
-    regionDescription: "Contenedor principal de Region AWS para VPCs y alcance de red.",
-    subnetDescription: "Segmento de red dentro de una VPC o Zona de Disponibilidad.",
+    regionDescription:
+      "Contenedor principal de Region AWS para VPCs y alcance de red.",
+    subnetDescription:
+      "Segmento de red dentro de una VPC o Zona de Disponibilidad.",
     subnet: "Subred",
     dragSubnet: "Arrastrar subred",
     region: "Region",
@@ -121,6 +129,8 @@ export const UI_TEXT = {
     vpcCidrBlockPlaceholder: "10.0.0.0/16",
     subnetCidrBlockPlaceholder: "10.0.1.0/24",
     syncAzs: "Sincronizar AZs",
+    syncAzsBannerDescription:
+      "Cuando esta activo, las subredes y servicios agregados a la primer AZ se replicaran en todas las AZs hermanas de la VPC.",
     editNodeName: "Editar nombre del nodo",
   },
 } as const;
@@ -794,7 +804,9 @@ export function getLocalizedField(
     ...field,
     label: translation?.label ?? genericTranslation?.label ?? field.label,
     placeholder:
-      translation?.placeholder ?? genericTranslation?.placeholder ?? field.placeholder,
+      translation?.placeholder ??
+      genericTranslation?.placeholder ??
+      field.placeholder,
     options: field.options?.map((option) => ({
       ...option,
       label:

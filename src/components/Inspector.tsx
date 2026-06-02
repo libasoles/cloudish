@@ -51,8 +51,15 @@ import { updateSyncedEdgeGroup, updateSyncedNodeGroup } from "@/lib/az-sync";
 export default function Inspector() {
   const locale = getBrowserLocale();
   const t = UI_TEXT[locale];
-  const { nodes, edges, inspectorOpen, setNodes, setEdges, commitGraphChange } =
-    useFlowStore();
+  const {
+    nodes,
+    edges,
+    inspectorOpen,
+    setNodes,
+    setEdges,
+    commitGraphChange,
+    toggleAzSync,
+  } = useFlowStore();
 
   const onSubnetTypeChange = useCallback(
     (nodeId: string, subnetType: SubnetType) => {
@@ -412,6 +419,19 @@ export default function Inspector() {
       (selectedNode.data as Partial<NetworkContainerNodeData>).containerType ===
         "az"
     : false;
+  const selectedAzParentId = selectedIsAz ? selectedNode?.parentId : undefined;
+  const selectedAzHasSiblings =
+    selectedIsAz &&
+    selectedAzParentId != null &&
+    nodes.filter(
+      (n) =>
+        n.parentId === selectedAzParentId &&
+        (n.data as { containerType?: string }).containerType === "az",
+    ).length > 1;
+  const selectedAzSynced = selectedIsAz
+    ? Boolean((selectedNode?.data as { synced?: boolean })?.synced)
+    : false;
+
   const selectedAwsNode =
     selectedNode?.type === "awsService"
       ? (selectedNode as AwsServiceNodeType)
@@ -657,6 +677,26 @@ export default function Inspector() {
                   onNumberOfSubnetsChange(selectedNode.id, value)
                 }
               />
+              {selectedAzHasSiblings && (
+                <>
+                  <label className="flex items-center gap-3 px-1 py-2 font-medium text-foreground mb-0">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 accent-primary"
+                      checked={selectedAzSynced}
+                      onChange={(e) =>
+                        toggleAzSync(selectedNode.id, e.target.checked)
+                      }
+                    />
+                    <span>{t.syncAzs}</span>
+                  </label>
+                  <Alert>
+                    <AlertDescription>
+                      {t.syncAzsBannerDescription}
+                    </AlertDescription>
+                  </Alert>
+                </>
+              )}
             </div>
           ) : selectedNode && selectedHasFields ? (
             <div className="space-y-4">
