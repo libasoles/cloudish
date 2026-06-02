@@ -94,6 +94,15 @@ body {
   filter: drop-shadow(0 0 4px rgb(255 255 255 / 0.35));
 }
 
+.react-flow__edge {
+  opacity: 0.58;
+  transition: opacity 120ms ease;
+}
+
+.react-flow__edge.selected {
+  opacity: 1;
+}
+
 .react-flow__edge.selected .react-flow__edge-path {
   stroke-width: 3.5;
   filter: drop-shadow(0 0 7px rgb(255 255 255 / 0.55));

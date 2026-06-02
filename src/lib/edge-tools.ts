@@ -11,8 +11,8 @@ export const EDGE_STYLE = {
 
 const EDGE_ARROW_MARKER = {
   type: MarkerType.ArrowClosed,
-  width: 25,
-  height: 25,
+  width: 16,
+  height: 16,
   color: EDGE_STROKE_COLOR,
 };
 

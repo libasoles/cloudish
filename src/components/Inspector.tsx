@@ -1,6 +1,8 @@
 import { useCallback } from "react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -15,7 +17,6 @@ import {
 } from "@/components/AwsServiceNode";
 import { type PlainTextNodeData } from "@/components/PlainTextNode";
 import ChildCountSlider from "@/components/ChildCountSlider";
-import EdgeArrowDirectionOption from "@/components/EdgeArrowDirectionOption";
 import {
   MAX_TEXT_FONT_SIZE,
   MIN_TEXT_FONT_SIZE,
@@ -54,6 +55,7 @@ import {
   type FieldValue,
 } from "@/lib/node-utils";
 import { updateSyncedEdgeGroup, updateSyncedNodeGroup } from "@/lib/az-sync";
+import { cn } from "@/lib/utils";
 
 function clampTextFontSize(fontSize: number) {
   return Math.max(MIN_TEXT_FONT_SIZE, Math.min(MAX_TEXT_FONT_SIZE, fontSize));
@@ -62,6 +64,16 @@ function clampTextFontSize(fontSize: number) {
 function getDerivedTextFontSize(node: Parameters<typeof getNodeSize>[0]) {
   const { width, height } = getNodeSize(node);
   return getTextFontSizeForNodeSize(width, height);
+}
+
+function getArrowDirectionFromToggles(
+  hasSourceArrow: boolean,
+  hasTargetArrow: boolean,
+): EdgeArrowDirection {
+  if (hasSourceArrow && hasTargetArrow) return "both";
+  if (hasSourceArrow) return "source";
+  if (hasTargetArrow) return "target";
+  return "none";
 }
 
 export default function Inspector() {
@@ -461,12 +473,12 @@ export default function Inspector() {
   const selectedEdgeArrowDirection = selectedEdge
     ? getEdgeArrowDirection(selectedEdge)
     : "none";
-  const edgeArrowDirectionLabels: Record<EdgeArrowDirection, string> = {
-    none: t.noArrows,
-    source: t.sourceArrow,
-    target: t.targetArrow,
-    both: t.bothArrows,
-  };
+  const selectedEdgeHasSourceArrow =
+    selectedEdgeArrowDirection === "source" ||
+    selectedEdgeArrowDirection === "both";
+  const selectedEdgeHasTargetArrow =
+    selectedEdgeArrowDirection === "target" ||
+    selectedEdgeArrowDirection === "both";
   const selectedIsSubnet = selectedNode ? isSubnetNode(selectedNode) : false;
   const selectedIsRegion = selectedNode
     ? isNetworkContainerNode(selectedNode) &&
@@ -578,55 +590,59 @@ export default function Inspector() {
                   }
                 />
               </label>
-              <label className="grid gap-2 text-sm font-medium text-foreground">
-                {t.arrowDirection}
-                <Select
-                  value={selectedEdgeArrowDirection}
-                  onValueChange={(value) =>
-                    onEdgeArrowDirectionChange(
-                      selectedEdge.id,
-                      value as EdgeArrowDirection,
-                    )
-                  }
-                >
-                  <SelectTrigger className="font-normal">
-                    <SelectValue>
-                      <EdgeArrowDirectionOption
-                        direction={selectedEdgeArrowDirection}
-                        label={
-                          edgeArrowDirectionLabels[selectedEdgeArrowDirection]
-                        }
-                      />
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">
-                      <EdgeArrowDirectionOption
-                        direction="none"
-                        label={t.noArrows}
-                      />
-                    </SelectItem>
-                    <SelectItem value="source">
-                      <EdgeArrowDirectionOption
-                        direction="source"
-                        label={t.sourceArrow}
-                      />
-                    </SelectItem>
-                    <SelectItem value="target">
-                      <EdgeArrowDirectionOption
-                        direction="target"
-                        label={t.targetArrow}
-                      />
-                    </SelectItem>
-                    <SelectItem value="both">
-                      <EdgeArrowDirectionOption
-                        direction="both"
-                        label={t.bothArrows}
-                      />
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </label>
+              <div className="grid gap-2 text-sm font-medium text-foreground">
+                <span>{t.arrows}</span>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    aria-label={t.sourceArrowToggle}
+                    aria-pressed={selectedEdgeHasSourceArrow}
+                    title={t.sourceArrowToggle}
+                    className={cn(
+                      "h-10 w-10",
+                      selectedEdgeHasSourceArrow &&
+                        "border-primary bg-primary/20 text-primary shadow-[0_0_0_1px_hsl(var(--primary))] hover:text-primary",
+                    )}
+                    onClick={() =>
+                      onEdgeArrowDirectionChange(
+                        selectedEdge.id,
+                        getArrowDirectionFromToggles(
+                          !selectedEdgeHasSourceArrow,
+                          selectedEdgeHasTargetArrow,
+                        ),
+                      )
+                    }
+                  >
+                    <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    aria-label={t.targetArrowToggle}
+                    aria-pressed={selectedEdgeHasTargetArrow}
+                    title={t.targetArrowToggle}
+                    className={cn(
+                      "h-10 w-10",
+                      selectedEdgeHasTargetArrow &&
+                        "border-primary bg-primary/20 text-primary shadow-[0_0_0_1px_hsl(var(--primary))] hover:text-primary",
+                    )}
+                    onClick={() =>
+                      onEdgeArrowDirectionChange(
+                        selectedEdge.id,
+                        getArrowDirectionFromToggles(
+                          selectedEdgeHasSourceArrow,
+                          !selectedEdgeHasTargetArrow,
+                        ),
+                      )
+                    }
+                  >
+                    <ArrowRight className="h-5 w-5" aria-hidden="true" />
+                  </Button>
+                </div>
+              </div>
             </div>
           ) : selectedPlainTextNode && selectedPlainTextData ? (
             <div className="space-y-4 text-sm">
