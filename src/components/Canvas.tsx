@@ -2,6 +2,7 @@ import {
   lazy,
   Suspense,
   useCallback,
+  useEffect,
   useRef,
   useState,
   type DragEvent,
@@ -18,6 +19,7 @@ import {
   type NodeTypes,
   type EdgeTypes,
   type OnNodeDrag,
+  type OnMoveEnd,
   type ReactFlowInstance,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
@@ -91,6 +93,11 @@ import {
   useRenameArchitecture,
   useSaveArchitecture,
 } from "@/hooks/useArchitectures";
+import { useUrlProjectLoad } from "@/hooks/useUrlProjectLoad";
+import {
+  clearUrlArchitectureId,
+  setUrlArchitectureId,
+} from "@/lib/url-utils";
 import {
   TooltipProvider,
 } from "@/components/ui/tooltip";
@@ -131,9 +138,12 @@ export default function Canvas() {
     edges,
     currentArchitectureId,
     projectName,
+    viewport,
+    viewportRestoreKey,
     onNodesChange,
     onEdgesChange,
     setNodes,
+    setViewport,
     setCurrentArchitectureId,
     setProjectName,
     commitGraphChange,
@@ -152,6 +162,7 @@ export default function Canvas() {
     AppEdge
   > | null>(null);
   const { user } = useAuth();
+  useUrlProjectLoad();
   const saveArchitectureMutation = useSaveArchitecture();
   const renameArchitectureMutation = useRenameArchitecture();
   const deleteArchitectureMutation = useDeleteArchitecture();
@@ -167,6 +178,7 @@ export default function Canvas() {
   const pulseIdRef = useRef(1);
   const activeDragToolRef = useRef<DragTool | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const isRestoringViewportRef = useRef(false);
 
   const handleExport = useCallback(
     async (format: ExportFormat) => {
@@ -178,14 +190,17 @@ export default function Canvas() {
   );
 
   const handleSave = useCallback(async () => {
+    const currentViewport = reactFlowInstance?.getViewport() ?? viewport;
     const result = await saveArchitectureMutation.mutateAsync({
       architectureId: currentArchitectureId,
       name: projectName?.trim() || t.defaultArchitectureName,
       nodes,
       edges,
+      viewport: currentViewport,
     });
 
     setCurrentArchitectureId(result.architectureId);
+    setUrlArchitectureId(result.architectureId);
     markSaved();
   }, [
     saveArchitectureMutation,
@@ -194,8 +209,10 @@ export default function Canvas() {
     markSaved,
     nodes,
     projectName,
+    reactFlowInstance,
     setCurrentArchitectureId,
     t.defaultArchitectureName,
+    viewport,
   ]);
 
   const handleProjectNameChange = useCallback(
@@ -226,6 +243,7 @@ export default function Canvas() {
 
   const handleReset = useCallback(() => {
     resetCanvas();
+    clearUrlArchitectureId();
   }, [resetCanvas]);
 
   const handleDelete = useCallback(async () => {
@@ -235,6 +253,7 @@ export default function Canvas() {
       architectureId: currentArchitectureId,
     });
     resetCanvas();
+    clearUrlArchitectureId();
   }, [currentArchitectureId, deleteArchitectureMutation, resetCanvas]);
 
   const handleAuthRequired = useCallback(() => {
@@ -254,16 +273,83 @@ export default function Canvas() {
   const handleInit = useCallback(
     (instance: ReactFlowInstance<AppNode, AppEdge>) => {
       setReactFlowInstance(instance);
+      if (viewport) {
+        isRestoringViewportRef.current = true;
+        void instance
+          .setViewport(viewport, { duration: 0 })
+          .finally(() => {
+            isRestoringViewportRef.current = false;
+          });
+        return;
+      }
+
       if (containerRef.current) {
-        const canvasWidth = containerRef.current.clientWidth;
-        const vp = instance.getViewport();
-        instance.setViewport(
-          { ...vp, x: vp.x - canvasWidth / 6 },
-          { duration: 0 },
-        );
+        isRestoringViewportRef.current = true;
+        void instance
+          .fitView({ padding: INITIAL_FIT_VIEW_PADDING })
+          .then(() => {
+            if (!containerRef.current) return false;
+            const canvasWidth = containerRef.current.clientWidth;
+            const vp = instance.getViewport();
+            return instance.setViewport(
+              { ...vp, x: vp.x - canvasWidth / 6 },
+              { duration: 0 },
+            );
+          })
+          .finally(() => {
+            isRestoringViewportRef.current = false;
+          });
       }
     },
-    [setReactFlowInstance],
+    [setReactFlowInstance, viewport],
+  );
+
+  const applyFallbackViewport = useCallback(async () => {
+    if (!reactFlowInstance || !containerRef.current || nodes.length === 0) {
+      return;
+    }
+
+    isRestoringViewportRef.current = true;
+    try {
+      await reactFlowInstance.fitView({ padding: INITIAL_FIT_VIEW_PADDING });
+      const canvasWidth = containerRef.current.clientWidth;
+      const vp = reactFlowInstance.getViewport();
+      await reactFlowInstance.setViewport(
+        { ...vp, x: vp.x - canvasWidth / 6 },
+        { duration: 0 },
+      );
+    } finally {
+      isRestoringViewportRef.current = false;
+    }
+  }, [nodes.length, reactFlowInstance]);
+
+  useEffect(() => {
+    if (!reactFlowInstance || viewportRestoreKey === 0) {
+      return;
+    }
+
+    if (viewport) {
+      isRestoringViewportRef.current = true;
+      void reactFlowInstance
+        .setViewport(viewport, { duration: 0 })
+        .finally(() => {
+          isRestoringViewportRef.current = false;
+        });
+      return;
+    }
+
+    void applyFallbackViewport();
+  }, [applyFallbackViewport, reactFlowInstance, viewport, viewportRestoreKey]);
+
+  const handleMoveEnd: OnMoveEnd = useCallback(
+    (_event, nextViewport) => {
+      if (isRestoringViewportRef.current) {
+        return;
+      }
+
+      setViewport(nextViewport);
+    },
+    [setViewport],
   );
 
   const onConnect: OnConnect = useCallback(
@@ -1056,6 +1142,7 @@ export default function Canvas() {
           onDragOver={onDragOver}
           onDrop={onDrop}
           onInit={handleInit}
+          onMoveEnd={handleMoveEnd}
           onNodeDrag={onNodeDrag}
           onNodeDragStop={onNodeDragStop}
           onEdgeDoubleClick={(event, edge) => {
@@ -1070,8 +1157,6 @@ export default function Canvas() {
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           defaultEdgeOptions={DEFAULT_EDGE_OPTIONS}
-          fitView
-          fitViewOptions={{ padding: INITIAL_FIT_VIEW_PADDING }}
         >
           <Controls className="max-md:!hidden" />
           <MiniMap className="max-md:!hidden" />

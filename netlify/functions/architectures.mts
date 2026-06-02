@@ -3,6 +3,7 @@ import { getAdminAuth } from "../server/firebase-admin.mts";
 import {
   ApiError,
   deleteUserArchitecture,
+  getUserArchitecture,
   listUserArchitectures,
   parseListLimit,
   renameUserArchitecture,
@@ -86,6 +87,12 @@ async function handleRequest(request: Request) {
 
   if (request.method === "GET") {
     const url = new URL(request.url);
+    const architectureId = url.searchParams.get("architectureId");
+
+    if (architectureId !== null) {
+      return jsonResponse(await getUserArchitecture(uid, architectureId));
+    }
+
     const limitParameter = url.searchParams.get("limit");
     const limit =
       limitParameter === null ? undefined : Number(limitParameter);

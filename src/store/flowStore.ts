@@ -13,7 +13,12 @@ import {
 } from "@/lib/az-sync";
 import { getNetworkContainerType, resizeContainerNode } from "@/lib/graph-utils";
 import { duplicateSelectedGraph } from "@/lib/node-duplication";
-import type { AppNode, AppEdge, ContainerDropPreview } from "@/types/flow";
+import type {
+  AppNode,
+  AppEdge,
+  ContainerDropPreview,
+  FlowViewport,
+} from "@/types/flow";
 
 const MAX_HISTORY = 100;
 
@@ -24,6 +29,8 @@ type HistoryEntry = {
 type FlowStore = {
   currentArchitectureId?: string;
   projectName: string | null;
+  viewport: FlowViewport | null;
+  viewportRestoreKey: number;
   nodes: AppNode[];
   edges: AppEdge[];
   history: HistoryEntry[];
@@ -47,10 +54,15 @@ type FlowStore = {
   loadArchitecture: (
     nodes: AppNode[],
     edges: AppEdge[],
-    metadata?: { architectureId?: string; name?: string },
+    metadata?: {
+      architectureId?: string;
+      name?: string;
+      viewport?: FlowViewport | null;
+    },
   ) => void;
   setCurrentArchitectureId: (architectureId: string | undefined) => void;
   setProjectName: (projectName: string | null) => void;
+  setViewport: (viewport: FlowViewport) => void;
   duplicateSelectedNodes: () => void;
   markSaved: () => void;
   setInspectorOpen: (updater: boolean | ((prev: boolean) => boolean)) => void;
@@ -87,9 +99,15 @@ function resizeChangedContainers(
 // onNodesChange and onEdgesChange for the same delete operation.
 let _removeSnapshotPending = false;
 
+function isSameViewport(a: FlowViewport | null, b: FlowViewport): boolean {
+  return a?.x === b.x && a.y === b.y && a.zoom === b.zoom;
+}
+
 export const useFlowStore = create<FlowStore>()((set) => ({
   currentArchitectureId: undefined,
   projectName: null,
+  viewport: null,
+  viewportRestoreKey: 0,
   nodes: initialNodes,
   edges: initialEdges,
   history: [],
@@ -180,24 +198,28 @@ export const useFlowStore = create<FlowStore>()((set) => ({
     }),
 
   resetCanvas: () =>
-    set({
+    set((s) => ({
       currentArchitectureId: undefined,
       projectName: null,
+      viewport: null,
+      viewportRestoreKey: s.viewportRestoreKey + 1,
       nodes: [],
       edges: [],
       history: [],
       isDirty: false,
-    }),
+    })),
 
   loadArchitecture: (nodes, edges, metadata) =>
-    set({
+    set((s) => ({
       currentArchitectureId: metadata?.architectureId,
       projectName: metadata?.name ?? null,
+      viewport: metadata?.viewport ?? null,
+      viewportRestoreKey: s.viewportRestoreKey + 1,
       nodes,
       edges,
       history: [],
       isDirty: false,
-    }),
+    })),
 
   setCurrentArchitectureId: (architectureId) =>
     set({ currentArchitectureId: architectureId }),
@@ -206,6 +228,12 @@ export const useFlowStore = create<FlowStore>()((set) => ({
     set((s) => {
       if (s.projectName === projectName) return {};
       return { projectName, isDirty: true };
+    }),
+
+  setViewport: (viewport) =>
+    set((s) => {
+      if (isSameViewport(s.viewport, viewport)) return {};
+      return { viewport, isDirty: true };
     }),
 
   duplicateSelectedNodes: () =>

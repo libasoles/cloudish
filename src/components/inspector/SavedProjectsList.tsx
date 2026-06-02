@@ -2,6 +2,7 @@ import { FolderOpen, Loader2 } from "lucide-react";
 import { UI_TEXT, getBrowserLocale } from "@/i18n";
 import { useFlowStore } from "@/store/flowStore";
 import { useArchitectures } from "@/hooks/useArchitectures";
+import { setUrlArchitectureId } from "@/lib/url-utils";
 
 type Props = {
   onSelect?: () => void;
@@ -51,7 +52,9 @@ export function SavedProjectsList({ onSelect }: Props = {}) {
             loadArchitecture(project.nodes, project.edges, {
               architectureId: project.architectureId,
               name: project.name,
+              viewport: project.viewport ?? null,
             });
+            setUrlArchitectureId(project.architectureId);
             onSelect?.();
           }}
         >

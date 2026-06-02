@@ -1,4 +1,4 @@
-import type { Edge, Node } from "@xyflow/react";
+import type { Edge, Node, Viewport } from "@xyflow/react";
 import type { AwsServiceNodeType } from "@/components/AwsServiceNode";
 import type { NetworkContainerNodeType } from "@/components/NetworkContainerNode";
 import type { PlainTextNodeType } from "@/components/PlainTextNode";
@@ -37,6 +37,8 @@ export type FlowPosition = {
   x: number;
   y: number;
 };
+
+export type FlowViewport = Viewport;
 
 export type AzSyncRole = "source" | "mirror";
 

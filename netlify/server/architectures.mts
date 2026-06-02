@@ -37,6 +37,10 @@ const RATE_LIMITS = {
     limit: 25,
     windowMs: ONE_MINUTE_MS,
   },
+  getUserArchitecture: {
+    limit: 60,
+    windowMs: ONE_MINUTE_MS,
+  },
 } as const;
 
 type SaveArchitectureData = {
@@ -44,6 +48,13 @@ type SaveArchitectureData = {
   name?: string;
   nodes: unknown[];
   edges: unknown[];
+  viewport?: FlowViewport | null;
+};
+
+type FlowViewport = {
+  x: number;
+  y: number;
+  zoom: number;
 };
 
 type RenameArchitectureData = {
@@ -313,6 +324,37 @@ function assertEdge(value: unknown, index: number): void {
   }
 }
 
+function parseViewport(value: unknown): FlowViewport | null | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (value === null) {
+    return null;
+  }
+
+  if (!isRecord(value)) {
+    throw new ApiError(400, "viewport must be an object.");
+  }
+
+  const { x, y, zoom } = value;
+  if (
+    typeof x !== "number" ||
+    typeof y !== "number" ||
+    typeof zoom !== "number" ||
+    !Number.isFinite(x) ||
+    !Number.isFinite(y) ||
+    !Number.isFinite(zoom)
+  ) {
+    throw new ApiError(
+      400,
+      "viewport must contain finite x, y, and zoom numbers.",
+    );
+  }
+
+  return { x, y, zoom };
+}
+
 function parseSaveArchitectureData(value: unknown): SaveArchitectureData {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new ApiError(400, "Architecture data must be an object.");
@@ -329,6 +371,7 @@ function parseSaveArchitectureData(value: unknown): SaveArchitectureData {
     name: getString(data.name, "name", MAX_ARCHITECTURE_NAME_LENGTH),
     nodes: requireArray(data.nodes, "nodes"),
     edges: requireArray(data.edges, "edges"),
+    viewport: parseViewport(data.viewport),
   };
 }
 
@@ -397,6 +440,7 @@ export async function saveUserArchitecture(uid: string, value: unknown) {
     name: data.name,
     nodes: data.nodes,
     edges: data.edges,
+    viewport: data.viewport,
   });
 
   const db = getDb();
@@ -418,6 +462,7 @@ export async function saveUserArchitecture(uid: string, value: unknown) {
       name: data.name ?? "Untitled architecture",
       nodes: data.nodes,
       edges: data.edges,
+      viewport: data.viewport ?? null,
       createdAt,
       updatedAt: FieldValue.serverTimestamp(),
     },
@@ -517,9 +562,49 @@ export async function listUserArchitectures(uid: string, limit: number) {
         name: typeof data.name === "string" ? data.name : "",
         nodes: Array.isArray(data.nodes) ? data.nodes : [],
         edges: Array.isArray(data.edges) ? data.edges : [],
+        viewport: parseViewport(data.viewport) ?? null,
         createdAt: timestampToIso(data.createdAt),
         updatedAt: timestampToIso(data.updatedAt),
       };
     }),
+  };
+}
+
+export async function getUserArchitecture(
+  uid: string,
+  architectureId: unknown,
+) {
+  await enforceRateLimit(
+    uid,
+    "getUserArchitecture",
+    RATE_LIMITS.getUserArchitecture,
+  );
+
+  const parsedArchitectureId = requireString(
+    architectureId,
+    "architectureId",
+    MAX_ARCHITECTURE_ID_LENGTH,
+  );
+
+  const documentRef = getDb()
+    .collection("users")
+    .doc(uid)
+    .collection(ARCHITECTURES_COLLECTION)
+    .doc(parsedArchitectureId);
+
+  const snapshot = await documentRef.get();
+  if (!snapshot.exists) {
+    throw new ApiError(404, "Architecture not found.");
+  }
+
+  const data = snapshot.data()!;
+  return {
+    architectureId: snapshot.id,
+    name: typeof data.name === "string" ? data.name : "",
+    nodes: Array.isArray(data.nodes) ? data.nodes : [],
+    edges: Array.isArray(data.edges) ? data.edges : [],
+    viewport: parseViewport(data.viewport) ?? null,
+    createdAt: timestampToIso(data.createdAt),
+    updatedAt: timestampToIso(data.updatedAt),
   };
 }

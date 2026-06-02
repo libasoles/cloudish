@@ -1,11 +1,12 @@
 import { auth } from "@/lib/firebase-auth";
-import type { AppEdge, AppNode } from "@/types/flow";
+import type { AppEdge, AppNode, FlowViewport } from "@/types/flow";
 
 export type SavedArchitecture = {
   architectureId: string;
   name: string;
   nodes: AppNode[];
   edges: AppEdge[];
+  viewport?: FlowViewport | null;
   createdAt: string | null;
   updatedAt: string | null;
 };
@@ -50,11 +51,13 @@ export async function saveUserArchitecture({
   name,
   nodes,
   edges,
+  viewport,
 }: {
   architectureId?: string;
   name: string;
   nodes: AppNode[];
   edges: AppEdge[];
+  viewport?: FlowViewport | null;
 }) {
   const response = await fetch("/api/architectures", {
     method: "POST",
@@ -67,6 +70,7 @@ export async function saveUserArchitecture({
       name,
       nodes,
       edges,
+      viewport,
     }),
   });
 
@@ -124,4 +128,15 @@ export async function listUserArchitectures(limit = 25) {
   });
 
   return parseApiResponse<ListArchitecturesResponse>(response);
+}
+
+export async function getArchitecture(architectureId: string) {
+  const searchParams = new URLSearchParams({ architectureId });
+  const response = await fetch(`/api/architectures?${searchParams}`, {
+    headers: {
+      Authorization: await getAuthorizationHeader(),
+    },
+  });
+
+  return parseApiResponse<SavedArchitecture>(response);
 }
