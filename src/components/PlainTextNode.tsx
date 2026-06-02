@@ -1,5 +1,4 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import { Type } from "lucide-react";
 import {
   NodeResizer,
   type Node,
@@ -88,6 +87,7 @@ export default function PlainTextNode({
     MIN_TEXT_FONT_SIZE,
     MAX_TEXT_FONT_SIZE,
   );
+  const inputWidth = `${Math.max(draft.length, t.textNodePlaceholder.length)}ch`;
 
   useLayoutEffect(() => {
     if (!isEditing) return;
@@ -208,24 +208,18 @@ export default function PlainTextNode({
         minHeight={MIN_TEXT_NODE_HEIGHT}
         maxWidth={MAX_TEXT_NODE_WIDTH}
         maxHeight={MAX_TEXT_NODE_HEIGHT}
-        keepAspectRatio
         onResize={handleResize}
         lineClassName="!border-primary/70"
         handleClassName="!h-3 !w-3 !rounded-full !border-2 !border-primary !bg-background"
       />
       {isEditing ? (
         <div className="nodrag flex h-full w-full items-center px-2 py-1">
-          <Type
-            className="mr-1.5 shrink-0 text-muted-foreground"
-            size={Math.max(14, Math.min(fontSize, 24))}
-            aria-hidden="true"
-          />
           <input
             ref={inputRef}
             autoFocus
             aria-label={t.editTextNode}
-            className="nodrag min-w-0 flex-1 border-0 border-b border-primary bg-transparent px-0 py-0 font-medium leading-tight text-foreground outline-none selection:bg-node-label-selection selection:text-node-label-selection-text"
-            style={{ fontSize }}
+            className="nodrag max-w-full border-0 border-b border-primary bg-transparent px-0 py-0 font-medium leading-tight text-foreground outline-none selection:bg-node-label-selection selection:text-node-label-selection-text"
+            style={{ fontSize, width: inputWidth }}
             value={draft}
             placeholder={t.textNodePlaceholder}
             onBlur={() => {
