@@ -1,5 +1,4 @@
-import { httpsCallable } from "firebase/functions";
-import { functions } from "@/lib/firebase-functions";
+import { auth } from "@/lib/firebase-auth";
 import type { AppEdge, AppNode } from "@/types/flow";
 
 export type SavedArchitecture = {
@@ -19,7 +18,34 @@ type ListArchitecturesResponse = {
   architectures: SavedArchitecture[];
 };
 
-export function saveUserArchitecture({
+type ApiErrorBody = {
+  error?: string;
+  details?: {
+    retryAfterSeconds?: number;
+  };
+};
+
+async function getAuthorizationHeader() {
+  const token = await auth.currentUser?.getIdToken();
+  if (!token) {
+    throw new Error("User must be signed in.");
+  }
+
+  return `Bearer ${token}`;
+}
+
+async function parseApiResponse<T>(response: Response): Promise<T> {
+  const body = (await response.json()) as T | ApiErrorBody;
+
+  if (!response.ok) {
+    const errorBody = body as ApiErrorBody;
+    throw new Error(errorBody.error ?? "Request failed.");
+  }
+
+  return body as T;
+}
+
+export async function saveUserArchitecture({
   architectureId,
   name,
   nodes,
@@ -30,24 +56,32 @@ export function saveUserArchitecture({
   nodes: AppNode[];
   edges: AppEdge[];
 }) {
-  const saveArchitecture = httpsCallable<
-    {
-      architectureId?: string;
-      name: string;
-      nodes: AppNode[];
-      edges: AppEdge[];
+  const response = await fetch("/api/architectures", {
+    method: "POST",
+    headers: {
+      Authorization: await getAuthorizationHeader(),
+      "Content-Type": "application/json",
     },
-    SaveArchitectureResponse
-  >(functions, "saveUserArchitecture");
+    body: JSON.stringify({
+      architectureId,
+      name,
+      nodes,
+      edges,
+    }),
+  });
 
-  return saveArchitecture({ architectureId, name, nodes, edges });
+  return parseApiResponse<SaveArchitectureResponse>(response);
 }
 
-export function listUserArchitectures(limit = 25) {
-  const listArchitectures = httpsCallable<
-    { limit: number },
-    ListArchitecturesResponse
-  >(functions, "listUserArchitectures");
+export async function listUserArchitectures(limit = 25) {
+  const searchParams = new URLSearchParams({
+    limit: String(limit),
+  });
+  const response = await fetch(`/api/architectures?${searchParams}`, {
+    headers: {
+      Authorization: await getAuthorizationHeader(),
+    },
+  });
 
-  return listArchitectures({ limit });
+  return parseApiResponse<ListArchitecturesResponse>(response);
 }

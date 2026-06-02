@@ -1,33 +1,5 @@
-/**
- * Import function triggers from their respective submodules:
- *
- * import {onCall} from "firebase-functions/v2/https";
- * import {onDocumentWritten} from "firebase-functions/v2/firestore";
- *
- * See a full list of supported triggers at https://firebase.google.com/docs/functions
- */
-
-import {initializeApp} from "firebase-admin/app";
-import {FieldValue, Timestamp, getFirestore} from "firebase-admin/firestore";
-import {setGlobalOptions} from "firebase-functions";
-import {HttpsError, onCall} from "firebase-functions/v2/https";
-
-// Start writing functions
-// https://firebase.google.com/docs/functions/typescript
-
-// For cost control, you can set the maximum number of containers that can be
-// running at the same time. This helps mitigate the impact of unexpected
-// traffic spikes by instead downgrading performance. This limit is a
-// per-function limit. You can override the limit for each function using the
-// `maxInstances` option in the function's options, e.g.
-// `onRequest({ maxInstances: 5 }, (req, res) => { ... })`.
-// NOTE: setGlobalOptions does not apply to functions using the v1 API. V1
-// functions should each use functions.runWith({ maxInstances: 10 }) instead.
-// In the v1 API, each function can only serve one request per container, so
-// this will be the maximum concurrent request count.
-setGlobalOptions({maxInstances: 10});
-
-initializeApp();
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
+import { getDb } from "./firebase-admin.mts";
 
 const ARCHITECTURES_COLLECTION = "architectures";
 const RATE_LIMITS_COLLECTION = "rateLimits";
@@ -59,10 +31,6 @@ const RATE_LIMITS = {
   },
 } as const;
 
-type CallableAuth = {
-  uid?: string;
-};
-
 type SaveArchitectureData = {
   architectureId?: string;
   name?: string;
@@ -80,37 +48,25 @@ type RateLimitState = {
   windowStartMs?: unknown;
 };
 
-/**
- * Returns the authenticated user id or rejects the callable request.
- *
- * @param {CallableAuth | undefined} auth Firebase Auth data from the request.
- * @return {string} The authenticated user id.
- */
-function assertSignedIn(auth?: CallableAuth): string {
-  if (!auth?.uid) {
-    throw new HttpsError(
-      "unauthenticated",
-      "You must be signed in to manage architectures.",
-    );
-  }
+export class ApiError extends Error {
+  status: number;
+  details?: unknown;
 
-  return auth.uid;
+  constructor(status: number, message: string, details?: unknown) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.details = details;
+  }
 }
 
-/**
- * Enforces a fixed-window rate limit for an authenticated callable action.
- *
- * @param {string} uid Authenticated user id.
- * @param {string} action Callable action name.
- * @param {RateLimitConfig} config Fixed-window limit settings.
- */
 async function enforceRateLimit(
   uid: string,
   action: string,
   config: RateLimitConfig,
 ): Promise<void> {
   const nowMs = Date.now();
-  const db = getFirestore();
+  const db = getDb();
   const rateLimitRef = db
     .collection("users")
     .doc(uid)
@@ -135,11 +91,9 @@ async function enforceRateLimit(
         Math.ceil((existingWindowStartMs + config.windowMs - nowMs) / 1000),
       );
 
-      throw new HttpsError(
-        "resource-exhausted",
-        "Too many requests. Please try again later.",
-        {retryAfterSeconds},
-      );
+      throw new ApiError(429, "Too many requests. Please try again later.", {
+        retryAfterSeconds,
+      });
     }
 
     transaction.set(
@@ -152,19 +106,11 @@ async function enforceRateLimit(
         windowStartMs: nextWindowStartMs,
         updatedAt: FieldValue.serverTimestamp(),
       },
-      {merge: true},
+      { merge: true },
     );
   });
 }
 
-/**
- * Reads an optional string field from callable request data.
- *
- * @param {unknown} value Candidate field value.
- * @param {string} fieldName Field name used in error messages.
- * @param {number} maxLength Maximum accepted string length.
- * @return {string | undefined} Trimmed string when present.
- */
 function getString(
   value: unknown,
   fieldName: string,
@@ -175,13 +121,13 @@ function getString(
   }
 
   if (typeof value !== "string") {
-    throw new HttpsError("invalid-argument", `${fieldName} must be a string.`);
+    throw new ApiError(400, `${fieldName} must be a string.`);
   }
 
   const trimmedValue = value.trim();
   if (trimmedValue.length > maxLength) {
-    throw new HttpsError(
-      "invalid-argument",
+    throw new ApiError(
+      400,
       `${fieldName} must be ${maxLength} characters or fewer.`,
     );
   }
@@ -189,14 +135,6 @@ function getString(
   return trimmedValue.length ? trimmedValue : undefined;
 }
 
-/**
- * Reads a required non-empty string field from callable request data.
- *
- * @param {unknown} value Candidate field value.
- * @param {string} fieldName Field name used in error messages.
- * @param {number} maxLength Maximum accepted string length.
- * @return {string} Trimmed string.
- */
 function requireString(
   value: unknown,
   fieldName: string,
@@ -205,74 +143,40 @@ function requireString(
   const stringValue = getString(value, fieldName, maxLength);
 
   if (!stringValue) {
-    throw new HttpsError(
-      "invalid-argument",
-      `${fieldName} must be a non-empty string.`,
-    );
+    throw new ApiError(400, `${fieldName} must be a non-empty string.`);
   }
 
   return stringValue;
 }
 
-/**
- * Reads a required array field from callable request data.
- *
- * @param {unknown} value Candidate field value.
- * @param {string} fieldName Field name used in error messages.
- * @return {unknown[]} The validated array.
- */
 function requireArray(value: unknown, fieldName: string): unknown[] {
   if (!Array.isArray(value)) {
-    throw new HttpsError("invalid-argument", `${fieldName} must be an array.`);
+    throw new ApiError(400, `${fieldName} must be an array.`);
   }
 
   return value;
 }
 
-/**
- * Rejects oversized callable payloads before they are written with Admin SDK.
- *
- * @param {unknown} value Payload candidate.
- */
 function assertSerializedSize(value: unknown): void {
   const serializedValue = JSON.stringify(value);
   const payloadBytes = Buffer.byteLength(serializedValue, "utf8");
 
   if (payloadBytes > MAX_SERIALIZED_ARCHITECTURE_BYTES) {
-    throw new HttpsError(
-      "invalid-argument",
-      "Architecture payload is too large.",
-    );
+    throw new ApiError(400, "Architecture payload is too large.");
   }
 }
 
-/**
- * Checks whether a value is a plain object record.
- *
- * @param {unknown} value Candidate value.
- * @return {boolean} True for object records.
- */
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-/**
- * Validates arbitrary metadata stored inside node/edge data.
- *
- * @param {unknown} value Candidate value.
- * @param {string} fieldPath Field path used in error messages.
- * @param {number} depth Current object depth.
- */
 function assertJsonLikeValue(
   value: unknown,
   fieldPath: string,
   depth = 0,
 ): void {
   if (depth > MAX_OBJECT_DEPTH) {
-    throw new HttpsError(
-      "invalid-argument",
-      `${fieldPath} is nested too deeply.`,
-    );
+    throw new ApiError(400, `${fieldPath} is nested too deeply.`);
   }
 
   if (
@@ -281,18 +185,15 @@ function assertJsonLikeValue(
     typeof value === "number"
   ) {
     if (typeof value === "number" && !Number.isFinite(value)) {
-      throw new HttpsError(
-        "invalid-argument",
-        `${fieldPath} must be a finite number.`,
-      );
+      throw new ApiError(400, `${fieldPath} must be a finite number.`);
     }
     return;
   }
 
   if (typeof value === "string") {
     if (value.length > MAX_FIELD_STRING_LENGTH) {
-      throw new HttpsError(
-        "invalid-argument",
+      throw new ApiError(
+        400,
         `${fieldPath} must be ${MAX_FIELD_STRING_LENGTH} characters or fewer.`,
       );
     }
@@ -301,10 +202,7 @@ function assertJsonLikeValue(
 
   if (Array.isArray(value)) {
     if (value.length > MAX_FIELDS_PER_OBJECT) {
-      throw new HttpsError(
-        "invalid-argument",
-        `${fieldPath} contains too many items.`,
-      );
+      throw new ApiError(400, `${fieldPath} contains too many items.`);
     }
 
     value.forEach((item, index) => {
@@ -317,16 +215,13 @@ function assertJsonLikeValue(
     const entries = Object.entries(value);
 
     if (entries.length > MAX_FIELDS_PER_OBJECT) {
-      throw new HttpsError(
-        "invalid-argument",
-        `${fieldPath} contains too many fields.`,
-      );
+      throw new ApiError(400, `${fieldPath} contains too many fields.`);
     }
 
     entries.forEach(([key, nestedValue]) => {
       if (key.length > MAX_FIELD_KEY_LENGTH) {
-        throw new HttpsError(
-          "invalid-argument",
+        throw new ApiError(
+          400,
           `${fieldPath} contains an oversized field name.`,
         );
       }
@@ -336,45 +231,30 @@ function assertJsonLikeValue(
     return;
   }
 
-  throw new HttpsError(
-    "invalid-argument",
-    `${fieldPath} contains an unsupported value.`,
-  );
+  throw new ApiError(400, `${fieldPath} contains an unsupported value.`);
 }
 
-/**
- * Validates a React Flow node shape without coupling to every client field.
- *
- * @param {unknown} value Candidate node.
- * @param {number} index Node index.
- */
 function assertNode(value: unknown, index: number): void {
   if (!isRecord(value)) {
-    throw new HttpsError(
-      "invalid-argument",
-      `nodes.${index} must be an object.`,
-    );
+    throw new ApiError(400, `nodes.${index} must be an object.`);
   }
 
   requireString(value.id, `nodes.${index}.id`, MAX_NODE_ID_LENGTH);
   getString(value.type, `nodes.${index}.type`, MAX_NODE_TYPE_LENGTH);
 
   if (!isRecord(value.position)) {
-    throw new HttpsError(
-      "invalid-argument",
-      `nodes.${index}.position must be an object.`,
-    );
+    throw new ApiError(400, `nodes.${index}.position must be an object.`);
   }
 
-  const {x, y} = value.position;
+  const { x, y } = value.position;
   if (
     typeof x !== "number" ||
     typeof y !== "number" ||
     !Number.isFinite(x) ||
     !Number.isFinite(y)
   ) {
-    throw new HttpsError(
-      "invalid-argument",
+    throw new ApiError(
+      400,
       `nodes.${index}.position must contain finite x and y numbers.`,
     );
   }
@@ -387,20 +267,14 @@ function assertNode(value: unknown, index: number): void {
     value.width !== undefined &&
     (typeof value.width !== "number" || !Number.isFinite(value.width))
   ) {
-    throw new HttpsError(
-      "invalid-argument",
-      `nodes.${index}.width must be a finite number.`,
-    );
+    throw new ApiError(400, `nodes.${index}.width must be a finite number.`);
   }
 
   if (
     value.height !== undefined &&
     (typeof value.height !== "number" || !Number.isFinite(value.height))
   ) {
-    throw new HttpsError(
-      "invalid-argument",
-      `nodes.${index}.height must be a finite number.`,
-    );
+    throw new ApiError(400, `nodes.${index}.height must be a finite number.`);
   }
 
   if (value.data !== undefined) {
@@ -408,18 +282,9 @@ function assertNode(value: unknown, index: number): void {
   }
 }
 
-/**
- * Validates a React Flow edge shape.
- *
- * @param {unknown} value Candidate edge.
- * @param {number} index Edge index.
- */
 function assertEdge(value: unknown, index: number): void {
   if (!isRecord(value)) {
-    throw new HttpsError(
-      "invalid-argument",
-      `edges.${index} must be an object.`,
-    );
+    throw new ApiError(400, `edges.${index} must be an object.`);
   }
 
   requireString(value.id, `edges.${index}.id`, MAX_EDGE_ID_LENGTH);
@@ -435,18 +300,9 @@ function assertEdge(value: unknown, index: number): void {
   }
 }
 
-/**
- * Validates the payload used to save an architecture.
- *
- * @param {unknown} value Callable request data.
- * @return {SaveArchitectureData} Normalized save payload.
- */
 function parseSaveArchitectureData(value: unknown): SaveArchitectureData {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
-    throw new HttpsError(
-      "invalid-argument",
-      "Architecture data must be an object.",
-    );
+    throw new ApiError(400, "Architecture data must be an object.");
   }
 
   const data = value as Record<string, unknown>;
@@ -463,30 +319,18 @@ function parseSaveArchitectureData(value: unknown): SaveArchitectureData {
   };
 }
 
-/**
- * Normalizes the requested list page size.
- *
- * @param {unknown} value Requested limit from callable data.
- * @return {number} A bounded list limit.
- */
-function parseListLimit(value: unknown): number {
+export function parseListLimit(value: unknown): number {
   if (value === undefined || value === null) {
     return DEFAULT_LIST_LIMIT;
   }
 
   if (typeof value !== "number" || !Number.isInteger(value)) {
-    throw new HttpsError("invalid-argument", "limit must be an integer.");
+    throw new ApiError(400, "limit must be an integer.");
   }
 
   return Math.min(Math.max(value, 1), MAX_LIST_LIMIT);
 }
 
-/**
- * Converts Firestore timestamps into API-safe ISO strings.
- *
- * @param {unknown} value Firestore timestamp candidate.
- * @return {string | null} ISO date when the value is a timestamp.
- */
 function timestampToIso(value: unknown): string | null {
   if (value instanceof Timestamp) {
     return value.toDate().toISOString();
@@ -495,25 +339,24 @@ function timestampToIso(value: unknown): string | null {
   return null;
 }
 
-export const saveUserArchitecture = onCall(async (request) => {
-  const uid = assertSignedIn(request.auth);
+export async function saveUserArchitecture(uid: string, value: unknown) {
   await enforceRateLimit(
     uid,
     "saveUserArchitecture",
     RATE_LIMITS.saveUserArchitecture,
   );
-  const data = parseSaveArchitectureData(request.data);
+  const data = parseSaveArchitectureData(value);
 
   if (data.nodes.length > MAX_NODE_COUNT) {
-    throw new HttpsError(
-      "invalid-argument",
+    throw new ApiError(
+      400,
       `Architectures can contain at most ${MAX_NODE_COUNT} nodes.`,
     );
   }
 
   if (data.edges.length > MAX_EDGE_COUNT) {
-    throw new HttpsError(
-      "invalid-argument",
+    throw new ApiError(
+      400,
       `Architectures can contain at most ${MAX_EDGE_COUNT} edges.`,
     );
   }
@@ -526,19 +369,19 @@ export const saveUserArchitecture = onCall(async (request) => {
     edges: data.edges,
   });
 
-  const db = getFirestore();
+  const db = getDb();
   const collectionRef = db
     .collection("users")
     .doc(uid)
     .collection(ARCHITECTURES_COLLECTION);
-  const documentRef = data.architectureId ?
-    collectionRef.doc(data.architectureId) :
-    collectionRef.doc();
+  const documentRef = data.architectureId
+    ? collectionRef.doc(data.architectureId)
+    : collectionRef.doc();
 
   const existingSnapshot = await documentRef.get();
-  const createdAt = existingSnapshot.exists ?
-    existingSnapshot.get("createdAt") :
-    FieldValue.serverTimestamp();
+  const createdAt = existingSnapshot.exists
+    ? existingSnapshot.get("createdAt")
+    : FieldValue.serverTimestamp();
 
   await documentRef.set(
     {
@@ -548,24 +391,21 @@ export const saveUserArchitecture = onCall(async (request) => {
       createdAt,
       updatedAt: FieldValue.serverTimestamp(),
     },
-    {merge: true},
+    { merge: true },
   );
 
   return {
     architectureId: documentRef.id,
   };
-});
+}
 
-export const listUserArchitectures = onCall(async (request) => {
-  const uid = assertSignedIn(request.auth);
+export async function listUserArchitectures(uid: string, limit: number) {
   await enforceRateLimit(
     uid,
     "listUserArchitectures",
     RATE_LIMITS.listUserArchitectures,
   );
-  const requestData = request.data as Record<string, unknown> | undefined;
-  const limit = parseListLimit(requestData?.limit);
-  const snapshot = await getFirestore()
+  const snapshot = await getDb()
     .collection("users")
     .doc(uid)
     .collection(ARCHITECTURES_COLLECTION)
@@ -587,4 +427,4 @@ export const listUserArchitectures = onCall(async (request) => {
       };
     }),
   };
-});
+}

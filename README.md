@@ -48,6 +48,7 @@ Requisitos recomendados:
 
 - Node.js 20 o superior.
 - npm.
+- [Netlify CLI](https://docs.netlify.com/cli/get-started/) para desarrollo local con las funciones del servidor.
 
 Clonar el repositorio e instalar dependencias:
 
@@ -57,27 +58,50 @@ cd poc-react-flow
 npm install
 ```
 
-Levantar el servidor de desarrollo:
+### Variables de entorno
+
+Copiar `.env.example` a `.env.local` y completar los valores:
+
+```bash
+cp .env.example .env.local
+```
+
+| Variable | Descripcion |
+| --- | --- |
+| `VITE_FIREBASE_*` | Configuracion del SDK de Firebase para el cliente |
+| `FIREBASE_SERVICE_ACCOUNT_JSON_BASE64` | Service account de Firebase Admin en base64 (solo servidor) |
+
+### Desarrollo local
+
+Para levantar la app **con las Netlify Functions** (guardado de arquitecturas, auth server-side):
+
+```bash
+netlify dev
+```
+
+Netlify CLI inicia Vite y las funciones juntos, y expone todo en `http://localhost:8888`.
+
+Si solo se trabaja en el canvas sin necesitar las funciones del servidor, se puede usar:
 
 ```bash
 npm run dev
 ```
 
-Vite mostrara una URL local, normalmente:
-
-```text
-http://localhost:5173/
-```
-
-Abrir esa URL en el navegador para usar el canvas.
+Vite mostrara una URL local, normalmente `http://localhost:5173/`. Las llamadas a `/api/architectures` daran 404 en este modo.
 
 ## Scripts
 
 ```bash
+netlify dev
+```
+
+Inicia la app con Vite y las Netlify Functions juntos (modo recomendado).
+
+```bash
 npm run dev
 ```
 
-Inicia la app en modo desarrollo con Vite.
+Inicia solo el frontend con Vite (sin funciones del servidor).
 
 ```bash
 npm run build

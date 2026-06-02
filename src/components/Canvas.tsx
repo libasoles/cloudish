@@ -173,7 +173,7 @@ export default function Canvas() {
       edges,
     });
 
-    setCurrentArchitectureId(result.data.architectureId);
+    setCurrentArchitectureId(result.architectureId);
   }, [currentArchitectureId, edges, nodes, t.defaultArchitectureName]);
 
   const handleReset = useCallback(() => {
