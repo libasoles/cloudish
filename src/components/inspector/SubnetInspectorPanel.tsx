@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -6,27 +7,67 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { UI_TEXT } from "@/i18n";
-import type { FieldValue } from "@/lib/node-utils";
-import type { AppNode, SubnetNodeData, SubnetType } from "@/types/flow";
+import { UI_TEXT, getBrowserLocale } from "@/i18n";
+import { type FieldValue } from "@/lib/node-utils";
+import { useFlowStore } from "@/store/flowStore";
+import type { AppNode, SubnetNodeData, SubnetType, NetworkContainerNodeData } from "@/types/flow";
 
-export type SubnetInspectorPanelProps = {
+type SubnetInspectorPanelProps = {
   node: AppNode;
-  containerFields: Record<string, FieldValue>;
-  onContainerFieldChange: (fieldKey: string, value: FieldValue) => void;
-  onSubnetTypeChange: (type: SubnetType) => void;
-  t: typeof UI_TEXT["en"];
 };
 
-export function SubnetInspectorPanel({
-  node,
-  containerFields,
-  onContainerFieldChange,
-  onSubnetTypeChange,
-  t,
-}: SubnetInspectorPanelProps) {
-  const subnetType =
-    ((node.data as Partial<SubnetNodeData>).subnetType ?? "Public") as SubnetType;
+export function SubnetInspectorPanel({ node }: SubnetInspectorPanelProps) {
+  const { setNodes } = useFlowStore();
+  const t = UI_TEXT[getBrowserLocale()] as typeof UI_TEXT["en"];
+
+  const data = node.data as Partial<SubnetNodeData>;
+  const subnetType = (data.subnetType ?? "Public") as SubnetType;
+  const containerFields = (node.data as NetworkContainerNodeData).fields ?? {};
+
+  const onSubnetTypeChange = useCallback(
+    (nextType: SubnetType) => {
+      const typeLabel = nextType === "Public" ? t.public : t.private;
+      setNodes((nodes) =>
+        nodes.map((n) => {
+          if (n.id !== node.id) return n;
+          const currentLabel = String(
+            (n.data as Partial<SubnetNodeData>).label ?? "",
+          );
+          const labelIndex = Number(currentLabel.match(/\d+$/)?.[0] ?? 1);
+          return {
+            ...n,
+            data: {
+              ...n.data,
+              label: t.subnetLabel(typeLabel, labelIndex),
+              subnetType: nextType,
+            },
+          };
+        }),
+      );
+    },
+    [setNodes, node.id, t],
+  );
+
+  const onContainerFieldChange = useCallback(
+    (fieldKey: string, value: FieldValue) => {
+      setNodes((nodes) =>
+        nodes.map((n) => {
+          if (n.id !== node.id) return n;
+          return {
+            ...n,
+            data: {
+              ...n.data,
+              fields: {
+                ...(n.data as { fields?: Record<string, FieldValue> }).fields,
+                [fieldKey]: value,
+              },
+            },
+          };
+        }),
+      );
+    },
+    [setNodes, node.id],
+  );
 
   return (
     <div className="space-y-4 text-sm">

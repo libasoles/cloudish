@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import {
@@ -8,23 +9,36 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { getNodeFields } from "@/data/aws-service-fields";
-import { getLocalizedField, type Locale, type UI_TEXT } from "@/i18n";
+import { getLocalizedField, UI_TEXT, getBrowserLocale } from "@/i18n";
 import { getFieldValue, getServiceId, type FieldValue } from "@/lib/node-utils";
+import { updateSyncedNodeGroup } from "@/lib/az-sync";
+import { useFlowStore } from "@/store/flowStore";
 import type { AwsServiceNodeData, AwsServiceNodeType } from "@/components/AwsServiceNode";
 
 type AwsServiceInspectorPanelProps = {
   node: AwsServiceNodeType;
-  locale: Locale;
-  onFieldChange: (fieldKey: string, value: FieldValue) => void;
-  t: typeof UI_TEXT["en"];
 };
 
-export function AwsServiceInspectorPanel({
-  node,
-  locale,
-  onFieldChange,
-  t,
-}: AwsServiceInspectorPanelProps) {
+export function AwsServiceInspectorPanel({ node }: AwsServiceInspectorPanelProps) {
+  const { setNodes } = useFlowStore();
+  const locale = getBrowserLocale();
+  const t = UI_TEXT[locale] as typeof UI_TEXT["en"];
+
+  const onFieldChange = useCallback(
+    (fieldKey: string, value: FieldValue) => {
+      setNodes((nodes) =>
+        updateSyncedNodeGroup(node.id, nodes, (n) => {
+          const data = n.data as { fields?: Record<string, FieldValue> };
+          return {
+            ...n,
+            data: { ...data, fields: { ...data.fields, [fieldKey]: value } },
+          };
+        }),
+      );
+    },
+    [setNodes, node.id],
+  );
+
   const serviceId = getServiceId(node);
   const fields = getNodeFields(serviceId);
 

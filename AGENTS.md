@@ -22,6 +22,10 @@ Prefer atomized React/JavaScript modules over large files:
 
 Don't use inline styles in JSX except for dynamic values that can't be handled via Tailwind or CSS classes (e.g., container sizes). Prefer Tailwind utility classes over CSS.
 
+## Code Style
+
+- Don't use nested ternaries — prefer `if` statements for clarity, or multiple conditions for JSX.
+
 ## React State
 
 - Do not call `setState` synchronously inside `useEffect` to derive state from props, state, or render-time calculations. Prefer computing derived values during render, or update related state in the event handler that caused the change.
@@ -35,6 +39,7 @@ This project supports two languages: **English (EN)** and **Spanish (ES)**.
 - Never hardcode UI text in components — always reference a key from `i18n.ts`.
 - When adding a new feature or UI element that contains any text, provide both the English and Spanish translations before considering the task complete.
 - Key naming: use camelCase, grouped by feature (e.g., `sidebarSearch`, `canvasDropHint`).
+- It's ok to use the ñ char in Spanish translations.
 
 ## Container Hierarchy
 

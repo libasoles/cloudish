@@ -11,6 +11,10 @@ export const MAX_TEXT_NODE_HEIGHT = Math.ceil(
   MAX_TEXT_FONT_SIZE / TEXT_FONT_HEIGHT_SCALE,
 );
 
+export function clampTextFontSize(fontSize: number) {
+  return Math.max(MIN_TEXT_FONT_SIZE, Math.min(MAX_TEXT_FONT_SIZE, fontSize));
+}
+
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }

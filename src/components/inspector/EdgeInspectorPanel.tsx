@@ -1,12 +1,16 @@
+import { useCallback } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   getEdgeArrowDirection,
+  setEdgeArrowDirection,
   type EdgeArrowDirection,
 } from "@/lib/edge-tools";
 import { cn } from "@/lib/utils";
-import type { UI_TEXT } from "@/i18n";
+import { UI_TEXT, getBrowserLocale } from "@/i18n";
+import { useFlowStore } from "@/store/flowStore";
+import { updateSyncedEdgeGroup } from "@/lib/az-sync";
 import type { AppEdge } from "@/types/flow";
 
 function getArrowDirectionFromToggles(
@@ -21,17 +25,32 @@ function getArrowDirectionFromToggles(
 
 type EdgeInspectorPanelProps = {
   edge: AppEdge;
-  onLabelChange: (label: string) => void;
-  onArrowDirectionChange: (direction: EdgeArrowDirection) => void;
-  t: typeof UI_TEXT["en"];
 };
 
-export function EdgeInspectorPanel({
-  edge,
-  onLabelChange,
-  onArrowDirectionChange,
-  t,
-}: EdgeInspectorPanelProps) {
+export function EdgeInspectorPanel({ edge }: EdgeInspectorPanelProps) {
+  const { setEdges } = useFlowStore();
+  const t = UI_TEXT[getBrowserLocale()] as typeof UI_TEXT["en"];
+
+  const onLabelChange = useCallback(
+    (label: string) => {
+      setEdges((edges) =>
+        updateSyncedEdgeGroup(edge.id, edges, (e) => ({ ...e, label })),
+      );
+    },
+    [setEdges, edge.id],
+  );
+
+  const onArrowDirectionChange = useCallback(
+    (direction: EdgeArrowDirection) => {
+      setEdges((edges) =>
+        updateSyncedEdgeGroup(edge.id, edges, (e) =>
+          setEdgeArrowDirection(e, direction),
+        ),
+      );
+    },
+    [setEdges, edge.id],
+  );
+
   const direction = getEdgeArrowDirection(edge);
   const hasSourceArrow = direction === "source" || direction === "both";
   const hasTargetArrow = direction === "target" || direction === "both";

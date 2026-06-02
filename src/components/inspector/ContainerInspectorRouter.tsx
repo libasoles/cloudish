@@ -1,44 +1,26 @@
-import type { NetworkContainerType } from "@/types/flow";
-import {
-  RegionInspectorPanel,
-  type RegionInspectorPanelProps,
-} from "@/components/inspector/RegionInspectorPanel";
-import {
-  VpcInspectorPanel,
-  type VpcInspectorPanelProps,
-} from "@/components/inspector/VpcInspectorPanel";
-import {
-  AzInspectorPanel,
-  type AzInspectorPanelProps,
-} from "@/components/inspector/AzInspectorPanel";
-import {
-  SubnetInspectorPanel,
-  type SubnetInspectorPanelProps,
-} from "@/components/inspector/SubnetInspectorPanel";
+import type { AppNode, NetworkContainerType } from "@/types/flow";
+import { RegionInspectorPanel } from "@/components/inspector/RegionInspectorPanel";
+import { VpcInspectorPanel } from "@/components/inspector/VpcInspectorPanel";
+import { AzInspectorPanel } from "@/components/inspector/AzInspectorPanel";
+import { SubnetInspectorPanel } from "@/components/inspector/SubnetInspectorPanel";
 
 type ContainerRouterProps = {
+  node: AppNode;
   containerType: NetworkContainerType;
-  regionProps: RegionInspectorPanelProps;
-  vpcProps: VpcInspectorPanelProps;
-  azProps: AzInspectorPanelProps;
-  subnetProps: SubnetInspectorPanelProps;
 };
 
 export function ContainerInspectorRouter({
+  node,
   containerType,
-  regionProps,
-  vpcProps,
-  azProps,
-  subnetProps,
 }: ContainerRouterProps) {
   switch (containerType) {
     case "region":
-      return <RegionInspectorPanel {...regionProps} />;
+      return <RegionInspectorPanel node={node} />;
     case "vpc":
-      return <VpcInspectorPanel {...vpcProps} />;
+      return <VpcInspectorPanel node={node} />;
     case "az":
-      return <AzInspectorPanel {...azProps} />;
+      return <AzInspectorPanel node={node} />;
     case "subnet":
-      return <SubnetInspectorPanel {...subnetProps} />;
+      return <SubnetInspectorPanel node={node} />;
   }
 }

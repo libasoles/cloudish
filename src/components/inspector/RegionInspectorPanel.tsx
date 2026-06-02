@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import ChildCountSlider from "@/components/ChildCountSlider";
 import {
   Select,
@@ -6,30 +7,57 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { UI_TEXT } from "@/i18n";
-import type { FieldValue } from "@/lib/node-utils";
+import { UI_TEXT, getBrowserLocale } from "@/i18n";
+import { getNetworkContainerType } from "@/lib/graph-utils";
+import { setManagedChildCount } from "@/lib/network-topology/managed-children";
+import { useFlowStore } from "@/store/flowStore";
 import type { AppNode, NetworkContainerNodeData } from "@/types/flow";
 
-export type RegionInspectorPanelProps = {
+type RegionInspectorPanelProps = {
   node: AppNode;
-  childCount: number;
-  containerFields: Record<string, FieldValue>;
-  onChildCountChange: (count: number) => void;
-  onContainerFieldChange: (fieldKey: string, value: FieldValue) => void;
-  onRegionChange: (region: string) => void;
-  t: typeof UI_TEXT["en"];
 };
 
-export function RegionInspectorPanel({
-  node,
-  childCount,
-  onChildCountChange,
-  onRegionChange,
-  t,
-}: RegionInspectorPanelProps) {
-  const currentRegion =
-    ((node.data as NetworkContainerNodeData).fields?.region as string) ??
-    "us-east-1";
+export function RegionInspectorPanel({ node }: RegionInspectorPanelProps) {
+  const { nodes, setNodes, commitGraphChange } = useFlowStore();
+  const t = UI_TEXT[getBrowserLocale()] as typeof UI_TEXT["en"];
+
+  const containerFields = (node.data as NetworkContainerNodeData).fields ?? {};
+  const currentRegion = (containerFields.region as string) ?? "us-east-1";
+  const childVpcCount = nodes.filter(
+    (n) => n.parentId === node.id && getNetworkContainerType(n) === "vpc",
+  ).length;
+
+  const onRegionChange = useCallback(
+    (region: string) => {
+      setNodes((nodes) =>
+        nodes.map((n) =>
+          n.id === node.id
+            ? {
+                ...n,
+                data: {
+                  ...n.data,
+                  label: `${t.region} ${region}`,
+                  fields: {
+                    ...(n.data as { fields?: Record<string, unknown> }).fields,
+                    region,
+                  },
+                },
+              }
+            : n,
+        ),
+      );
+    },
+    [setNodes, node.id, t.region],
+  );
+
+  const onChildCountChange = useCallback(
+    (count: number) => {
+      commitGraphChange((state) =>
+        setManagedChildCount(node.id, count, state.nodes, state.edges, t.subnetLabel),
+      );
+    },
+    [commitGraphChange, node.id, t.subnetLabel],
+  );
 
   return (
     <div className="space-y-4 text-sm">
@@ -64,7 +92,7 @@ export function RegionInspectorPanel({
       </label>
       <ChildCountSlider
         label={t.numberOfVPCs}
-        value={childCount}
+        value={childVpcCount}
         onChange={onChildCountChange}
       />
     </div>

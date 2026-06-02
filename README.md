@@ -2,7 +2,7 @@
 
 [![Netlify Status](https://api.netlify.com/api/v1/badges/4a16a854-293e-4b5d-88b5-dda02dc1caac/deploy-status)](https://app.netlify.com/projects/cloudish/deploys)
 
-Herramienta visual para hacer drafts de arquitecturas en AWS. Sirve para bajar rapidamente una idea a un canvas, discutirla con otras personas, mover componentes, conectar servicios, ordenar la topologia de red y exportar un primer scaffold de infraestructura.
+Herramienta visual para hacer drafts de arquitecturas en AWS. Sirve para bajar rapidamente una idea a un canvas, y exportar un primer scaffold de infraestructura.
 
 Demo: <https://cloudish.netlify.app/>
 
@@ -140,7 +140,7 @@ Estos archivos son scaffolds generados desde el canvas. Deben revisarse antes de
 
 ## Estado Del Proyecto
 
-Es un POC en evolucion. El foco esta en experimentar con la experiencia de disenar arquitecturas cloud asistidas por agentes de IA, manteniendo el codigo suficientemente modular para seguir iterando:
+Es un POC en evolucion. El foco esta en experimentar con la experiencia de diseñar arquitecturas cloud asistidas por agentes de IA, manteniendo el codigo suficientemente modular para seguir iterando:
 
 - Componentes en `src/components`
 - Datos estaticos en `src/data`
