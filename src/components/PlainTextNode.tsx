@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import {
   NodeResizer,
   type Node,
@@ -23,6 +23,11 @@ const TEXT_HORIZONTAL_PADDING = 16;
 const TEXT_VERTICAL_PADDING = 8;
 const CARET_SPACE = 4;
 const TEXT_MEASUREMENT_BUFFER = 8;
+const EDITING_INPUT_HORIZONTAL_PADDING = 12;
+const EDITING_INPUT_BORDER_WIDTH = 2;
+const EDITING_INPUT_SCROLL_BUFFER = 8;
+const EDITING_PLACEHOLDER_BUFFER = 4;
+const REAL_INPUT_OVERFLOW_BUFFER = 2;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -49,6 +54,44 @@ function getFittedTextNodeSize(text: string, fontSize: number) {
       Math.ceil(
         measureTextWidth(text, fontSize) +
           TEXT_HORIZONTAL_PADDING +
+          TEXT_MEASUREMENT_BUFFER,
+      ),
+      MIN_TEXT_NODE_WIDTH,
+    ),
+    height: clamp(
+      Math.ceil(fontSize * 1.15 + TEXT_VERTICAL_PADDING),
+      MIN_TEXT_NODE_HEIGHT,
+      MAX_TEXT_NODE_HEIGHT,
+    ),
+  };
+}
+
+function getEditingInputContentWidth(
+  text: string,
+  placeholder: string,
+  fontSize: number,
+) {
+  const placeholderBuffer = text ? 0 : EDITING_PLACEHOLDER_BUFFER;
+
+  return Math.ceil(
+    measureTextWidth(text || placeholder, fontSize) +
+      CARET_SPACE +
+      EDITING_INPUT_SCROLL_BUFFER +
+      placeholderBuffer,
+  );
+}
+
+function getEditingTextNodeSizeForInputWidth(
+  inputContentWidth: number,
+  fontSize: number,
+) {
+  return {
+    width: Math.max(
+      Math.ceil(
+        inputContentWidth +
+          TEXT_HORIZONTAL_PADDING +
+          EDITING_INPUT_HORIZONTAL_PADDING +
+          EDITING_INPUT_BORDER_WIDTH +
           TEXT_MEASUREMENT_BUFFER,
       ),
       MIN_TEXT_NODE_WIDTH,
@@ -117,15 +160,60 @@ export default function PlainTextNode({
   const displayTextRef = useRef<HTMLSpanElement>(null);
   const pendingCaretOffsetRef = useRef<number | null>(null);
   const skipNextBlurRef = useRef(false);
+  const editingSyncedRef = useRef(false);
   const t = UI_TEXT[getBrowserLocale()];
   const fontSize = clamp(
     data.fontSize ?? getTextFontSizeForNodeSize(width, height),
     MIN_TEXT_FONT_SIZE,
     MAX_TEXT_FONT_SIZE,
   );
-  const inputWidth = `${Math.ceil(
-    measureTextWidth(draft || t.textNodePlaceholder, fontSize) + CARET_SPACE,
-  )}px`;
+  const measuredInputWidth = getEditingInputContentWidth(
+    draft,
+    t.textNodePlaceholder,
+    fontSize,
+  );
+  const [inputContentWidth, setInputContentWidth] =
+    useState(measuredInputWidth);
+  const inputWidth = `${Math.max(inputContentWidth, measuredInputWidth)}px`;
+
+  const resizeNodeForInputWidth = useCallback(
+    (nextInputWidth: number) => {
+      const nextSize = getEditingTextNodeSizeForInputWidth(
+        nextInputWidth,
+        fontSize,
+      );
+
+      setNodes((nodes) =>
+        nodes.map((node) => {
+          if (node.id !== id) {
+            return node;
+          }
+
+          return {
+            ...node,
+            width: nextSize.width,
+            height: nextSize.height,
+            style: {
+              ...node.style,
+              width: nextSize.width,
+              height: nextSize.height,
+            },
+          };
+        }),
+      );
+    },
+    [fontSize, id, setNodes],
+  );
+
+  useLayoutEffect(() => {
+    if (!isEditing) {
+      editingSyncedRef.current = false;
+      return;
+    }
+    if (editingSyncedRef.current) return;
+    editingSyncedRef.current = true;
+    resizeNodeForInputWidth(inputContentWidth);
+  }, [isEditing, resizeNodeForInputWidth, inputContentWidth]);
 
   useLayoutEffect(() => {
     if (!isEditing) return;
@@ -151,6 +239,29 @@ export default function PlainTextNode({
     };
   }, [isEditing]);
 
+  useLayoutEffect(() => {
+    if (!isEditing || !inputRef.current) return;
+
+    const overflowWidth =
+      inputRef.current.scrollWidth - inputRef.current.clientWidth;
+
+    if (overflowWidth <= 1) {
+      inputRef.current.scrollLeft = 0;
+      return;
+    }
+
+    const nextInputWidth =
+      inputContentWidth + overflowWidth + REAL_INPUT_OVERFLOW_BUFFER;
+    setInputContentWidth(nextInputWidth);
+    resizeNodeForInputWidth(nextInputWidth);
+  }, [
+    draft,
+    inputContentWidth,
+    inputWidth,
+    isEditing,
+    resizeNodeForInputWidth,
+  ]);
+
   function updateText(nextText: string) {
     setIsEditing(false);
 
@@ -158,7 +269,9 @@ export default function PlainTextNode({
       if (!nextText) {
         return {
           nodes: nodes.filter((node) => node.id !== id),
-          edges: edges.filter((edge) => edge.source !== id && edge.target !== id),
+          edges: edges.filter(
+            (edge) => edge.source !== id && edge.target !== id,
+          ),
         };
       }
 
@@ -196,6 +309,16 @@ export default function PlainTextNode({
     updateText(draft.trim());
   }
 
+  function resizeNodeForDraft(nextDraft: string) {
+    const nextInputWidth = getEditingInputContentWidth(
+      nextDraft,
+      t.textNodePlaceholder,
+      fontSize,
+    );
+    setInputContentWidth(nextInputWidth);
+    resizeNodeForInputWidth(nextInputWidth);
+  }
+
   function cancel() {
     skipNextBlurRef.current = true;
     setDraft(data.text);
@@ -203,7 +326,26 @@ export default function PlainTextNode({
 
     if (!data.text.trim()) {
       updateText("");
+      return;
     }
+
+    const nextSize = getFittedTextNodeSize(data.text, fontSize);
+    setNodes((nodes) =>
+      nodes.map((node) =>
+        node.id === id
+          ? {
+              ...node,
+              width: nextSize.width,
+              height: nextSize.height,
+              style: {
+                ...node.style,
+                width: nextSize.width,
+                height: nextSize.height,
+              },
+            }
+          : node,
+      ),
+    );
   }
 
   function handleResize(_event: unknown, params: ResizeParamsWithDirection) {
@@ -246,6 +388,13 @@ export default function PlainTextNode({
             )
           : null;
         setDraft(data.text);
+        setInputContentWidth(
+          getEditingInputContentWidth(
+            data.text,
+            t.textNodePlaceholder,
+            fontSize,
+          ),
+        );
         setIsEditing(true);
       }}
       onPointerDown={(event) => {
@@ -279,7 +428,11 @@ export default function PlainTextNode({
 
               commit();
             }}
-            onChange={(event) => setDraft(event.target.value)}
+            onChange={(event) => {
+              const nextDraft = event.target.value;
+              setDraft(nextDraft);
+              resizeNodeForDraft(nextDraft);
+            }}
             onDoubleClick={(event) => event.stopPropagation()}
             onKeyDown={(event) => {
               if (event.key === "Enter") {

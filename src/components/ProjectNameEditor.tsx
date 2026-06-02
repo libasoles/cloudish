@@ -120,8 +120,9 @@ export function ProjectNameEditor({ value, onChange }: ProjectNameEditorProps) {
           <div className="inline-grid min-w-0 max-w-full align-top">
             <input
               ref={inputRef}
+              size={1}
               className={cn(
-                "nodrag col-start-1 row-start-1 w-full min-w-2 border-0 border-b border-primary/70 bg-background/80 px-0 pb-1 pt-0",
+                "nodrag col-start-1 row-start-1 w-full min-w-0 border-0 border-b border-primary/70 bg-background/80 px-0 pb-1 pt-0",
                 "text-lg font-medium leading-tight text-foreground/85 shadow-none outline-none",
                 "selection:bg-node-label-selection selection:text-node-label-selection-text",
               )}

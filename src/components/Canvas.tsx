@@ -1085,6 +1085,9 @@ export default function Canvas() {
         return;
       }
 
+      event.preventDefault();
+      event.stopPropagation();
+
       addToolAtPosition(
         { type: "text" },
         reactFlowInstance.screenToFlowPosition({
@@ -1127,7 +1130,7 @@ export default function Canvas() {
       <div
         ref={containerRef}
         style={{ flex: 1, position: "relative" }}
-        onDoubleClick={handlePaneDoubleClick}
+        onDoubleClickCapture={handlePaneDoubleClick}
       >
         <ReactFlow
           className="dark"
