@@ -27,3 +27,7 @@ TODO.md
 
 # Temporary Playwright/debug scripts
 *.mjs
+
+.env
+.env.*
+!.env.example
