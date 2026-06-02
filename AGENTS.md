@@ -20,6 +20,8 @@ Prefer atomized React/JavaScript modules over large files:
 
 **Styling**: `src/index.css` defines a CSS custom-property design system (colors, typography, shadows) with automatic dark-mode via `@media (prefers-color-scheme: dark)`. The React Flow stylesheet is imported directly in `App.tsx` from `@xyflow/react/dist/style.css`.
 
+Don't use inline styles in JSX except for dynamic values that can't be handled via Tailwind or CSS classes (e.g., container sizes). Prefer Tailwind utility classes over CSS.
+
 ## React State
 
 - Do not call `setState` synchronously inside `useEffect` to derive state from props, state, or render-time calculations. Prefer computing derived values during render, or update related state in the event handler that caused the change.

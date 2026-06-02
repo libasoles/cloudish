@@ -4,10 +4,7 @@ import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
 
 export default function App() {
   return (
-    <div
-      className="bg-background text-foreground"
-      style={{ display: "flex", width: "100vw", height: "100vh" }}
-    >
+    <div className="bg-background text-foreground flex w-dvh h-dvh">
       <KeyboardShortcuts />
       <Canvas />
       <Inspector />
