@@ -3,13 +3,13 @@ import { getAuth } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
+  apiKey: 'AIzaSyAt7-SXfHqrGU6PjBVMOLa55PP92iX68t8',
+  authDomain: 'cloudish-feb6a.firebaseapp.com',
+  projectId: 'cloudish-feb6a',
+  storageBucket: 'cloudish-feb6a.firebasestorage.app',
+  messagingSenderId: '830207728208',
+  appId: '1:830207728208:web:c010c0227a04b32b71cf55',
+  measurementId: 'G-XG3SLM1YD8',
 }
 
 export const firebaseApp = initializeApp(firebaseConfig)
