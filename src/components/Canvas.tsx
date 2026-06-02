@@ -98,9 +98,6 @@ import {
   clearUrlArchitectureId,
   setUrlArchitectureId,
 } from "@/lib/url-utils";
-import {
-  TooltipProvider,
-} from "@/components/ui/tooltip";
 import { HoverOnlyTooltip } from "@/components/HoverOnlyTooltip";
 
 const nodeTypes: NodeTypes = {
@@ -1100,7 +1097,7 @@ export default function Canvas() {
   );
 
   return (
-    <TooltipProvider delayDuration={250}>
+    <>
       <DragDropSidebar
         labels={{
           dragAndDrop: t.dragAndDrop,
@@ -1259,6 +1256,6 @@ export default function Canvas() {
           )}
         </div>
       </div>
-    </TooltipProvider>
+    </>
   );
 }

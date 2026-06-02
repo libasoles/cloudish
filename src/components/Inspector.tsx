@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TooltipProvider } from "@/components/ui/tooltip";
 import { HoverOnlyTooltip } from "@/components/HoverOnlyTooltip";
 import {
   type AwsServiceNodeType,
@@ -160,39 +159,37 @@ export default function Inspector() {
                 </span>
               </p>
               <div className="flex shrink-0 items-center gap-0.5">
-                <TooltipProvider>
-                  <Popover open={savedProjectsOpen} onOpenChange={setSavedProjectsOpen}>
-                    <HoverOnlyTooltip
-                      content={t.savedProjects}
-                      side="top"
-                      disabled={savedProjectsOpen}
-                    >
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          disabled={archLoading || archCount === 0}
-                        >
-                          <FolderOpen className="h-4 w-4" />
-                        </Button>
-                      </PopoverTrigger>
-                    </HoverOnlyTooltip>
-                    <PopoverContent side="top" align="end" className="p-3">
-                      <SavedProjectsList onSelect={() => setSavedProjectsOpen(false)} />
-                    </PopoverContent>
-                  </Popover>
-                  <HoverOnlyTooltip content={t.signOut} side="top">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => signOutUser()}
-                    >
-                      <LogOut className="h-4 w-4" />
-                    </Button>
+                <Popover open={savedProjectsOpen} onOpenChange={setSavedProjectsOpen}>
+                  <HoverOnlyTooltip
+                    content={t.savedProjects}
+                    side="top"
+                    disabled={savedProjectsOpen}
+                  >
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        disabled={archLoading || archCount === 0}
+                      >
+                        <FolderOpen className="h-4 w-4" />
+                      </Button>
+                    </PopoverTrigger>
                   </HoverOnlyTooltip>
-                </TooltipProvider>
+                  <PopoverContent side="top" align="end" className="p-3">
+                    <SavedProjectsList onSelect={() => setSavedProjectsOpen(false)} />
+                  </PopoverContent>
+                </Popover>
+                <HoverOnlyTooltip content={t.signOut} side="top">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => signOutUser()}
+                  >
+                    <LogOut className="h-4 w-4" />
+                  </Button>
+                </HoverOnlyTooltip>
               </div>
             </div>
           ) : (
