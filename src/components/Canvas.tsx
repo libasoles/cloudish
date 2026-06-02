@@ -24,6 +24,7 @@ import { PanelRightClose, PanelRightOpen } from "lucide-react";
 import DragDropSidebar from "@/components/DragDropSidebar";
 import NewToolMenu from "@/components/NewToolMenu";
 import ExportMenu from "@/components/ExportMenu";
+import SaveArchitectureButton from "@/components/SaveArchitectureButton";
 import AwsServiceNode from "@/components/AwsServiceNode";
 import NetworkContainerNode from "@/components/NetworkContainerNode";
 import PlainTextNode from "@/components/PlainTextNode";
@@ -77,6 +78,7 @@ import {
 import { getAwsServiceNodeData } from "@/lib/node-utils";
 import { EDGE_STYLE } from "@/lib/edge-tools";
 import { exportFlow, downloadExport } from "@/lib/export";
+import { saveUserArchitecture } from "@/lib/architectures";
 import {
   Tooltip,
   TooltipContent,
@@ -133,6 +135,9 @@ export default function Canvas() {
     AppNode,
     AppEdge
   > | null>(null);
+  const [currentArchitectureId, setCurrentArchitectureId] = useState<
+    string | undefined
+  >();
   const containerIdRef = useRef(1);
   const subnetIdRef = useRef(1);
   const serviceIdRef = useRef(1);
@@ -149,6 +154,22 @@ export default function Canvas() {
     },
     [nodes],
   );
+
+  const handleSave = useCallback(async () => {
+    const result = await saveUserArchitecture({
+      architectureId: currentArchitectureId,
+      name: t.defaultArchitectureName,
+      nodes,
+      edges,
+    });
+
+    setCurrentArchitectureId(result.data.architectureId);
+  }, [currentArchitectureId, edges, nodes, t.defaultArchitectureName]);
+
+  const handleReset = useCallback(() => {
+    setCurrentArchitectureId(undefined);
+    resetCanvas();
+  }, [resetCanvas]);
 
   const handleInit = useCallback(
     (instance: ReactFlowInstance<AppNode, AppEdge>) => {
@@ -979,7 +1000,18 @@ export default function Canvas() {
               newToolConfirmAction: t.newToolConfirmAction,
               newToolConfirmCancel: t.newToolConfirmCancel,
             }}
-            onReset={resetCanvas}
+            onReset={handleReset}
+          />
+          <SaveArchitectureButton
+            disabled={nodes.length === 0}
+            labels={{
+              saveArchitecture: t.saveArchitecture,
+              saveArchitectureTooltip: t.saveArchitectureTooltip,
+              saveArchitectureSaving: t.saveArchitectureSaving,
+              saveArchitectureSaved: t.saveArchitectureSaved,
+              saveArchitectureFailed: t.saveArchitectureFailed,
+            }}
+            onSave={handleSave}
           />
           <ExportMenu
             disabled={nodes.length === 0}
