@@ -4,6 +4,8 @@
 
 Herramienta visual para hacer drafts de arquitecturas en AWS. Sirve para bajar rapidamente una idea a un canvas, discutirla con otras personas, mover componentes, conectar servicios, ordenar la topologia de red y exportar un primer scaffold de infraestructura.
 
+Demo: <https://cloudish.netlify.app/>
+
 Este proyecto fue construido como un experimento de **vibe coding** con agentes de IA, principalmente **Codex** y **Claude**. La intencion no es presentar una herramienta de produccion terminada, sino explorar que tan lejos se puede llegar iterando con agentes sobre una app real: UI, estado, drag-and-drop, reglas de jerarquia, exportadores y documentacion.
 
 ![Canvas de drafts de arquitectura AWS](public/screenshots/app-canvas.png)
