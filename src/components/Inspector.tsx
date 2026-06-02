@@ -1,13 +1,19 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { type AwsServiceNodeType, type AwsServiceNodeData } from "@/components/AwsServiceNode";
+import {
+  type AwsServiceNodeType,
+  type AwsServiceNodeData,
+} from "@/components/AwsServiceNode";
 import { type PlainTextNodeData } from "@/components/PlainTextNode";
 import { UI_TEXT, getBrowserLocale } from "@/i18n";
 import { useFlowStore } from "@/store/flowStore";
 import { useAuth } from "@/hooks/useAuth";
 import { signOutUser } from "@/lib/auth";
-import { isNetworkContainerNode, getNetworkContainerType } from "@/lib/graph-utils";
+import {
+  isNetworkContainerNode,
+  getNetworkContainerType,
+} from "@/lib/graph-utils";
 import { getServiceDescription } from "@/lib/node-utils";
 import { ContainerInspectorRouter } from "@/components/inspector/ContainerInspectorRouter";
 import { EdgeInspectorPanel } from "@/components/inspector/EdgeInspectorPanel";
@@ -17,11 +23,13 @@ import AuthDialog from "@/components/AuthDialog";
 
 export default function Inspector() {
   const locale = getBrowserLocale();
-  const t = UI_TEXT[locale] as typeof UI_TEXT["en"];
+  const t = UI_TEXT[locale] as (typeof UI_TEXT)["en"];
   const { nodes, edges, inspectorOpen } = useFlowStore();
   const { user } = useAuth();
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
-  const [authInitialMode, setAuthInitialMode] = useState<"login" | "register">("login");
+  const [authInitialMode, setAuthInitialMode] = useState<"login" | "register">(
+    "login",
+  );
 
   if (!inspectorOpen) return null;
 
@@ -108,16 +116,16 @@ export default function Inspector() {
           )}
         </div>
         {selectedAwsNode && selectedAwsDescription && (
-          <div className="mt-4 border-t border-border pt-4 text-sm leading-5 text-muted-foreground">
+          <div className="my-4 border-t border-border pt-4 text-sm leading-5 text-muted-foreground">
             {selectedAwsDescription}
           </div>
         )}
         <div className="mt-auto border-t border-border pt-3">
           {user ? (
             <div className="flex items-center justify-between gap-2">
-              <p className="truncate text-xs text-muted-foreground">
-                {t.authSignedInAs}{" "}
-                <span className="font-medium text-foreground">
+              <p className="min-w-0 text-xs text-muted-foreground">
+                <span className="block">{t.authSignedInAs}</span>
+                <span className="block truncate font-medium text-foreground">
                   {user.email}
                 </span>
               </p>
