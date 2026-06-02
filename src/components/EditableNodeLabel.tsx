@@ -76,7 +76,6 @@ export default function EditableNodeLabel({
         WebkitBoxOrient: "vertical",
         overflowWrap: "anywhere",
       }}
-      title={value}
       onDoubleClick={(event) => {
         event.stopPropagation();
         setDraft(value);

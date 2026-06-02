@@ -25,6 +25,14 @@ const RATE_LIMITS = {
     limit: 10,
     windowMs: ONE_MINUTE_MS,
   },
+  renameUserArchitecture: {
+    limit: 20,
+    windowMs: ONE_MINUTE_MS,
+  },
+  deleteUserArchitecture: {
+    limit: 10,
+    windowMs: ONE_MINUTE_MS,
+  },
   listUserArchitectures: {
     limit: 25,
     windowMs: ONE_MINUTE_MS,
@@ -36,6 +44,11 @@ type SaveArchitectureData = {
   name?: string;
   nodes: unknown[];
   edges: unknown[];
+};
+
+type RenameArchitectureData = {
+  architectureId: string;
+  name: string;
 };
 
 type RateLimitConfig = {
@@ -319,6 +332,23 @@ function parseSaveArchitectureData(value: unknown): SaveArchitectureData {
   };
 }
 
+function parseRenameArchitectureData(value: unknown): RenameArchitectureData {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new ApiError(400, "Architecture data must be an object.");
+  }
+
+  const data = value as Record<string, unknown>;
+
+  return {
+    architectureId: requireString(
+      data.architectureId,
+      "architectureId",
+      MAX_ARCHITECTURE_ID_LENGTH,
+    ),
+    name: requireString(data.name, "name", MAX_ARCHITECTURE_NAME_LENGTH),
+  };
+}
+
 export function parseListLimit(value: unknown): number {
   if (value === undefined || value === null) {
     return DEFAULT_LIST_LIMIT;
@@ -393,6 +423,71 @@ export async function saveUserArchitecture(uid: string, value: unknown) {
     },
     { merge: true },
   );
+
+  return {
+    architectureId: documentRef.id,
+  };
+}
+
+export async function renameUserArchitecture(uid: string, value: unknown) {
+  await enforceRateLimit(
+    uid,
+    "renameUserArchitecture",
+    RATE_LIMITS.renameUserArchitecture,
+  );
+  const data = parseRenameArchitectureData(value);
+
+  const documentRef = getDb()
+    .collection("users")
+    .doc(uid)
+    .collection(ARCHITECTURES_COLLECTION)
+    .doc(data.architectureId);
+
+  const existingSnapshot = await documentRef.get();
+  if (!existingSnapshot.exists) {
+    throw new ApiError(404, "Architecture not found.");
+  }
+
+  await documentRef.set(
+    {
+      name: data.name,
+      updatedAt: FieldValue.serverTimestamp(),
+    },
+    { merge: true },
+  );
+
+  return {
+    architectureId: documentRef.id,
+  };
+}
+
+export async function deleteUserArchitecture(
+  uid: string,
+  architectureId: unknown,
+) {
+  await enforceRateLimit(
+    uid,
+    "deleteUserArchitecture",
+    RATE_LIMITS.deleteUserArchitecture,
+  );
+  const parsedArchitectureId = requireString(
+    architectureId,
+    "architectureId",
+    MAX_ARCHITECTURE_ID_LENGTH,
+  );
+
+  const documentRef = getDb()
+    .collection("users")
+    .doc(uid)
+    .collection(ARCHITECTURES_COLLECTION)
+    .doc(parsedArchitectureId);
+
+  const existingSnapshot = await documentRef.get();
+  if (!existingSnapshot.exists) {
+    throw new ApiError(404, "Architecture not found.");
+  }
+
+  await documentRef.delete();
 
   return {
     architectureId: documentRef.id,

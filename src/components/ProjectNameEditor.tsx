@@ -1,10 +1,6 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { Pencil } from "lucide-react";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { HoverOnlyTooltip } from "@/components/HoverOnlyTooltip";
 import { UI_TEXT, getBrowserLocale } from "@/i18n";
 import { cn } from "@/lib/utils";
 
@@ -172,22 +168,19 @@ export function ProjectNameEditor({ value, onChange }: ProjectNameEditorProps) {
             <span ref={displayTextRef}>{displayName}</span>
           </button>
         )}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              className="inline-flex size-7 shrink-0 items-center justify-center rounded-sm text-foreground/60 outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-              aria-label={t.editProjectName}
-              onMouseDown={(event) => {
-                if (isEditing) event.preventDefault();
-              }}
-              onClick={() => beginEditing({ selectAll: true })}
-            >
-              <Pencil className="size-3.5" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">{t.editProjectName}</TooltipContent>
-        </Tooltip>
+        <HoverOnlyTooltip content={t.editProjectName} side="bottom">
+          <button
+            type="button"
+            className="inline-flex size-7 shrink-0 items-center justify-center rounded-sm text-foreground/60 outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            aria-label={t.editProjectName}
+            onMouseDown={(event) => {
+              if (isEditing) event.preventDefault();
+            }}
+            onClick={() => beginEditing({ selectAll: true })}
+          >
+            <Pencil className="size-3.5" />
+          </button>
+        </HoverOnlyTooltip>
       </div>
     </div>
   );

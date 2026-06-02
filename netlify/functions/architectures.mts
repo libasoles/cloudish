@@ -2,8 +2,10 @@ import type { Config } from "@netlify/functions";
 import { getAdminAuth } from "../server/firebase-admin.mts";
 import {
   ApiError,
+  deleteUserArchitecture,
   listUserArchitectures,
   parseListLimit,
+  renameUserArchitecture,
   saveUserArchitecture,
 } from "../server/architectures.mts";
 
@@ -77,6 +79,11 @@ async function handleRequest(request: Request) {
     return jsonResponse(await saveUserArchitecture(uid, body));
   }
 
+  if (request.method === "PATCH") {
+    const body = await readJsonBody(request);
+    return jsonResponse(await renameUserArchitecture(uid, body));
+  }
+
   if (request.method === "GET") {
     const url = new URL(request.url);
     const limitParameter = url.searchParams.get("limit");
@@ -88,12 +95,22 @@ async function handleRequest(request: Request) {
     );
   }
 
+  if (request.method === "DELETE") {
+    const url = new URL(request.url);
+    return jsonResponse(
+      await deleteUserArchitecture(
+        uid,
+        url.searchParams.get("architectureId"),
+      ),
+    );
+  }
+
   return jsonResponse(
     { error: "Method not allowed." },
     {
       status: 405,
       headers: {
-        allow: "GET, POST",
+        allow: "DELETE, GET, PATCH, POST",
       },
     },
   );

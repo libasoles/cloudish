@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
+  deleteUserArchitecture,
   listUserArchitectures,
+  renameUserArchitecture,
   saveUserArchitecture,
   type SavedArchitecture,
 } from "@/lib/architectures";
@@ -43,6 +45,32 @@ export function useSaveArchitecture() {
         queryKey,
         queryFn: listArchitectures,
         staleTime: 5 * 60 * 1000,
+      });
+    },
+  });
+}
+
+export function useRenameArchitecture() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: renameUserArchitecture,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: getArchitecturesQueryKey(user?.uid),
+      });
+    },
+  });
+}
+
+export function useDeleteArchitecture() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: deleteUserArchitecture,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: getArchitecturesQueryKey(user?.uid),
       });
     },
   });

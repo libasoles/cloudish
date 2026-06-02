@@ -16,11 +16,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { HoverOnlyTooltip } from "@/components/HoverOnlyTooltip";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import type { ExportFormat } from "@/lib/export";
 
@@ -70,23 +66,22 @@ export default function ExportMenu({
         open={disabled ? false : popoverOpen}
         onOpenChange={disabled ? undefined : setPopoverOpen}
       >
-        <Tooltip open={popoverOpen ? false : undefined}>
-          <TooltipTrigger asChild>
-            <span className="inline-flex">
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  disabled={disabled}
-                  aria-label={labels.exportTooltip}
-                >
-                  <Download />
-                </Button>
-              </PopoverTrigger>
-            </span>
-          </TooltipTrigger>
-          <TooltipContent side="left">{labels.exportTooltip}</TooltipContent>
-        </Tooltip>
+        <HoverOnlyTooltip
+          content={labels.exportTooltip}
+          side="left"
+          disabled={popoverOpen}
+        >
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon"
+              disabled={disabled}
+              aria-label={labels.exportTooltip}
+            >
+              <Download />
+            </Button>
+          </PopoverTrigger>
+        </HoverOnlyTooltip>
         <PopoverContent side="left" align="start" className="w-64 p-1">
           <button
             className="flex w-full items-center gap-2 rounded px-3 py-2 text-sm hover:bg-accent transition-colors"

@@ -103,6 +103,20 @@ export const UI_TEXT = {
       "This file is an auto-generated scaffold based on your canvas. It is provided as a starting point only. You must review every resource, replace all REPLACE_ME placeholders, and validate the configuration thoroughly before applying it to any environment. The authors of this tool accept no responsibility for any infrastructure changes, costs, outages, or data loss that may result from using this output.",
     exportDisclaimerAction: "Download anyway",
     exportDisclaimerCancel: "Cancel",
+    deleteArchitecture: "Delete",
+    deleteArchitectureTooltip: "Delete saved project",
+    deleteArchitectureDeleting: "Deleting project...",
+    deleteArchitectureConfirmTitle: "Delete saved project?",
+    deleteArchitectureConfirmDescription:
+      "This will permanently delete this saved project and clear the current canvas. This action cannot be undone.",
+    deleteArchitectureConfirmAction: "Delete project",
+    deleteArchitectureConfirmCancel: "Cancel",
+    deleteArchitectureDeleted: "Project deleted",
+    deleteArchitectureDeletedDescription:
+      "The saved project was deleted from your architecture drafts.",
+    deleteArchitectureFailed: "Could not delete project",
+    deleteArchitectureFailedDescription:
+      "Check that you are signed in and try again.",
     signIn: "Sign in",
     signUp: "Create account",
     signOut: "Sign out",
@@ -220,6 +234,20 @@ export const UI_TEXT = {
       "Este archivo es un esqueleto generado automaticamente a partir del canvas. Se provee como punto de partida unicamente. Debes revisar cada recurso, reemplazar todos los valores REPLACE_ME, y validar la configuracion exhaustivamente antes de aplicarla a cualquier entorno. Los autores de esta herramienta no se hacen responsables de ningun cambio de infraestructura, costos, interrupciones o perdida de datos que pueda resultar del uso de este archivo.",
     exportDisclaimerAction: "Descargar de todas formas",
     exportDisclaimerCancel: "Cancelar",
+    deleteArchitecture: "Borrar",
+    deleteArchitectureTooltip: "Borrar proyecto guardado",
+    deleteArchitectureDeleting: "Borrando proyecto...",
+    deleteArchitectureConfirmTitle: "¿Borrar proyecto guardado?",
+    deleteArchitectureConfirmDescription:
+      "Esto borrara permanentemente este proyecto guardado y limpiara el canvas actual. Esta accion no se puede deshacer.",
+    deleteArchitectureConfirmAction: "Borrar proyecto",
+    deleteArchitectureConfirmCancel: "Cancelar",
+    deleteArchitectureDeleted: "Proyecto borrado",
+    deleteArchitectureDeletedDescription:
+      "El proyecto guardado se borro de tus borradores de arquitectura.",
+    deleteArchitectureFailed: "No se pudo borrar el proyecto",
+    deleteArchitectureFailedDescription:
+      "Verifica que hayas iniciado sesion e intenta de nuevo.",
     signIn: "Iniciar sesion",
     signUp: "Crear cuenta",
     signOut: "Cerrar sesion",

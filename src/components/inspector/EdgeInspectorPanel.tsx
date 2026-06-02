@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
+import { HoverOnlyTooltip } from "@/components/HoverOnlyTooltip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -67,46 +68,48 @@ export function EdgeInspectorPanel({ edge }: EdgeInspectorPanelProps) {
       <div className="grid gap-2 text-sm font-medium text-foreground">
         <span>{t.arrows}</span>
         <div className="flex gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            aria-label={t.sourceArrowToggle}
-            aria-pressed={hasSourceArrow}
-            title={t.sourceArrowToggle}
-            className={cn(
-              "h-10 w-10",
-              hasSourceArrow &&
-                "border-primary bg-primary/20 text-primary shadow-[0_0_0_1px_hsl(var(--primary))] hover:text-primary",
-            )}
-            onClick={() =>
-              onArrowDirectionChange(
-                getArrowDirectionFromToggles(!hasSourceArrow, hasTargetArrow),
-              )
-            }
-          >
-            <ArrowLeft className="h-5 w-5" aria-hidden="true" />
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            aria-label={t.targetArrowToggle}
-            aria-pressed={hasTargetArrow}
-            title={t.targetArrowToggle}
-            className={cn(
-              "h-10 w-10",
-              hasTargetArrow &&
-                "border-primary bg-primary/20 text-primary shadow-[0_0_0_1px_hsl(var(--primary))] hover:text-primary",
-            )}
-            onClick={() =>
-              onArrowDirectionChange(
-                getArrowDirectionFromToggles(hasSourceArrow, !hasTargetArrow),
-              )
-            }
-          >
-            <ArrowRight className="h-5 w-5" aria-hidden="true" />
-          </Button>
+          <HoverOnlyTooltip content={t.sourceArrowToggle} side="top">
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              aria-label={t.sourceArrowToggle}
+              aria-pressed={hasSourceArrow}
+              className={cn(
+                "h-10 w-10",
+                hasSourceArrow &&
+                  "border-primary bg-primary/20 text-primary shadow-[0_0_0_1px_hsl(var(--primary))] hover:text-primary",
+              )}
+              onClick={() =>
+                onArrowDirectionChange(
+                  getArrowDirectionFromToggles(!hasSourceArrow, hasTargetArrow),
+                )
+              }
+            >
+              <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+            </Button>
+          </HoverOnlyTooltip>
+          <HoverOnlyTooltip content={t.targetArrowToggle} side="top">
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              aria-label={t.targetArrowToggle}
+              aria-pressed={hasTargetArrow}
+              className={cn(
+                "h-10 w-10",
+                hasTargetArrow &&
+                  "border-primary bg-primary/20 text-primary shadow-[0_0_0_1px_hsl(var(--primary))] hover:text-primary",
+              )}
+              onClick={() =>
+                onArrowDirectionChange(
+                  getArrowDirectionFromToggles(hasSourceArrow, !hasTargetArrow),
+                )
+              }
+            >
+              <ArrowRight className="h-5 w-5" aria-hidden="true" />
+            </Button>
+          </HoverOnlyTooltip>
         </div>
       </div>
     </div>

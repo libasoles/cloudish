@@ -1,11 +1,7 @@
 import { useState } from "react";
 import { Loader2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { HoverOnlyTooltip } from "@/components/HoverOnlyTooltip";
 import { useToast } from "@/components/ui/use-toast";
 
 type SaveArchitectureButtonLabels = {
@@ -69,25 +65,20 @@ export default function SaveArchitectureButton({
   }
 
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span className="inline-flex">
-          <Button
-            variant="outline"
-            size="icon"
-            disabled={disabled || saving}
-            onClick={handleSave}
-            aria-label={labels.saveArchitecture}
-          >
-            {saving ? (
-              <Loader2 className="animate-spin" />
-            ) : (
-              <Save />
-            )}
-          </Button>
-        </span>
-      </TooltipTrigger>
-      <TooltipContent side="left">{tooltipText}</TooltipContent>
-    </Tooltip>
+    <HoverOnlyTooltip content={tooltipText} side="left">
+      <Button
+        variant="outline"
+        size="icon"
+        disabled={disabled || saving}
+        onClick={handleSave}
+        aria-label={labels.saveArchitecture}
+      >
+        {saving ? (
+          <Loader2 className="animate-spin" />
+        ) : (
+          <Save />
+        )}
+      </Button>
+    </HoverOnlyTooltip>
   );
 }

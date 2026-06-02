@@ -73,6 +73,46 @@ export async function saveUserArchitecture({
   return parseApiResponse<SaveArchitectureResponse>(response);
 }
 
+export async function renameUserArchitecture({
+  architectureId,
+  name,
+}: {
+  architectureId: string;
+  name: string;
+}) {
+  const response = await fetch("/api/architectures", {
+    method: "PATCH",
+    headers: {
+      Authorization: await getAuthorizationHeader(),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      architectureId,
+      name,
+    }),
+  });
+
+  return parseApiResponse<SaveArchitectureResponse>(response);
+}
+
+export async function deleteUserArchitecture({
+  architectureId,
+}: {
+  architectureId: string;
+}) {
+  const searchParams = new URLSearchParams({
+    architectureId,
+  });
+  const response = await fetch(`/api/architectures?${searchParams}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: await getAuthorizationHeader(),
+    },
+  });
+
+  return parseApiResponse<SaveArchitectureResponse>(response);
+}
+
 export async function listUserArchitectures(limit = 25) {
   const searchParams = new URLSearchParams({
     limit: String(limit),

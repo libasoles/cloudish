@@ -27,6 +27,7 @@ import DragDropSidebar from "@/components/DragDropSidebar";
 import NewToolMenu from "@/components/NewToolMenu";
 import ExportMenu from "@/components/ExportMenu";
 import SaveArchitectureButton from "@/components/SaveArchitectureButton";
+import DeleteArchitectureButton from "@/components/DeleteArchitectureButton";
 import { ProjectNameEditor } from "@/components/ProjectNameEditor";
 const AuthDialog = lazy(() => import("@/components/AuthDialog"));
 import AwsServiceNode from "@/components/AwsServiceNode";
@@ -85,13 +86,15 @@ import { getAwsServiceNodeData } from "@/lib/node-utils";
 import { EDGE_STYLE } from "@/lib/edge-tools";
 import type { ExportFormat } from "@/lib/export/types";
 import { useAuth } from "@/hooks/useAuth";
-import { useSaveArchitecture } from "@/hooks/useArchitectures";
 import {
-  Tooltip,
-  TooltipContent,
+  useDeleteArchitecture,
+  useRenameArchitecture,
+  useSaveArchitecture,
+} from "@/hooks/useArchitectures";
+import {
   TooltipProvider,
-  TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { HoverOnlyTooltip } from "@/components/HoverOnlyTooltip";
 
 const nodeTypes: NodeTypes = {
   awsService: AwsServiceNode,
@@ -150,6 +153,8 @@ export default function Canvas() {
   > | null>(null);
   const { user } = useAuth();
   const saveArchitectureMutation = useSaveArchitecture();
+  const renameArchitectureMutation = useRenameArchitecture();
+  const deleteArchitectureMutation = useDeleteArchitecture();
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
   const [authDialogMounted, setAuthDialogMounted] = useState(false);
   const [pendingSave, setPendingSave] = useState(false);
@@ -193,9 +198,44 @@ export default function Canvas() {
     t.defaultArchitectureName,
   ]);
 
+  const handleProjectNameChange = useCallback(
+    (nextName: string) => {
+      setProjectName(nextName);
+
+      if (!user || !currentArchitectureId) return;
+
+      renameArchitectureMutation.mutate(
+        {
+          architectureId: currentArchitectureId,
+          name: nextName,
+        },
+        {
+          onError: (error) => {
+            console.error(error);
+          },
+        },
+      );
+    },
+    [
+      currentArchitectureId,
+      renameArchitectureMutation,
+      setProjectName,
+      user,
+    ],
+  );
+
   const handleReset = useCallback(() => {
     resetCanvas();
   }, [resetCanvas]);
+
+  const handleDelete = useCallback(async () => {
+    if (!currentArchitectureId) return;
+
+    await deleteArchitectureMutation.mutateAsync({
+      architectureId: currentArchitectureId,
+    });
+    resetCanvas();
+  }, [currentArchitectureId, deleteArchitectureMutation, resetCanvas]);
 
   const handleAuthRequired = useCallback(() => {
     setPendingSave(true);
@@ -1038,24 +1078,25 @@ export default function Canvas() {
           <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
           <ServiceSearch />
         </ReactFlow>
-        <ProjectNameEditor value={projectName} onChange={setProjectName} />
+        <ProjectNameEditor
+          value={projectName}
+          onChange={handleProjectNameChange}
+        />
         <div className="absolute top-2 right-2 z-10 flex flex-col items-end gap-2">
           <div className="hidden md:block">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setInspectorOpen((v) => !v)}
-                  aria-label={inspectorOpen ? t.closeInspector : t.openInspector}
-                >
-                  {inspectorOpen ? <PanelRightClose /> : <PanelRightOpen />}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="left">
-                {inspectorOpen ? t.closeInspector : t.openInspector}
-              </TooltipContent>
-            </Tooltip>
+            <HoverOnlyTooltip
+              content={inspectorOpen ? t.closeInspector : t.openInspector}
+              side="left"
+            >
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setInspectorOpen((v) => !v)}
+                aria-label={inspectorOpen ? t.closeInspector : t.openInspector}
+              >
+                {inspectorOpen ? <PanelRightClose /> : <PanelRightOpen />}
+              </Button>
+            </HoverOnlyTooltip>
           </div>
           <NewToolMenu
             labels={{
@@ -1107,6 +1148,30 @@ export default function Canvas() {
             }}
             onExport={handleExport}
           />
+          {user && currentArchitectureId && (
+            <DeleteArchitectureButton
+              labels={{
+                deleteArchitecture: t.deleteArchitecture,
+                deleteArchitectureTooltip: t.deleteArchitectureTooltip,
+                deleteArchitectureDeleting: t.deleteArchitectureDeleting,
+                deleteArchitectureConfirmTitle:
+                  t.deleteArchitectureConfirmTitle,
+                deleteArchitectureConfirmDescription:
+                  t.deleteArchitectureConfirmDescription,
+                deleteArchitectureConfirmAction:
+                  t.deleteArchitectureConfirmAction,
+                deleteArchitectureConfirmCancel:
+                  t.deleteArchitectureConfirmCancel,
+                deleteArchitectureDeleted: t.deleteArchitectureDeleted,
+                deleteArchitectureDeletedDescription:
+                  t.deleteArchitectureDeletedDescription,
+                deleteArchitectureFailed: t.deleteArchitectureFailed,
+                deleteArchitectureFailedDescription:
+                  t.deleteArchitectureFailedDescription,
+              }}
+              onDelete={handleDelete}
+            />
+          )}
         </div>
       </div>
     </TooltipProvider>

@@ -1,11 +1,7 @@
 import type { DragEvent, ReactNode } from "react";
 import { Container, User, Globe, Layers, Type } from "lucide-react";
 import { AwsServiceIcon } from "@/components/AwsServiceIcon";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { HoverOnlyTooltip } from "@/components/HoverOnlyTooltip";
 import {
   dragServices,
   vpcService,
@@ -78,36 +74,40 @@ function SidebarToolButton({
   onToolDragEnd,
 }: SidebarToolButtonProps) {
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          type="button"
-          draggable
-          onDragStart={(event) =>
-            setDragPayload(event, tool, onToolDragStart)
-          }
-          onDragEnd={onToolDragEnd}
-          onClick={() => onToolClick?.(tool)}
-          className={
-            featured
-              ? "flex w-full cursor-pointer flex-col items-center gap-1 rounded-md border border-border bg-card px-1 py-2 text-center text-[11px] font-medium leading-tight text-card-foreground shadow-sm transition hover:border-primary hover:bg-accent"
-              : "flex w-full cursor-pointer flex-col items-center gap-1 rounded-md border border-transparent px-1 py-2 text-center text-[11px] font-medium leading-tight text-foreground transition hover:border-border hover:bg-accent"
-          }
-          aria-label={ariaLabel}
-        >
-          {children}
-          <span className="w-full break-words">{name}</span>
-        </button>
-      </TooltipTrigger>
-      <TooltipContent side="right" className="max-w-64 px-3 py-2">
-        <span className="block text-xs font-semibold leading-tight">
-          {name}
-        </span>
-        <span className="mt-1 block text-xs leading-snug text-muted-foreground">
-          {description}
-        </span>
-      </TooltipContent>
-    </Tooltip>
+    <HoverOnlyTooltip
+      side="right"
+      contentClassName="max-w-64 px-3 py-2"
+      triggerClassName="w-full"
+      content={
+        <>
+          <span className="block text-xs font-semibold leading-tight">
+            {name}
+          </span>
+          <span className="mt-1 block text-xs leading-snug text-muted-foreground">
+            {description}
+          </span>
+        </>
+      }
+    >
+      <button
+        type="button"
+        draggable
+        onDragStart={(event) =>
+          setDragPayload(event, tool, onToolDragStart)
+        }
+        onDragEnd={onToolDragEnd}
+        onClick={() => onToolClick?.(tool)}
+        className={
+          featured
+            ? "flex w-full cursor-pointer flex-col items-center gap-1 rounded-md border border-border bg-card px-1 py-2 text-center text-[11px] font-medium leading-tight text-card-foreground shadow-sm transition hover:border-primary hover:bg-accent"
+            : "flex w-full cursor-pointer flex-col items-center gap-1 rounded-md border border-transparent px-1 py-2 text-center text-[11px] font-medium leading-tight text-foreground transition hover:border-border hover:bg-accent"
+        }
+        aria-label={ariaLabel}
+      >
+        {children}
+        <span className="w-full break-words">{name}</span>
+      </button>
+    </HoverOnlyTooltip>
   );
 }
 
