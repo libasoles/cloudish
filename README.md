@@ -1,7 +1,5 @@
 # AWS Architecture Drafts
 
-[![Netlify Status](https://api.netlify.com/api/v1/badges/4a16a854-293e-4b5d-88b5-dda02dc1caac/deploy-status)](https://app.netlify.com/projects/cloudish/deploys)
-
 Herramienta visual para hacer drafts de arquitecturas en AWS. Sirve para bajar rapidamente una idea a un canvas, y exportar un primer scaffold de infraestructura.
 
 Demo: <https://cloudish.netlify.app/>
@@ -46,7 +44,7 @@ No reemplaza una herramienta formal de diagramacion, discovery cloud o gestion d
 
 Requisitos recomendados:
 
-- Node.js 20 o superior.
+- Node.js 24 o superior.
 - npm.
 - [Netlify CLI](https://docs.netlify.com/cli/get-started/) para desarrollo local con las funciones del servidor.
 
@@ -66,9 +64,9 @@ Copiar `.env.example` a `.env.local` y completar los valores:
 cp .env.example .env.local
 ```
 
-| Variable | Descripcion |
-| --- | --- |
-| `VITE_FIREBASE_*` | Configuracion del SDK de Firebase para el cliente |
+| Variable                               | Descripcion                                                 |
+| -------------------------------------- | ----------------------------------------------------------- |
+| `VITE_FIREBASE_*`                      | Configuracion del SDK de Firebase para el cliente           |
 | `FIREBASE_SERVICE_ACCOUNT_JSON_BASE64` | Service account de Firebase Admin en base64 (solo servidor) |
 
 ### Desarrollo local
