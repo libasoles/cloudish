@@ -5,6 +5,8 @@ type ShortcutModifiers = {
   primary?: boolean;
   meta?: boolean;
   ctrl?: boolean;
+  shift?: boolean;
+  alt?: boolean;
 };
 
 type KeyboardShortcut = {
@@ -48,11 +50,15 @@ function matchesShortcut(
   const expectsPrimary = modifiers.primary ?? false;
   const expectedMeta = modifiers.meta ?? (isMac ? expectsPrimary : false);
   const expectedCtrl = modifiers.ctrl ?? (!isMac ? expectsPrimary : false);
+  const expectedShift = modifiers.shift ?? false;
+  const expectedAlt = modifiers.alt ?? false;
 
   return (
     event.key.toLowerCase() === shortcut.key.toLowerCase() &&
     event.metaKey === expectedMeta &&
-    event.ctrlKey === expectedCtrl
+    event.ctrlKey === expectedCtrl &&
+    event.shiftKey === expectedShift &&
+    event.altKey === expectedAlt
   );
 }
 
