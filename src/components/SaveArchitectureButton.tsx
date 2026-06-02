@@ -71,19 +71,21 @@ export default function SaveArchitectureButton({
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Button
-          variant="outline"
-          size="icon"
-          disabled={disabled || saving}
-          onClick={handleSave}
-          aria-label={labels.saveArchitecture}
-        >
-          {saving ? (
-            <Loader2 className="animate-spin" />
-          ) : (
-            <Save />
-          )}
-        </Button>
+        <span className="inline-flex">
+          <Button
+            variant="outline"
+            size="icon"
+            disabled={disabled || saving}
+            onClick={handleSave}
+            aria-label={labels.saveArchitecture}
+          >
+            {saving ? (
+              <Loader2 className="animate-spin" />
+            ) : (
+              <Save />
+            )}
+          </Button>
+        </span>
       </TooltipTrigger>
       <TooltipContent side="left">{tooltipText}</TooltipContent>
     </Tooltip>

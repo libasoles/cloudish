@@ -72,16 +72,18 @@ export default function ExportMenu({
       >
         <Tooltip open={popoverOpen ? false : undefined}>
           <TooltipTrigger asChild>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon"
-                disabled={disabled}
-                aria-label={labels.exportTooltip}
-              >
-                <Download />
-              </Button>
-            </PopoverTrigger>
+            <span className="inline-flex">
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  disabled={disabled}
+                  aria-label={labels.exportTooltip}
+                >
+                  <Download />
+                </Button>
+              </PopoverTrigger>
+            </span>
           </TooltipTrigger>
           <TooltipContent side="left">{labels.exportTooltip}</TooltipContent>
         </Tooltip>

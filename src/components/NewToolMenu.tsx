@@ -32,16 +32,30 @@ type NewToolMenuProps = {
 
 export default function NewToolMenu({ labels, onReset }: NewToolMenuProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [tooltipOpen, setTooltipOpen] = useState(false);
+
+  function handleDialogOpenChange(open: boolean) {
+    setDialogOpen(open);
+    if (open) setTooltipOpen(false);
+  }
+
+  function handleReset() {
+    setTooltipOpen(false);
+    onReset();
+  }
 
   return (
-    <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
-      <Tooltip open={dialogOpen ? false : undefined}>
+    <AlertDialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
+      <Tooltip open={tooltipOpen && !dialogOpen}>
         <TooltipTrigger asChild>
           <AlertDialogTrigger asChild>
             <Button
               variant="outline"
               size="icon"
               aria-label={labels.newTool}
+              onPointerEnter={() => setTooltipOpen(true)}
+              onPointerLeave={() => setTooltipOpen(false)}
+              onClick={() => setTooltipOpen(false)}
             >
               <Plus />
             </Button>
@@ -58,7 +72,7 @@ export default function NewToolMenu({ labels, onReset }: NewToolMenuProps) {
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>{labels.newToolConfirmCancel}</AlertDialogCancel>
-          <AlertDialogAction onClick={onReset}>
+          <AlertDialogAction onClick={handleReset}>
             {labels.newToolConfirmAction}
           </AlertDialogAction>
         </AlertDialogFooter>
