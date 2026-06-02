@@ -1,5 +1,5 @@
 import { httpsCallable } from "firebase/functions";
-import { functions } from "@/lib/firebase";
+import { functions } from "@/lib/firebase-functions";
 import type { AppEdge, AppNode } from "@/types/flow";
 
 export type SavedArchitecture = {

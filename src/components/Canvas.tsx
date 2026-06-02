@@ -1,4 +1,6 @@
 import {
+  lazy,
+  Suspense,
   useCallback,
   useRef,
   useState,
@@ -25,7 +27,7 @@ import DragDropSidebar from "@/components/DragDropSidebar";
 import NewToolMenu from "@/components/NewToolMenu";
 import ExportMenu from "@/components/ExportMenu";
 import SaveArchitectureButton from "@/components/SaveArchitectureButton";
-import AuthDialog from "@/components/AuthDialog";
+const AuthDialog = lazy(() => import("@/components/AuthDialog"));
 import AwsServiceNode from "@/components/AwsServiceNode";
 import NetworkContainerNode from "@/components/NetworkContainerNode";
 import PlainTextNode from "@/components/PlainTextNode";
@@ -78,8 +80,7 @@ import {
 } from "@/lib/az-sync";
 import { getAwsServiceNodeData } from "@/lib/node-utils";
 import { EDGE_STYLE } from "@/lib/edge-tools";
-import { exportFlow, downloadExport } from "@/lib/export";
-import { saveUserArchitecture } from "@/lib/architectures";
+import type { ExportFormat } from "@/lib/export/types";
 import { useAuth } from "@/hooks/useAuth";
 import {
   Tooltip,
@@ -142,6 +143,7 @@ export default function Canvas() {
   >();
   const { user } = useAuth();
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
+  const [authDialogMounted, setAuthDialogMounted] = useState(false);
   const [pendingSave, setPendingSave] = useState(false);
 
   const containerIdRef = useRef(1);
@@ -154,7 +156,8 @@ export default function Canvas() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const handleExport = useCallback(
-    (format: Parameters<typeof exportFlow>[0]) => {
+    async (format: ExportFormat) => {
+      const { exportFlow, downloadExport } = await import("@/lib/export");
       const result = exportFlow(format, nodes);
       downloadExport(result);
     },
@@ -162,6 +165,7 @@ export default function Canvas() {
   );
 
   const handleSave = useCallback(async () => {
+    const { saveUserArchitecture } = await import("@/lib/architectures");
     const result = await saveUserArchitecture({
       architectureId: currentArchitectureId,
       name: t.defaultArchitectureName,
@@ -179,6 +183,7 @@ export default function Canvas() {
 
   const handleAuthRequired = useCallback(() => {
     setPendingSave(true);
+    setAuthDialogMounted(true);
     setAuthDialogOpen(true);
   }, []);
 
@@ -1038,11 +1043,15 @@ export default function Canvas() {
             onSave={handleSave}
             onAuthRequired={handleAuthRequired}
           />
-          <AuthDialog
-            open={authDialogOpen}
-            onOpenChange={setAuthDialogOpen}
-            onSuccess={handleAuthSuccess}
-          />
+          {authDialogMounted && (
+            <Suspense fallback={null}>
+              <AuthDialog
+                open={authDialogOpen}
+                onOpenChange={setAuthDialogOpen}
+                onSuccess={handleAuthSuccess}
+              />
+            </Suspense>
+          )}
           <ExportMenu
             disabled={nodes.length === 0}
             labels={{

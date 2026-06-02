@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,7 +19,7 @@ import { ContainerInspectorRouter } from "@/components/inspector/ContainerInspec
 import { EdgeInspectorPanel } from "@/components/inspector/EdgeInspectorPanel";
 import { PlainTextInspectorPanel } from "@/components/inspector/PlainTextInspectorPanel";
 import { AwsServiceInspectorPanel } from "@/components/inspector/AwsServiceInspectorPanel";
-import AuthDialog from "@/components/AuthDialog";
+const AuthDialog = lazy(() => import("@/components/AuthDialog"));
 
 export default function Inspector() {
   const locale = getBrowserLocale();
@@ -27,6 +27,7 @@ export default function Inspector() {
   const { nodes, edges, inspectorOpen } = useFlowStore();
   const { user } = useAuth();
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
+  const [authDialogMounted, setAuthDialogMounted] = useState(false);
   const [authInitialMode, setAuthInitialMode] = useState<"login" | "register">(
     "login",
   );
@@ -150,6 +151,7 @@ export default function Inspector() {
                   className="flex-1 text-xs"
                   onClick={() => {
                     setAuthInitialMode("login");
+                    setAuthDialogMounted(true);
                     setAuthDialogOpen(true);
                   }}
                 >
@@ -161,6 +163,7 @@ export default function Inspector() {
                   className="flex-1 text-xs"
                   onClick={() => {
                     setAuthInitialMode("register");
+                    setAuthDialogMounted(true);
                     setAuthDialogOpen(true);
                   }}
                 >
@@ -171,11 +174,15 @@ export default function Inspector() {
           )}
         </div>
       </CardContent>
-      <AuthDialog
-        open={authDialogOpen}
-        onOpenChange={setAuthDialogOpen}
-        initialMode={authInitialMode}
-      />
+      {authDialogMounted && (
+        <Suspense fallback={null}>
+          <AuthDialog
+            open={authDialogOpen}
+            onOpenChange={setAuthDialogOpen}
+            initialMode={authInitialMode}
+          />
+        </Suspense>
+      )}
     </Card>
   );
 }

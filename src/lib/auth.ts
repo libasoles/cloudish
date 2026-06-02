@@ -5,7 +5,7 @@ import {
   GoogleAuthProvider,
   signOut,
 } from 'firebase/auth'
-import { auth } from '@/lib/firebase'
+import { auth } from '@/lib/firebase-auth'
 
 const googleProvider = new GoogleAuthProvider()
 

@@ -9,4 +9,21 @@ export default defineConfig({
   resolve: {
     alias: { "@": path.resolve(__dirname, "./src") },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
+            return 'vendor-react'
+          }
+          if (id.includes('@xyflow/')) {
+            return 'vendor-flow'
+          }
+          if (id.includes('firebase/auth') || id.includes('@firebase/auth')) {
+            return 'vendor-firebase-auth'
+          }
+        },
+      },
+    },
+  },
 })
