@@ -47,16 +47,32 @@ export default function AuthDialog({
 
   function getErrorMessage(err: unknown): string {
     if (err instanceof FirebaseError) {
+      console.error("[AuthDialog] Firebase error:", err.code, err.message);
       if (
         err.code === "auth/user-not-found" ||
         err.code === "auth/wrong-password" ||
-        err.code === "auth/invalid-credential"
+        err.code === "auth/invalid-credential" ||
+        err.code === "auth/invalid-login-credentials"
       ) {
         return t.authErrorInvalidCredentials;
       }
       if (err.code === "auth/email-already-in-use") {
         return t.authErrorEmailInUse;
       }
+      if (err.code === "auth/weak-password") {
+        return t.authErrorWeakPassword;
+      }
+      if (err.code === "auth/invalid-email") {
+        return t.authErrorInvalidEmail;
+      }
+      if (err.code === "auth/operation-not-allowed") {
+        return t.authErrorProviderDisabled;
+      }
+      if (err.code === "auth/popup-closed-by-user" || err.code === "auth/cancelled-popup-request") {
+        return "";
+      }
+    } else {
+      console.error("[AuthDialog] Unknown error:", err);
     }
     return t.authErrorGeneric;
   }
