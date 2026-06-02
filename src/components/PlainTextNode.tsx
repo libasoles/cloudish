@@ -11,7 +11,6 @@ import { UI_TEXT, getBrowserLocale } from "@/i18n";
 import {
   MAX_TEXT_FONT_SIZE,
   MAX_TEXT_NODE_HEIGHT,
-  MAX_TEXT_NODE_WIDTH,
   MIN_TEXT_FONT_SIZE,
   MIN_TEXT_NODE_HEIGHT,
   MIN_TEXT_NODE_WIDTH,
@@ -20,9 +19,41 @@ import {
 
 const DEFAULT_TEXT_NODE_WIDTH = 180;
 const DEFAULT_TEXT_NODE_HEIGHT = 56;
+const TEXT_HORIZONTAL_PADDING = 16;
+const TEXT_VERTICAL_PADDING = 8;
+const CARET_SPACE = 4;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
+}
+
+function measureTextWidth(text: string, fontSize: number) {
+  if (typeof document === "undefined") {
+    return text.length * fontSize * 0.55;
+  }
+
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+  if (!context) {
+    return text.length * fontSize * 0.55;
+  }
+
+  context.font = `500 ${fontSize}px system-ui, "Segoe UI", Roboto, sans-serif`;
+  return context.measureText(text).width;
+}
+
+function getFittedTextNodeSize(text: string, fontSize: number) {
+  return {
+    width: Math.max(
+      Math.ceil(measureTextWidth(text, fontSize) + TEXT_HORIZONTAL_PADDING),
+      MIN_TEXT_NODE_WIDTH,
+    ),
+    height: clamp(
+      Math.ceil(fontSize * 1.15 + TEXT_VERTICAL_PADDING),
+      MIN_TEXT_NODE_HEIGHT,
+      MAX_TEXT_NODE_HEIGHT,
+    ),
+  };
 }
 
 function getTextCaretOffsetFromPoint(
@@ -87,7 +118,9 @@ export default function PlainTextNode({
     MIN_TEXT_FONT_SIZE,
     MAX_TEXT_FONT_SIZE,
   );
-  const inputWidth = `${Math.max(draft.length, t.textNodePlaceholder.length)}ch`;
+  const inputWidth = `${Math.ceil(
+    measureTextWidth(draft || t.textNodePlaceholder, fontSize) + CARET_SPACE,
+  )}px`;
 
   useLayoutEffect(() => {
     if (!isEditing) return;
@@ -125,18 +158,30 @@ export default function PlainTextNode({
       }
 
       return {
-        nodes: nodes.map((node) =>
-          node.id === id
-            ? {
-                ...node,
-                data: {
-                  ...node.data,
-                  text: nextText,
-                  isEditing: false,
-                },
-              }
-            : node,
-        ),
+        nodes: nodes.map((node) => {
+          if (node.id !== id) {
+            return node;
+          }
+
+          const nextSize = getFittedTextNodeSize(nextText, fontSize);
+
+          return {
+            ...node,
+            width: nextSize.width,
+            height: nextSize.height,
+            style: {
+              ...node.style,
+              width: nextSize.width,
+              height: nextSize.height,
+            },
+            data: {
+              ...node.data,
+              text: nextText,
+              fontSize,
+              isEditing: false,
+            },
+          };
+        }),
         edges,
       };
     });
@@ -206,7 +251,6 @@ export default function PlainTextNode({
         isVisible={selected && !isEditing}
         minWidth={MIN_TEXT_NODE_WIDTH}
         minHeight={MIN_TEXT_NODE_HEIGHT}
-        maxWidth={MAX_TEXT_NODE_WIDTH}
         maxHeight={MAX_TEXT_NODE_HEIGHT}
         onResize={handleResize}
         lineClassName="!border-primary/70"
@@ -218,7 +262,7 @@ export default function PlainTextNode({
             ref={inputRef}
             autoFocus
             aria-label={t.editTextNode}
-            className="nodrag max-w-full border-0 border-b border-primary bg-transparent px-0 py-0 font-medium leading-tight text-foreground outline-none selection:bg-node-label-selection selection:text-node-label-selection-text"
+            className="nodrag border-0 border-b border-primary bg-transparent px-0 py-0 font-medium leading-tight text-foreground outline-none selection:bg-node-label-selection selection:text-node-label-selection-text"
             style={{ fontSize, width: inputWidth }}
             value={draft}
             placeholder={t.textNodePlaceholder}
