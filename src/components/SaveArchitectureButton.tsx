@@ -6,13 +6,16 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useToast } from "@/components/ui/use-toast";
 
 type SaveArchitectureButtonLabels = {
   saveArchitecture: string;
   saveArchitectureTooltip: string;
   saveArchitectureSaving: string;
   saveArchitectureSaved: string;
+  saveArchitectureSavedDescription: string;
   saveArchitectureFailed: string;
+  saveArchitectureFailedDescription: string;
 };
 
 type SaveArchitectureButtonProps = {
@@ -26,34 +29,34 @@ export default function SaveArchitectureButton({
   disabled,
   onSave,
 }: SaveArchitectureButtonProps) {
-  const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">(
-    "idle",
-  );
+  const [saving, setSaving] = useState(false);
+  const { toast } = useToast();
 
   async function handleSave() {
-    setStatus("saving");
+    setSaving(true);
 
     try {
       await onSave();
-      setStatus("saved");
+      toast({
+        title: labels.saveArchitectureSaved,
+        description: labels.saveArchitectureSavedDescription,
+      });
     } catch (error) {
       console.error(error);
-      setStatus("error");
+      toast({
+        title: labels.saveArchitectureFailed,
+        description: labels.saveArchitectureFailedDescription,
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
     }
   }
 
   let tooltipText = labels.saveArchitectureTooltip;
 
-  if (status === "saving") {
+  if (saving) {
     tooltipText = labels.saveArchitectureSaving;
-  }
-
-  if (status === "saved") {
-    tooltipText = labels.saveArchitectureSaved;
-  }
-
-  if (status === "error") {
-    tooltipText = labels.saveArchitectureFailed;
   }
 
   return (
@@ -62,11 +65,11 @@ export default function SaveArchitectureButton({
         <Button
           variant="outline"
           size="icon"
-          disabled={disabled || status === "saving"}
+          disabled={disabled || saving}
           onClick={handleSave}
           aria-label={labels.saveArchitecture}
         >
-          {status === "saving" ? (
+          {saving ? (
             <Loader2 className="animate-spin" />
           ) : (
             <Save />

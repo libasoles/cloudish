@@ -9,7 +9,8 @@
       "Read(//tmp/**)",
       "Bash(node -e ' *)",
       "Bash(pkill -f \"vite --port 5199\")",
-      "Bash(pkill -f \"vite --port 5174\")"
+      "Bash(pkill -f \"vite --port 5174\")",
+      "Bash(grep -E \"\\(firebase|config|\\\\.tsx?$\\)\")"
     ]
   }
 }

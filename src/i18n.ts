@@ -86,7 +86,11 @@ export const UI_TEXT = {
     saveArchitectureTooltip: "Save architecture",
     saveArchitectureSaving: "Saving architecture...",
     saveArchitectureSaved: "Architecture saved",
+    saveArchitectureSavedDescription:
+      "Your current canvas was saved to your architecture drafts.",
     saveArchitectureFailed: "Could not save architecture",
+    saveArchitectureFailedDescription:
+      "Check that you are signed in and try again.",
     exportTooltip: "Export architecture",
     exportTerraform: "Terraform (.tf)",
     exportCloudFormation: "CloudFormation (.yaml)",
@@ -170,7 +174,11 @@ export const UI_TEXT = {
     saveArchitectureTooltip: "Guardar arquitectura",
     saveArchitectureSaving: "Guardando arquitectura...",
     saveArchitectureSaved: "Arquitectura guardada",
+    saveArchitectureSavedDescription:
+      "El canvas actual se guardo en tus borradores de arquitectura.",
     saveArchitectureFailed: "No se pudo guardar la arquitectura",
+    saveArchitectureFailedDescription:
+      "Verifica que hayas iniciado sesion e intenta de nuevo.",
     exportTooltip: "Exportar arquitectura",
     exportTerraform: "Terraform (.tf)",
     exportCloudFormation: "CloudFormation (.yaml)",

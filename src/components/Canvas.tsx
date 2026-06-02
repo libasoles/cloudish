@@ -1009,7 +1009,11 @@ export default function Canvas() {
               saveArchitectureTooltip: t.saveArchitectureTooltip,
               saveArchitectureSaving: t.saveArchitectureSaving,
               saveArchitectureSaved: t.saveArchitectureSaved,
+              saveArchitectureSavedDescription:
+                t.saveArchitectureSavedDescription,
               saveArchitectureFailed: t.saveArchitectureFailed,
+              saveArchitectureFailedDescription:
+                t.saveArchitectureFailedDescription,
             }}
             onSave={handleSave}
           />
