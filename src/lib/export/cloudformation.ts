@@ -5,6 +5,7 @@ import {
   isNetworkContainerNode,
   isVpcNode,
   isSubnetNode,
+  isAzNode,
 } from "@/lib/graph-utils";
 
 type Fields = Record<string, string | boolean | number | undefined>;
@@ -129,6 +130,14 @@ function findAncestorOfType(
   return findAncestorOfType(node.parentId, check, byId);
 }
 
+function getAzLabel(nodeId: string, byId: Map<string, AppNode>): string | undefined {
+  const az = findAncestorOfType(nodeId, isAzNode, byId);
+  if (!az) return undefined;
+  const label = getNodeLabel(az);
+  // Use the label only if it looks like a real AWS AZ (e.g. "us-east-1a")
+  return /^[a-z]{2}-[a-z]+-\d+[a-z]$/.test(label) ? label : undefined;
+}
+
 function cfResource(
   type: string,
   props: Record<string, unknown>,
@@ -223,10 +232,13 @@ export function generateCloudFormation(nodes: AppNode[]): ExportResult {
         ? cfRef(sanitizeCfId(vpcAncestor.id, "Vpc"))
         : "REPLACE_ME";
 
+      const azLabel = getAzLabel(subnet.id, byId);
+
       const resource = cfResource("AWS::EC2::Subnet", {
         VpcId: vpcRefVal,
         CidrBlock: cidr,
         MapPublicIpOnLaunch: isPublic,
+        ...(azLabel ? { AvailabilityZone: azLabel } : {}),
         Tags: [{ Key: "Name", Value: getNodeLabel(subnet) }],
       });
       parts.push(renderResource(id, resource));
@@ -284,15 +296,22 @@ export function generateCloudFormation(nodes: AppNode[]): ExportResult {
 
       const serviceProps = map.cfProps ? map.cfProps(fields) : {};
 
-      // Attach subnet/vpc reference
-      const subnetAncestor = findAncestorOfType(node.id, isSubnetNode, byId);
-      const vpcAncestor = findAncestorOfType(node.id, isVpcNode, byId);
-
+      // Attach subnet/vpc reference based on cfLocation from the service map
       const locationProps: Record<string, unknown> = {};
-      if (subnetAncestor) {
-        locationProps.SubnetId = cfRef(sanitizeCfId(subnetAncestor.id, "Subnet"));
-      } else if (vpcAncestor) {
-        locationProps.VpcId = cfRef(sanitizeCfId(vpcAncestor.id, "Vpc"));
+      const cfLoc = map?.cfLocation;
+
+      if (cfLoc && cfLoc !== "none") {
+        const subnetAncestor2 = findAncestorOfType(node.id, isSubnetNode, byId);
+        const vpcAncestor2 = findAncestorOfType(node.id, isVpcNode, byId);
+
+        if (cfLoc === "SubnetId" && subnetAncestor2) {
+          locationProps.SubnetId = cfRef(sanitizeCfId(subnetAncestor2.id, "Subnet"));
+        } else if (cfLoc === "VpcId" && vpcAncestor2) {
+          locationProps.VpcId = cfRef(sanitizeCfId(vpcAncestor2.id, "Vpc"));
+        } else if (cfLoc === "AvailabilityZone") {
+          const azVal = getAzLabel(node.id, byId);
+          if (azVal) locationProps.AvailabilityZone = azVal;
+        }
       }
 
       const props: Record<string, unknown> = {

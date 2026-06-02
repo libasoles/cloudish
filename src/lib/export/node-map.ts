@@ -1,10 +1,14 @@
 type Fields = Record<string, string | boolean | number | undefined>;
 
 export type ServiceResourceMap = {
-  terraform?: string;
+  terraform?: string | ((f: Fields) => string);
   cloudformation?: string;
   tfProps?: (f: Fields) => Record<string, unknown>;
   cfProps?: (f: Fields) => Record<string, unknown>;
+  /** If set, the generator injects this TF attribute with the ancestor ref instead of the default subnet_id/vpc_id logic */
+  tfLocation?: "subnet_id" | "vpc_id" | "availability_zone" | "none";
+  /** Same for CloudFormation */
+  cfLocation?: "SubnetId" | "VpcId" | "AvailabilityZone" | "none";
 };
 
 const str = (v: unknown, fallback = "") => (v != null ? String(v) : fallback);
@@ -26,6 +30,8 @@ const COMPUTE: Record<string, ServiceResourceMap> = {
       ImageId: str(f.amiId, "ami-REPLACE_ME"),
       InstanceType: str(f.instanceType, "t3.micro"),
     }),
+    tfLocation: "subnet_id",
+    cfLocation: "SubnetId",
   },
 
   lambda: {
@@ -122,6 +128,22 @@ const COMPUTE: Record<string, ServiceResourceMap> = {
       ServiceName: str(f.serviceName, "my-app-runner-service"),
     }),
   },
+
+  lightsail: {
+    terraform: "aws_lightsail_instance",
+    cloudformation: "AWS::Lightsail::Instance",
+    tfProps: (f) => ({
+      name: str(f.instanceName, "my-instance"),
+      bundle_id: str(f.bundleId, "micro_3_0"),
+      blueprint_id: "amazon_linux_2023",
+      availability_zone: "REPLACE_ME",
+    }),
+    cfProps: (f) => ({
+      InstanceName: str(f.instanceName, "my-instance"),
+      BundleId: str(f.bundleId, "micro_3_0"),
+      BlueprintId: "amazon_linux_2023",
+    }),
+  },
 };
 
 // ─── Storage ──────────────────────────────────────────────────────────────────
@@ -133,6 +155,12 @@ const STORAGE: Record<string, ServiceResourceMap> = {
     tfProps: (f) => ({
       bucket: str(f.bucketName, "my-bucket-REPLACE_ME"),
       force_destroy: false,
+      ...(bool(f.versioning) ? { versioning: [{ enabled: true }] } : {}),
+      ...(bool(f.encryptionEnabled) ? {
+        server_side_encryption_configuration: [{
+          rule: [{ apply_server_side_encryption_by_default: [{ sse_algorithm: "AES256" }] }],
+        }],
+      } : {}),
     }),
     cfProps: (f) => ({
       BucketName: str(f.bucketName, "my-bucket-REPLACE_ME"),
@@ -163,6 +191,8 @@ const STORAGE: Record<string, ServiceResourceMap> = {
       Size: num(f.sizeGiB, 20),
       Encrypted: bool(f.encryptionEnabled),
     }),
+    tfLocation: "availability_zone",
+    cfLocation: "AvailabilityZone",
   },
 
   efs: {
@@ -181,7 +211,13 @@ const STORAGE: Record<string, ServiceResourceMap> = {
   },
 
   fsx: {
-    terraform: "aws_fsx_windows_file_system",
+    terraform: (f) => {
+      const t = str(f.fileSystemType, "WINDOWS");
+      if (t === "LUSTRE") return "aws_fsx_lustre_file_system";
+      if (t === "ONTAP") return "aws_fsx_ontap_file_system";
+      if (t === "OPENZFS") return "aws_fsx_openzfs_file_system";
+      return "aws_fsx_windows_file_system";
+    },
     cloudformation: "AWS::FSx::FileSystem",
     tfProps: (f) => ({
       storage_capacity: num(f.storageCapacityGiB, 1024),
@@ -211,6 +247,27 @@ const STORAGE: Record<string, ServiceResourceMap> = {
         ],
       },
     }),
+  },
+
+  "storage-gateway": {
+    terraform: "aws_storagegateway_gateway",
+    cloudformation: "AWS::StorageGateway::Gateway",
+    tfProps: (f) => ({
+      gateway_name: str(f.gatewayName, "my-gateway"),
+      gateway_type: str(f.gatewayType, "S3_FILE"),
+      gateway_ip_address: "REPLACE_ME",
+    }),
+    cfProps: (f) => ({
+      GatewayName: str(f.gatewayName, "my-gateway"),
+      GatewayType: str(f.gatewayType, "S3_FILE"),
+    }),
+  },
+
+  "s3-glacier": {
+    terraform: "aws_glacier_vault",
+    cloudformation: "AWS::Glacier::Vault",
+    tfProps: (f) => ({ name: str(f.vaultName, "archive-vault") }),
+    cfProps: (f) => ({ VaultName: str(f.vaultName, "archive-vault") }),
   },
 };
 
@@ -269,7 +326,7 @@ const DATABASE: Record<string, ServiceResourceMap> = {
     cloudformation: "AWS::RDS::DBCluster",
     tfProps: (f) => ({
       engine: str(f.engine, "aurora-mysql"),
-      engine_mode: str(f.capacityMode, "serverless-v2") === "serverless-v2" ? "provisioned" : "provisioned",
+      engine_mode: "provisioned",
       master_username: "admin",
       master_password: "REPLACE_ME",
       backup_retention_period: num(f.backupRetentionDays, 7),
@@ -378,6 +435,24 @@ const DATABASE: Record<string, ServiceResourceMap> = {
     tfProps: (f) => ({ database_name: str(f.databaseName, "metrics") }),
     cfProps: (f) => ({ DatabaseName: str(f.databaseName, "metrics") }),
   },
+
+  keyspaces: {
+    terraform: "aws_keyspaces_table",
+    cloudformation: "AWS::Cassandra::Table",
+    tfProps: (f) => ({
+      keyspace_name: str(f.keyspaceName, "my_keyspace"),
+      table_name: str(f.tableName, "my_table"),
+      schema_definition: [{
+        column: [{ name: "id", type: "text" }],
+        partition_key: [{ name: "id" }],
+      }],
+    }),
+    cfProps: (f) => ({
+      KeyspaceName: str(f.keyspaceName, "my_keyspace"),
+      TableName: str(f.tableName, "my_table"),
+      PartitionKeyColumns: [{ ColumnName: "id", ColumnType: "text" }],
+    }),
+  },
 };
 
 // ─── Networking ───────────────────────────────────────────────────────────────
@@ -484,21 +559,6 @@ const NETWORKING: Record<string, ServiceResourceMap> = {
     }),
   },
 
-  privatelink: {
-    terraform: "aws_vpc_endpoint",
-    cloudformation: "AWS::EC2::VPCEndpoint",
-    tfProps: (f) => ({
-      service_name: str(f.endpointServiceName, "com.amazonaws.REPLACE_ME.s3"),
-      vpc_endpoint_type: str(f.endpointType, "Interface"),
-      vpc_id: "REPLACE_ME",
-    }),
-    cfProps: (f) => ({
-      ServiceName: str(f.endpointServiceName, "com.amazonaws.REPLACE_ME.s3"),
-      VpcEndpointType: str(f.endpointType, "Interface"),
-      VpcId: "REPLACE_ME",
-    }),
-  },
-
   "global-accelerator": {
     terraform: "aws_globalaccelerator_accelerator",
     cloudformation: "AWS::GlobalAccelerator::Accelerator",
@@ -512,6 +572,34 @@ const NETWORKING: Record<string, ServiceResourceMap> = {
       IpAddressType: "IPV4",
       Enabled: true,
     }),
+  },
+
+  "app-mesh": {
+    terraform: "aws_appmesh_mesh",
+    cloudformation: "AWS::AppMesh::Mesh",
+    tfProps: (f) => ({
+      name: str(f.meshName, "my-mesh"),
+      spec: [{ egress_filter: [{ type: "ALLOW_ALL" }] }],
+    }),
+    cfProps: (f) => ({
+      MeshName: str(f.meshName, "my-mesh"),
+      Spec: { EgressFilter: { Type: "ALLOW_ALL" } },
+    }),
+  },
+
+  privatelink: {
+    terraform: "aws_vpc_endpoint",
+    cloudformation: "AWS::EC2::VPCEndpoint",
+    tfProps: (f) => ({
+      service_name: str(f.endpointServiceName, "com.amazonaws.REPLACE_ME.s3"),
+      vpc_endpoint_type: str(f.endpointType, "Interface"),
+    }),
+    cfProps: (f) => ({
+      ServiceName: str(f.endpointServiceName, "com.amazonaws.REPLACE_ME.s3"),
+      VpcEndpointType: str(f.endpointType, "Interface"),
+    }),
+    tfLocation: "vpc_id",
+    cfLocation: "VpcId",
   },
 };
 
@@ -644,6 +732,33 @@ const SECURITY: Record<string, ServiceResourceMap> = {
     tfProps: () => ({ status: "ENABLED" }),
     cfProps: () => ({ Status: "ENABLED" }),
   },
+
+  shield: {
+    terraform: "aws_shield_protection",
+    cloudformation: "AWS::Shield::Protection",
+    tfProps: () => ({
+      name: "resource-protection",
+      resource_arn: "REPLACE_ME",
+    }),
+    cfProps: () => ({
+      Name: "resource-protection",
+      ResourceArn: "REPLACE_ME",
+    }),
+  },
+
+  inspector: {
+    terraform: "aws_inspector2_enabler",
+    cloudformation: "AWS::InspectorV2::Filter",
+    tfProps: () => ({
+      account_ids: ["REPLACE_ME"],
+      resource_types: ["EC2", "ECR", "LAMBDA"],
+    }),
+    cfProps: () => ({
+      FilterName: "my-inspector-filter",
+      FilterAction: "INCLUDE",
+      FilterCriteria: {},
+    }),
+  },
 };
 
 // ─── Analytics ────────────────────────────────────────────────────────────────
@@ -742,6 +857,34 @@ const ANALYTICS: Record<string, ServiceResourceMap> = {
       ClusterConfig: { InstanceType: str(f.instanceType, "m7g.large.search") },
     }),
   },
+
+  "lake-formation": {
+    terraform: "aws_lakeformation_data_lake_settings",
+    cloudformation: "AWS::LakeFormation::DataLakeSettings",
+    tfProps: () => ({
+      admins: ["REPLACE_ME"],
+    }),
+    cfProps: () => ({
+      Admins: [{ DataLakePrincipalIdentifier: "REPLACE_ME" }],
+    }),
+  },
+
+  "clean-rooms": {
+    terraform: "aws_cleanrooms_collaboration",
+    cloudformation: "AWS::CleanRooms::Collaboration",
+    tfProps: (f) => ({
+      name: str(f.collaborationName, "partner-analysis"),
+      creator_display_name: "REPLACE_ME",
+      creator_member_abilities: ["CAN_QUERY", "CAN_RECEIVE_RESULTS"],
+      query_log_status: "ENABLED",
+    }),
+    cfProps: (f) => ({
+      Name: str(f.collaborationName, "partner-analysis"),
+      CreatorDisplayName: "REPLACE_ME",
+      CreatorMemberAbilities: ["CAN_QUERY", "CAN_RECEIVE_RESULTS"],
+      QueryLogStatus: "ENABLED",
+    }),
+  },
 };
 
 // ─── Messaging ────────────────────────────────────────────────────────────────
@@ -816,6 +959,31 @@ const MESSAGING: Record<string, ServiceResourceMap> = {
     cfProps: (f) => ({
       Name: str(f.apiName, "graphql-api"),
       AuthenticationType: str(f.authType, "AMAZON_COGNITO_USER_POOLS"),
+    }),
+  },
+
+  pinpoint: {
+    terraform: "aws_pinpoint_app",
+    cloudformation: "AWS::Pinpoint::App",
+    tfProps: (f) => ({ name: str(f.applicationName, "customer-engagement") }),
+    cfProps: (f) => ({ Name: str(f.applicationName, "customer-engagement") }),
+  },
+
+  lex: {
+    terraform: "aws_lexv2models_bot",
+    cloudformation: "AWS::Lex::Bot",
+    tfProps: (f) => ({
+      name: str(f.botName, "support-bot"),
+      idle_session_ttl_in_seconds: 300,
+      role_arn: "arn:aws:iam::REPLACE_ME:role/lex-role",
+      data_privacy: [{ child_directed: false }],
+    }),
+    cfProps: (f) => ({
+      Name: str(f.botName, "support-bot"),
+      IdleSessionTTLInSeconds: 300,
+      RoleArn: "arn:aws:iam::REPLACE_ME:role/lex-role",
+      DataPrivacy: { ChildDirected: false },
+      BotLocales: [{ LocaleId: str(f.languageCode, "en_US"), NluConfidenceThreshold: 0.4 }],
     }),
   },
 };
@@ -937,6 +1105,47 @@ const MANAGEMENT: Record<string, ServiceResourceMap> = {
       ProviderName: "Platform Team",
     }),
   },
+
+  "systems-manager": {
+    terraform: "aws_ssm_parameter",
+    cloudformation: "AWS::SSM::Parameter",
+    tfProps: () => ({
+      name: "/app/config/REPLACE_ME",
+      type: "String",
+      value: "REPLACE_ME",
+    }),
+    cfProps: () => ({
+      Name: "/app/config/REPLACE_ME",
+      Type: "String",
+      Value: "REPLACE_ME",
+    }),
+  },
+
+  config: {
+    terraform: "aws_config_config_rule",
+    cloudformation: "AWS::Config::ConfigRule",
+    tfProps: () => ({
+      name: "required-tags",
+      source: [{ owner: "AWS", source_identifier: "REQUIRED_TAGS" }],
+    }),
+    cfProps: () => ({
+      ConfigRuleName: "required-tags",
+      Source: { Owner: "AWS", SourceIdentifier: "REQUIRED_TAGS" },
+    }),
+  },
+
+  organizations: {
+    terraform: "aws_organizations_organizational_unit",
+    cloudformation: "AWS::Organizations::OrganizationalUnit",
+    tfProps: (f) => ({
+      name: str(f.organizationalUnitName, "production"),
+      parent_id: "REPLACE_ME",
+    }),
+    cfProps: (f) => ({
+      Name: str(f.organizationalUnitName, "production"),
+      ParentId: "REPLACE_ME",
+    }),
+  },
 };
 
 // ─── ML/AI ────────────────────────────────────────────────────────────────────
@@ -973,6 +1182,55 @@ const ML_AI: Record<string, ServiceResourceMap> = {
       Name: str(f.indexName, "enterprise-search"),
       RoleArn: "arn:aws:iam::REPLACE_ME:role/kendra-role",
       Edition: str(f.edition, "ENTERPRISE_EDITION"),
+    }),
+  },
+
+  cloud9: {
+    terraform: "aws_cloud9_environment_ec2",
+    cloudformation: "AWS::Cloud9::EnvironmentEC2",
+    tfProps: (f) => ({
+      name: str(f.environmentName, "dev-env"),
+      instance_type: str(f.instanceType, "t3.micro"),
+      automatic_stop_time_minutes: 30,
+    }),
+    cfProps: (f) => ({
+      Name: str(f.environmentName, "dev-env"),
+      InstanceType: str(f.instanceType, "t3.micro"),
+      AutomaticStopTimeMinutes: 30,
+    }),
+  },
+
+  xray: {
+    terraform: "aws_xray_group",
+    cloudformation: "AWS::XRay::Group",
+    tfProps: (f) => ({
+      group_name: str(f.groupName, "service-map"),
+      filter_expression: "service(\"REPLACE_ME\")",
+    }),
+    cfProps: (f) => ({
+      GroupName: str(f.groupName, "service-map"),
+      FilterExpression: "service(\"REPLACE_ME\")",
+    }),
+  },
+
+  bedrock: {
+    terraform: "aws_bedrock_model_invocation_logging_configuration",
+    cloudformation: "AWS::Bedrock::ModelInvocationLoggingConfiguration",
+    tfProps: () => ({
+      logging_config: [{
+        embedding_data_delivery_enabled: true,
+        image_data_delivery_enabled: false,
+        text_data_delivery_enabled: true,
+        s3_config: [{ bucket_name: "REPLACE_ME-bedrock-logs" }],
+      }],
+    }),
+    cfProps: () => ({
+      LoggingConfig: {
+        EmbeddingDataDeliveryEnabled: true,
+        ImageDataDeliveryEnabled: false,
+        TextDataDeliveryEnabled: true,
+        S3Config: { BucketName: "REPLACE_ME-bedrock-logs" },
+      },
     }),
   },
 };
