@@ -155,6 +155,7 @@ export default function DragDropSidebar({
               type: AWS_SERVICE_NODE_TYPE,
               serviceId: vpcService.id,
             }}
+            featured
             onToolClick={onToolClick}
             onToolDragStart={onToolDragStart}
             onToolDragEnd={onToolDragEnd}
