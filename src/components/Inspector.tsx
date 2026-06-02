@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { FolderOpen, LogOut } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,7 @@ import { UI_TEXT, getBrowserLocale } from "@/i18n";
 import { useFlowStore } from "@/store/flowStore";
 import { useAuth } from "@/hooks/useAuth";
 import { signOutUser } from "@/lib/auth";
-import { listUserArchitectures } from "@/lib/architectures";
+import { useArchitectures } from "@/hooks/useArchitectures";
 import {
   isNetworkContainerNode,
   getNetworkContainerType,
@@ -42,17 +42,8 @@ export default function Inspector() {
     "login",
   );
   const [savedProjectsOpen, setSavedProjectsOpen] = useState(false);
-  const [archInfo, setArchInfo] = useState<{ uid: string; count: number } | null>(null);
-
-  useEffect(() => {
-    if (!user) return;
-    listUserArchitectures()
-      .then((res) => setArchInfo({ uid: user.uid, count: res.architectures.length }))
-      .catch(() => setArchInfo({ uid: user.uid, count: 0 }));
-  }, [user]);
-
-  const archCount = archInfo !== null && archInfo.uid === user?.uid ? archInfo.count : null;
-  const archLoading = !!user && archCount === null;
+  const { data: architectures, isLoading: archLoading } = useArchitectures();
+  const archCount = architectures?.length ?? null;
 
   if (!inspectorOpen) return null;
 

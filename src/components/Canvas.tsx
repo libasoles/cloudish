@@ -82,6 +82,7 @@ import { getAwsServiceNodeData } from "@/lib/node-utils";
 import { EDGE_STYLE } from "@/lib/edge-tools";
 import type { ExportFormat } from "@/lib/export/types";
 import { useAuth } from "@/hooks/useAuth";
+import { useSaveArchitecture } from "@/hooks/useArchitectures";
 import {
   Tooltip,
   TooltipContent,
@@ -144,6 +145,7 @@ export default function Canvas() {
     string | undefined
   >();
   const { user } = useAuth();
+  const saveArchitectureMutation = useSaveArchitecture();
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
   const [authDialogMounted, setAuthDialogMounted] = useState(false);
   const [pendingSave, setPendingSave] = useState(false);
@@ -167,8 +169,7 @@ export default function Canvas() {
   );
 
   const handleSave = useCallback(async () => {
-    const { saveUserArchitecture } = await import("@/lib/architectures");
-    const result = await saveUserArchitecture({
+    const result = await saveArchitectureMutation.mutateAsync({
       architectureId: currentArchitectureId,
       name: t.defaultArchitectureName,
       nodes,
@@ -177,7 +178,7 @@ export default function Canvas() {
 
     setCurrentArchitectureId(result.architectureId);
     markSaved();
-  }, [currentArchitectureId, edges, markSaved, nodes, t.defaultArchitectureName]);
+  }, [saveArchitectureMutation, currentArchitectureId, edges, markSaved, nodes, t.defaultArchitectureName]);
 
   const handleReset = useCallback(() => {
     setCurrentArchitectureId(undefined);

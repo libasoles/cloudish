@@ -1,11 +1,7 @@
-import { useEffect, useState } from "react";
 import { FolderOpen, Loader2 } from "lucide-react";
 import { UI_TEXT, getBrowserLocale } from "@/i18n";
-import {
-  listUserArchitectures,
-  type SavedArchitecture,
-} from "@/lib/architectures";
 import { useFlowStore } from "@/store/flowStore";
+import { useArchitectures } from "@/hooks/useArchitectures";
 
 type Props = {
   onSelect?: () => void;
@@ -16,18 +12,9 @@ export function SavedProjectsList({ onSelect }: Props = {}) {
   const t = UI_TEXT[locale] as (typeof UI_TEXT)["en"];
   const { loadArchitecture } = useFlowStore();
 
-  const [projects, setProjects] = useState<SavedArchitecture[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState(false);
+  const { data: projects, isLoading, isError } = useArchitectures();
 
-  useEffect(() => {
-    listUserArchitectures()
-      .then((res) => setProjects(res.architectures))
-      .catch(() => setFetchError(true))
-      .finally(() => setLoading(false));
-  }, []);
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex justify-center py-4">
         <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
@@ -35,7 +22,7 @@ export function SavedProjectsList({ onSelect }: Props = {}) {
     );
   }
 
-  if (fetchError) {
+  if (isError) {
     return (
       <p className="pt-4 text-center text-xs text-muted-foreground">
         {t.savedProjectsError}
@@ -43,7 +30,7 @@ export function SavedProjectsList({ onSelect }: Props = {}) {
     );
   }
 
-  if (projects.length === 0) {
+  if (!projects || projects.length === 0) {
     return (
       <p className="pt-4 text-center text-xs text-muted-foreground">
         {t.savedProjectsEmpty}
