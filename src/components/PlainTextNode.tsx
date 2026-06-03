@@ -1,107 +1,26 @@
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import {
   NodeResizer,
   type Node,
   type NodeProps,
-  type ResizeParamsWithDirection,
 } from "@xyflow/react";
 import { cn } from "@/lib/utils";
 import { useFlowStore } from "@/store/flowStore";
 import { UI_TEXT, getBrowserLocale } from "@/i18n";
 import {
   MAX_TEXT_FONT_SIZE,
-  MAX_TEXT_NODE_HEIGHT,
   MIN_TEXT_FONT_SIZE,
   MIN_TEXT_NODE_HEIGHT,
   MIN_TEXT_NODE_WIDTH,
-  getTextFontSizeForNodeSize,
+  getTextFontSizeForWidth,
+  getFittedTextNodeSize,
+  fitFontSizeToBox,
 } from "@/lib/text-node-utils";
 
 const DEFAULT_TEXT_NODE_WIDTH = 180;
-const DEFAULT_TEXT_NODE_HEIGHT = 56;
-const TEXT_HORIZONTAL_PADDING = 16;
-const TEXT_VERTICAL_PADDING = 8;
-const CARET_SPACE = 4;
-const TEXT_MEASUREMENT_BUFFER = 8;
-const EDITING_INPUT_HORIZONTAL_PADDING = 12;
-const EDITING_INPUT_BORDER_WIDTH = 2;
-const EDITING_INPUT_SCROLL_BUFFER = 8;
-const EDITING_PLACEHOLDER_BUFFER = 4;
-const REAL_INPUT_OVERFLOW_BUFFER = 2;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
-}
-
-function measureTextWidth(text: string, fontSize: number) {
-  if (typeof document === "undefined") {
-    return text.length * fontSize * 0.55;
-  }
-
-  const canvas = document.createElement("canvas");
-  const context = canvas.getContext("2d");
-  if (!context) {
-    return text.length * fontSize * 0.55;
-  }
-
-  context.font = `500 ${fontSize}px system-ui, "Segoe UI", Roboto, sans-serif`;
-  return context.measureText(text).width;
-}
-
-function getFittedTextNodeSize(text: string, fontSize: number) {
-  return {
-    width: Math.max(
-      Math.ceil(
-        measureTextWidth(text, fontSize) +
-          TEXT_HORIZONTAL_PADDING +
-          TEXT_MEASUREMENT_BUFFER,
-      ),
-      MIN_TEXT_NODE_WIDTH,
-    ),
-    height: clamp(
-      Math.ceil(fontSize * 1.15 + TEXT_VERTICAL_PADDING),
-      MIN_TEXT_NODE_HEIGHT,
-      MAX_TEXT_NODE_HEIGHT,
-    ),
-  };
-}
-
-function getEditingInputContentWidth(
-  text: string,
-  placeholder: string,
-  fontSize: number,
-) {
-  const placeholderBuffer = text ? 0 : EDITING_PLACEHOLDER_BUFFER;
-
-  return Math.ceil(
-    measureTextWidth(text || placeholder, fontSize) +
-      CARET_SPACE +
-      EDITING_INPUT_SCROLL_BUFFER +
-      placeholderBuffer,
-  );
-}
-
-function getEditingTextNodeSizeForInputWidth(
-  inputContentWidth: number,
-  fontSize: number,
-) {
-  return {
-    width: Math.max(
-      Math.ceil(
-        inputContentWidth +
-          TEXT_HORIZONTAL_PADDING +
-          EDITING_INPUT_HORIZONTAL_PADDING +
-          EDITING_INPUT_BORDER_WIDTH +
-          TEXT_MEASUREMENT_BUFFER,
-      ),
-      MIN_TEXT_NODE_WIDTH,
-    ),
-    height: clamp(
-      Math.ceil(fontSize * 1.15 + TEXT_VERTICAL_PADDING),
-      MIN_TEXT_NODE_HEIGHT,
-      MAX_TEXT_NODE_HEIGHT,
-    ),
-  };
 }
 
 function getTextCaretOffsetFromPoint(
@@ -145,6 +64,8 @@ export type PlainTextNodeData = {
 
 export type PlainTextNodeType = Node<PlainTextNodeData, "plainText">;
 
+const DEFAULT_TEXT_NODE_HEIGHT = 56;
+
 export default function PlainTextNode({
   id,
   data,
@@ -156,77 +77,58 @@ export default function PlainTextNode({
   const setNodes = useFlowStore((state) => state.setNodes);
   const [isEditing, setIsEditing] = useState(Boolean(data.isEditing));
   const [draft, setDraft] = useState(data.text);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const displayRef = useRef<HTMLDivElement>(null);
   const displayTextRef = useRef<HTMLSpanElement>(null);
   const pendingCaretOffsetRef = useRef<number | null>(null);
   const skipNextBlurRef = useRef(false);
-  const editingSyncedRef = useRef(false);
+  const isResizingRef = useRef(false);
   const t = UI_TEXT[getBrowserLocale()];
   const fontSize = clamp(
-    data.fontSize ?? getTextFontSizeForNodeSize(width, height),
+    data.fontSize ?? getTextFontSizeForWidth(width),
     MIN_TEXT_FONT_SIZE,
     MAX_TEXT_FONT_SIZE,
   );
-  const measuredInputWidth = getEditingInputContentWidth(
-    draft,
-    t.textNodePlaceholder,
-    fontSize,
-  );
-  const [inputContentWidth, setInputContentWidth] =
-    useState(measuredInputWidth);
-  const inputWidth = `${Math.max(inputContentWidth, measuredInputWidth)}px`;
 
-  const resizeNodeForInputWidth = useCallback(
-    (nextInputWidth: number) => {
-      const nextSize = getEditingTextNodeSizeForInputWidth(
-        nextInputWidth,
-        fontSize,
-      );
-
-      setNodes((nodes) =>
-        nodes.map((node) => {
-          if (node.id !== id) {
-            return node;
-          }
-
-          return {
-            ...node,
-            width: nextSize.width,
-            height: nextSize.height,
-            style: {
-              ...node.style,
-              width: nextSize.width,
-              height: nextSize.height,
-            },
-          };
-        }),
-      );
-    },
-    [fontSize, id, setNodes],
-  );
-
+  // Auto-height: after every render triggered by text/width/fontSize/height change,
+  // measure the display div's natural height and correct the node if they diverge.
+  // Guard: `Math.abs(height - targetHeight) <= 1` short-circuits when already in sync,
+  // preventing infinite loops — `setNodes` changes `height` which re-runs this effect,
+  // but then the guard exits immediately.
   useLayoutEffect(() => {
-    if (!isEditing) {
-      editingSyncedRef.current = false;
-      return;
-    }
-    if (editingSyncedRef.current) return;
-    editingSyncedRef.current = true;
-    resizeNodeForInputWidth(inputContentWidth);
-  }, [isEditing, resizeNodeForInputWidth, inputContentWidth]);
+    if (isEditing || isResizingRef.current || !displayRef.current) return;
+    const contentHeight = displayRef.current.offsetHeight;
+    const targetHeight = Math.max(contentHeight, MIN_TEXT_NODE_HEIGHT);
+    if (Math.abs(height - targetHeight) <= 1) return;
+    setNodes((nodes) =>
+      nodes.map((n) =>
+        n.id !== id
+          ? n
+          : { ...n, height: targetHeight, style: { ...n.style, height: targetHeight } },
+      ),
+    );
+  }, [data.text, width, fontSize, height, isEditing, id, setNodes]);
 
+  // Auto-resize textarea height as user types.
+  useLayoutEffect(() => {
+    if (!isEditing || !textareaRef.current) return;
+    const el = textareaRef.current;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [draft, isEditing]);
+
+  // Focus and caret placement when editing starts.
   useLayoutEffect(() => {
     if (!isEditing) return;
     const caretOffset = pendingCaretOffsetRef.current;
     pendingCaretOffsetRef.current = null;
     const focusInput = () => {
-      inputRef.current?.focus();
+      textareaRef.current?.focus();
       if (caretOffset == null) {
-        inputRef.current?.select();
+        textareaRef.current?.select();
         return;
       }
-
-      inputRef.current?.setSelectionRange(caretOffset, caretOffset);
+      textareaRef.current?.setSelectionRange(caretOffset, caretOffset);
     };
 
     focusInput();
@@ -238,29 +140,6 @@ export default function PlainTextNode({
       window.clearTimeout(timeoutId);
     };
   }, [isEditing]);
-
-  useLayoutEffect(() => {
-    if (!isEditing || !inputRef.current) return;
-
-    const overflowWidth =
-      inputRef.current.scrollWidth - inputRef.current.clientWidth;
-
-    if (overflowWidth <= 1) {
-      inputRef.current.scrollLeft = 0;
-      return;
-    }
-
-    const nextInputWidth =
-      inputContentWidth + overflowWidth + REAL_INPUT_OVERFLOW_BUFFER;
-    setInputContentWidth(nextInputWidth);
-    resizeNodeForInputWidth(nextInputWidth);
-  }, [
-    draft,
-    inputContentWidth,
-    inputWidth,
-    isEditing,
-    resizeNodeForInputWidth,
-  ]);
 
   function updateText(nextText: string) {
     setIsEditing(false);
@@ -277,21 +156,17 @@ export default function PlainTextNode({
 
       return {
         nodes: nodes.map((node) => {
-          if (node.id !== id) {
-            return node;
-          }
+          if (node.id !== id) return node;
 
-          const nextSize = getFittedTextNodeSize(nextText, fontSize);
+          // Shrink width to fit single-line text if the text is short enough,
+          // but never expand — a narrow multi-line node must stay narrow.
+          const fittedWidth = getFittedTextNodeSize(nextText, fontSize).width;
+          const newWidth = Math.min(node.width ?? width, fittedWidth);
 
           return {
             ...node,
-            width: nextSize.width,
-            height: nextSize.height,
-            style: {
-              ...node.style,
-              width: nextSize.width,
-              height: nextSize.height,
-            },
+            width: newWidth,
+            style: { ...node.style, width: newWidth },
             data: {
               ...node.data,
               text: nextText,
@@ -309,16 +184,6 @@ export default function PlainTextNode({
     updateText(draft.trim());
   }
 
-  function resizeNodeForDraft(nextDraft: string) {
-    const nextInputWidth = getEditingInputContentWidth(
-      nextDraft,
-      t.textNodePlaceholder,
-      fontSize,
-    );
-    setInputContentWidth(nextInputWidth);
-    resizeNodeForInputWidth(nextInputWidth);
-  }
-
   function cancel() {
     skipNextBlurRef.current = true;
     setDraft(data.text);
@@ -326,33 +191,11 @@ export default function PlainTextNode({
 
     if (!data.text.trim()) {
       updateText("");
-      return;
     }
-
-    const nextSize = getFittedTextNodeSize(data.text, fontSize);
-    setNodes((nodes) =>
-      nodes.map((node) =>
-        node.id === id
-          ? {
-              ...node,
-              width: nextSize.width,
-              height: nextSize.height,
-              style: {
-                ...node.style,
-                width: nextSize.width,
-                height: nextSize.height,
-              },
-            }
-          : node,
-      ),
-    );
   }
 
-  function handleResize(_event: unknown, params: ResizeParamsWithDirection) {
-    const nextFontSize = getTextFontSizeForNodeSize(
-      params.width,
-      params.height,
-    );
+  function handleResize(_event: unknown, params: { width: number; height: number }) {
+    const nextFontSize = fitFontSizeToBox(data.text, params.width, params.height);
 
     setNodes((nodes) =>
       nodes.map((node) =>
@@ -388,13 +231,6 @@ export default function PlainTextNode({
             )
           : null;
         setDraft(data.text);
-        setInputContentWidth(
-          getEditingInputContentWidth(
-            data.text,
-            t.textNodePlaceholder,
-            fontSize,
-          ),
-        );
         setIsEditing(true);
       }}
       onPointerDown={(event) => {
@@ -405,19 +241,26 @@ export default function PlainTextNode({
         isVisible={selected && !isEditing}
         minWidth={MIN_TEXT_NODE_WIDTH}
         minHeight={MIN_TEXT_NODE_HEIGHT}
-        maxHeight={MAX_TEXT_NODE_HEIGHT}
+        onResizeStart={() => {
+          isResizingRef.current = true;
+        }}
         onResize={handleResize}
+        onResizeEnd={(event, params) => {
+          isResizingRef.current = false;
+          handleResize(event, params);
+        }}
         lineClassName="!border-primary/70"
         handleClassName="!h-3 !w-3 !rounded-full !border-2 !border-primary !bg-background"
       />
       {isEditing ? (
-        <div className="nodrag flex h-full w-full items-center px-2 py-1">
-          <input
-            ref={inputRef}
+        <div className="nodrag flex h-full w-full items-start px-2 py-1">
+          <textarea
+            ref={textareaRef}
             autoFocus
             aria-label={t.editTextNode}
-            className="nodrag rounded border border-primary/60 bg-background/95 px-1.5 py-0.5 font-medium leading-tight text-foreground shadow-sm outline-none selection:bg-node-label-selection selection:text-node-label-selection-text"
-            style={{ fontSize, width: inputWidth }}
+            className="nodrag w-full resize-none rounded border border-primary/60 bg-background/95 px-1.5 py-0.5 font-medium leading-tight text-foreground shadow-sm outline-none selection:bg-node-label-selection selection:text-node-label-selection-text"
+            style={{ fontSize, overflow: "hidden", minHeight: 0 }}
+            rows={1}
             value={draft}
             placeholder={t.textNodePlaceholder}
             onBlur={() => {
@@ -425,17 +268,14 @@ export default function PlainTextNode({
                 skipNextBlurRef.current = false;
                 return;
               }
-
               commit();
             }}
             onChange={(event) => {
-              const nextDraft = event.target.value;
-              setDraft(nextDraft);
-              resizeNodeForDraft(nextDraft);
+              setDraft(event.target.value);
             }}
             onDoubleClick={(event) => event.stopPropagation()}
             onKeyDown={(event) => {
-              if (event.key === "Enter") {
+              if (event.key === "Enter" && !event.shiftKey) {
                 event.preventDefault();
                 skipNextBlurRef.current = true;
                 commit();
@@ -450,10 +290,13 @@ export default function PlainTextNode({
           />
         </div>
       ) : (
-        <div className="flex h-full w-full cursor-grab items-center px-2 py-1 active:cursor-grabbing">
+        <div
+          ref={displayRef}
+          className="cursor-grab px-2 py-1 active:cursor-grabbing"
+        >
           <span
             ref={displayTextRef}
-            className="block min-w-0 flex-1 whitespace-pre font-medium leading-tight"
+            className="block min-w-0 whitespace-pre-wrap wrap-break-word font-medium leading-tight"
             style={{ fontSize }}
           >
             {data.text}

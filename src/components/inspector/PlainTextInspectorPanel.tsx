@@ -4,8 +4,9 @@ import {
   MAX_TEXT_FONT_SIZE,
   MIN_TEXT_FONT_SIZE,
   clampTextFontSize,
-  getTextFontSizeForNodeSize,
+  getTextFontSizeForWidth,
   getTextNodeSizeForFont,
+  getFittedTextNodeSize,
 } from "@/lib/text-node-utils";
 import { getNodeSize } from "@/lib/graph-utils";
 import { UI_TEXT, getBrowserLocale } from "@/i18n";
@@ -23,17 +24,28 @@ export function PlainTextInspectorPanel({ node }: PlainTextInspectorPanelProps) 
 
   const data = node.data as PlainTextNodeData;
   const text = data.text ?? "";
-  const { width, height } = getNodeSize(node);
+  const { width } = getNodeSize(node);
   const fontSize = Math.round(
-    data.fontSize ?? getTextFontSizeForNodeSize(width, height),
+    data.fontSize ?? getTextFontSizeForWidth(width),
   );
 
   const onTextChange = useCallback(
     (nextText: string) => {
       setNodes((nodes) =>
-        nodes.map((n) =>
-          n.id === node.id ? { ...n, data: { ...n.data, text: nextText } } : n,
-        ),
+        nodes.map((n) => {
+          if (n.id !== node.id) return n;
+          const currentData = n.data as PlainTextNodeData;
+          const { width: nw } = getNodeSize(n);
+          const fs = currentData.fontSize ?? getTextFontSizeForWidth(nw);
+          const nextSize = getFittedTextNodeSize(nextText, fs);
+          return {
+            ...n,
+            width: nextSize.width,
+            height: nextSize.height,
+            style: { ...n.style, width: nextSize.width, height: nextSize.height },
+            data: { ...n.data, text: nextText },
+          };
+        }),
       );
     },
     [setNodes, node.id],
