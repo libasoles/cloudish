@@ -15,7 +15,12 @@ import {
   getTextFontSizeForWidth,
   getFittedTextNodeSize,
   fitFontSizeToBox,
+  measureTextWidth,
 } from "@/lib/text-node-utils";
+
+// Total horizontal space consumed by the editing chrome around text content:
+// outer div px-2 (16) + textarea px-1.5 (12) + textarea border 1px×2 (2) + caret (4) + measurement buffer (8)
+const EDITING_WIDTH_OVERHEAD = 42;
 
 const DEFAULT_TEXT_NODE_WIDTH = 180;
 
@@ -90,6 +95,26 @@ export default function PlainTextNode({
     MAX_TEXT_FONT_SIZE,
   );
 
+  // Auto-grow: for new empty nodes, compute target width synchronously in render so
+  // the outer div is already the correct size when the DOM updates — eliminates the
+  // one-frame wrap flash that occurs when relying on setNodes alone.
+  const isAutoGrow = isEditing && !data.text;
+  const autoGrowMaxWidth = isAutoGrow
+    ? Math.max(
+        Math.ceil(measureTextWidth("n".repeat(20), fontSize)) + EDITING_WIDTH_OVERHEAD,
+        MIN_TEXT_NODE_WIDTH,
+      )
+    : 0;
+  const autoGrowTargetWidth = isAutoGrow
+    ? Math.min(
+        Math.max(
+          Math.ceil(measureTextWidth(draft || t.textNodePlaceholder, fontSize)) + EDITING_WIDTH_OVERHEAD,
+          MIN_TEXT_NODE_WIDTH,
+        ),
+        autoGrowMaxWidth,
+      )
+    : 0;
+
   // Auto-height: after every render triggered by text/width/fontSize/height change,
   // measure the display div's natural height and correct the node if they diverge.
   // Guard: `Math.abs(height - targetHeight) <= 1` short-circuits when already in sync,
@@ -109,13 +134,33 @@ export default function PlainTextNode({
     );
   }, [data.text, width, fontSize, height, isEditing, id, setNodes]);
 
+  // Sync React Flow node dimensions while in auto-grow mode.
+  // The outer div already has the correct width via inline style (computed in render),
+  // so this effect only keeps RF state in sync and handles the max-width transition.
+  useLayoutEffect(() => {
+    if (!isAutoGrow) return;
+    const fh = getFittedTextNodeSize(draft || t.textNodePlaceholder, fontSize).height;
+    setNodes((nodes) =>
+      nodes.map((n) =>
+        n.id !== id
+          ? n
+          : {
+              ...n,
+              width: autoGrowTargetWidth,
+              height: fh,
+              style: { ...n.style, width: autoGrowTargetWidth, height: fh },
+            },
+      ),
+    );
+  }, [isAutoGrow, autoGrowTargetWidth, draft, fontSize, id, setNodes, t.textNodePlaceholder]);
+
   // Auto-resize textarea height as user types.
   useLayoutEffect(() => {
     if (!isEditing || !textareaRef.current) return;
     const el = textareaRef.current;
     el.style.height = "auto";
     el.style.height = `${el.scrollHeight}px`;
-  }, [draft, isEditing]);
+  }, [draft, isEditing, width]);
 
   // Focus and caret placement when editing starts.
   useLayoutEffect(() => {
@@ -221,6 +266,7 @@ export default function PlainTextNode({
           ? "border-primary bg-background/75 shadow-sm"
           : "bg-transparent",
       )}
+      style={isAutoGrow ? { width: autoGrowTargetWidth } : undefined}
       onDoubleClick={(event) => {
         event.stopPropagation();
         pendingCaretOffsetRef.current = displayTextRef.current
