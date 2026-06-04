@@ -1292,7 +1292,7 @@ export default function Canvas() {
     const maxX = Math.max(...rects.map((r) => r.x + r.width));
     const maxY = Math.max(...rects.map((r) => r.y + r.height));
     const bounds = { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
-    const PADDING = 20;
+    const PADDING = 14;
     const w = bounds.width + PADDING * 2;
     const h = bounds.height + PADDING * 2;
     const groupNode = {

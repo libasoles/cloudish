@@ -208,8 +208,6 @@ body {
 .selection-group-node {
   width: 100%;
   height: 100%;
-  border: 2px solid hsl(var(--primary));
-  border-radius: 8px;
   box-sizing: border-box;
   position: relative;
   pointer-events: none;
