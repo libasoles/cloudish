@@ -362,6 +362,7 @@ const EN_SERVICE_DESCRIPTIONS: Record<string, string> = {
   timestream: "Serverless database for IoT and operations time series.",
   vpc: "Isolated virtual network for launching and connecting AWS resources.",
   "internet-gateway": "Enables communication between instances in a VPC and the internet.",
+  "vpn-gateway": "Gateway that connects the VPC to on-premises networks via IPsec VPN.",
   cloudfront: "Global CDN that delivers content and APIs with low latency.",
   route53: "Scalable DNS service with domain registration and traffic routing.",
   "api-gateway":

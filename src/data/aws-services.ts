@@ -69,6 +69,7 @@ export const AWS_SERVICES: AwsService[] = [
   { id: 'global-accelerator', name: 'Global Accelerator', category: AWS_CATEGORIES.NETWORKING, slug: 'aws-aws-global-accelerator', description: 'Mejora disponibilidad y rendimiento usando la red global de AWS.' },
   { id: 'privatelink', name: 'PrivateLink', category: AWS_CATEGORIES.NETWORKING, slug: 'aws-aws-privatelink', description: 'Acceso privado a servicios entre VPCs sin exponer trafico a internet.' },
   { id: 'internet-gateway', name: 'Internet Gateway', category: AWS_CATEGORIES.NETWORKING, slug: 'aws-res-amazon-vpc-internet-gateway', description: 'Permite comunicacion entre instancias en una VPC e internet.' },
+  { id: 'vpn-gateway', name: 'VPN Gateway', category: AWS_CATEGORIES.NETWORKING, slug: 'aws-res-amazon-vpc-vpn-gateway', description: 'Gateway que conecta la VPC con redes locales mediante VPN sobre IPsec.' },
   { id: 'elb', name: 'ELB', category: AWS_CATEGORIES.NETWORKING, slug: 'aws-elastic-load-balancing', description: 'Distribuye trafico entrante entre multiples destinos para alta disponibilidad.' },
   // Security
   { id: 'iam', name: 'IAM', category: AWS_CATEGORIES.SECURITY, slug: 'aws-aws-identity-and-access-management', description: 'Administra identidades, permisos y acceso a recursos de AWS.' },
