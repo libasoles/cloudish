@@ -6,23 +6,23 @@ import type {
   NetworkContainerType,
 } from "@/types/flow";
 
-export const CONTAINER_WIDTH = 320;
-export const CONTAINER_HEIGHT = 220;
+export const CONTAINER_WIDTH = 384;
+export const CONTAINER_HEIGHT = 264;
 export const DEFAULT_NODE_WIDTH = 150;
 export const DEFAULT_NODE_HEIGHT = 40;
 
-export const REGION_WIDTH = 900;
-export const REGION_HEIGHT = 600;
-export const VPC_WIDTH = 600;
-export const VPC_HEIGHT = 400;
-export const SUBNET_WIDTH = 320;
-export const SUBNET_HEIGHT = 220;
+export const REGION_WIDTH = 1080;
+export const REGION_HEIGHT = 720;
+export const VPC_WIDTH = 720;
+export const VPC_HEIGHT = 480;
+export const SUBNET_WIDTH = 384;
+export const SUBNET_HEIGHT = 264;
 
-export const AZ_WIDTH = 450;
-export const AZ_HEIGHT = 300;
+export const AZ_WIDTH = 540;
+export const AZ_HEIGHT = 360;
 
-export const ASG_WIDTH = 400;
-export const ASG_HEIGHT = 260;
+export const ASG_WIDTH = 480;
+export const ASG_HEIGHT = 312;
 export const ASG_STYLE = { width: ASG_WIDTH, height: ASG_HEIGHT } as const;
 
 export const REGION_STYLE = { width: REGION_WIDTH, height: REGION_HEIGHT } as const;

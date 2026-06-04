@@ -19,8 +19,8 @@ export type NetworkContainerNodeType = Node<
   "networkContainer"
 >;
 
-const MIN_CONTAINER_WIDTH = 220;
-const MIN_CONTAINER_HEIGHT = 140;
+const MIN_CONTAINER_WIDTH = 264;
+const MIN_CONTAINER_HEIGHT = 168;
 
 function DropPreviewLayout({
   childType,
