@@ -21,6 +21,7 @@ import {
   type OnNodeDrag,
   type OnMoveEnd,
   type ReactFlowInstance,
+  type NodeChange,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { Button } from "@/components/ui/button";
@@ -176,6 +177,64 @@ export default function Canvas() {
   const activeDragToolRef = useRef<DragTool | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const isRestoringViewportRef = useRef(false);
+  const shiftSelectionBaseRef = useRef<Set<string>>(new Set());
+  const nodesRef = useRef(nodes);
+  useEffect(() => { nodesRef.current = nodes; }, [nodes]);
+
+  // Save the current selection when Shift+drag starts so we can restore it
+  // after React Flow replaces it with the box-selection result.
+  const handleContainerMouseDown = useCallback((e: React.MouseEvent) => {
+    if (e.shiftKey && e.button === 0) {
+      shiftSelectionBaseRef.current = new Set(
+        nodesRef.current.filter((n) => n.selected).map((n) => n.id),
+      );
+    }
+  }, []);
+
+  // On each pointer-move during a Shift+drag selection box, React Flow calls
+  // resetSelectedElements() which deselects every node (including the "base"
+  // selection we want to preserve) and then fires triggerNodeChanges → onNodesChange.
+  // We intercept those deselections here: for every base node being deselected we
+  // append an immediate re-selection in the same onNodesChange call.
+  // Passing both {select:false} and {select:true} for the same node creates a new
+  // node-object reference, which React Flow's useIsomorphicLayoutEffect detects and
+  // uses to re-sync its internal nodeLookup *before the browser paints* — so the
+  // user never sees a visual flash.
+  const handleNodesChange = useCallback((changes: NodeChange<AppNode>[]) => {
+    const base = shiftSelectionBaseRef.current;
+    if (base.size > 0) {
+      const baseDeselections = changes.filter(
+        (c) => c.type === "select" && c.selected === false && base.has(c.id),
+      );
+      if (baseDeselections.length > 0) {
+        const reselections: NodeChange<AppNode>[] = baseDeselections.map((c) => ({
+          type: "select" as const,
+          id: c.id,
+          selected: true,
+        }));
+        onNodesChange([...changes, ...reselections]);
+        return;
+      }
+    }
+    onNodesChange(changes);
+  }, [onNodesChange]);
+
+  useEffect(() => {
+    const onMouseUp = () => {
+      if (shiftSelectionBaseRef.current.size === 0) return;
+      const base = new Set(shiftSelectionBaseRef.current);
+      shiftSelectionBaseRef.current.clear();
+      // Fallback safety net: if the filter above was insufficient, re-select base nodes.
+      setTimeout(() => {
+        const reselect: NodeChange<AppNode>[] = nodesRef.current
+          .filter((n) => base.has(n.id) && !n.selected)
+          .map((n) => ({ type: "select" as const, id: n.id, selected: true }));
+        if (reselect.length > 0) onNodesChange(reselect);
+      }, 0);
+    };
+    window.addEventListener("mouseup", onMouseUp);
+    return () => window.removeEventListener("mouseup", onMouseUp);
+  }, [onNodesChange]);
 
   const handleExport = useCallback(
     async (format: ExportFormat) => {
@@ -1146,13 +1205,14 @@ export default function Canvas() {
       <div
         ref={containerRef}
         style={{ flex: 1, position: "relative" }}
+        onMouseDown={handleContainerMouseDown}
         onDoubleClickCapture={handlePaneDoubleClick}
       >
         <ReactFlow
           className="dark"
           nodes={nodes}
           edges={edges}
-          onNodesChange={onNodesChange}
+          onNodesChange={handleNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
           onDragOver={onDragOver}
@@ -1170,6 +1230,8 @@ export default function Canvas() {
             if (!inspectorOpen) setInspectorOpen(true);
           }}
           zoomOnDoubleClick={false}
+          multiSelectionKeyCode="Shift"
+          selectionMode="partial"
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           defaultEdgeOptions={DEFAULT_EDGE_OPTIONS}
