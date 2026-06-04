@@ -40,6 +40,41 @@ export default function AwsServiceNode({
     }));
   }
 
+  const isCircular =
+    data.serviceId === "internet-gateway" ||
+    data.serviceId === "vpn-gateway";
+
+  if (isCircular) {
+    return (
+      <div className="flex flex-col items-center gap-1.5 w-14">
+        <Handle type="target" position={Position.Left} style={{ top: 28 }} />
+        <div
+          className={cn(
+            "size-14 rounded-full bg-white border-2 shadow-sm flex items-center justify-center",
+            data.pulseKey && "node-click-pulse",
+            selected
+              ? "border-blue-500 shadow-md ring-2 ring-primary ring-offset-4 ring-offset-background"
+              : "border-gray-200",
+          )}
+        >
+          <AwsServiceIcon
+            slug={data.slug}
+            category={data.category}
+            name={data.name}
+            size={40}
+          />
+        </div>
+        <EditableNodeLabel
+          value={data.name}
+          editLabel={t.editNodeName}
+          className="text-white"
+          onCommit={renameNode}
+        />
+        <Handle type="source" position={Position.Right} style={{ top: 28 }} />
+      </div>
+    );
+  }
+
   return (
     <div
       className={cn(

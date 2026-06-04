@@ -35,6 +35,7 @@ export function HoverOnlyTooltip({
           onPointerEnter={() => setOpen(true)}
           onPointerLeave={() => setOpen(false)}
           onPointerDown={() => setOpen(false)}
+          onDragStart={() => setOpen(false)}
           onClick={() => setOpen(false)}
         >
           {children}
