@@ -264,6 +264,37 @@ code {
   background: var(--code-bg);
 }
 
+.react-flow__selection {
+  border: none !important;
+  background: rgba(56, 189, 248, 0.04) !important;
+  position: relative;
+}
+
+.react-flow__selection::before {
+  content: '';
+  position: absolute;
+  inset: -14px;
+  border: 2px dashed rgba(56, 189, 248, 0.7);
+  border-radius: 10px;
+  pointer-events: none;
+}
+
+.react-flow__nodesselection-rect {
+  border: none !important;
+  background: transparent !important;
+  position: relative;
+}
+
+.react-flow__nodesselection-rect::before {
+  content: '';
+  position: absolute;
+  inset: -14px;
+  border: 1px dashed rgba(56, 189, 248, 0.7);
+  border-radius: 10px;
+  background: rgba(56, 189, 248, 0.04);
+  pointer-events: none;
+}
+
 .react-flow__attribution {
   left: auto;
   right: 172px !important;
