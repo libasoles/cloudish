@@ -74,7 +74,8 @@ export const UI_TEXT = {
     azDescription: "Availability Zone container inside a VPC or Region.",
     asg: "Auto Scaling",
     dragAsg: "Drag Auto Scaling Group",
-    asgDescription: "Auto Scaling Group container for groups of EC2 instances that scale automatically.",
+    asgDescription:
+      "Auto Scaling Group container for groups of EC2 instances that scale automatically.",
     asgMinCapacity: "Min instances",
     asgDesiredCapacity: "Desired instances",
     asgMaxCapacity: "Max instances",
@@ -101,8 +102,7 @@ export const UI_TEXT = {
     saveArchitectureTooltip: "Save architecture",
     saveArchitectureSaving: "Saving architecture...",
     saveArchitectureSaved: "Done",
-    saveArchitectureSavedDescription:
-      "Saved to your architecture drafts.",
+    saveArchitectureSavedDescription: "Saved to your architecture drafts.",
     saveArchitectureFailed: "Could not save architecture",
     saveArchitectureFailedDescription:
       "Check that you are signed in and try again.",
@@ -144,8 +144,7 @@ export const UI_TEXT = {
     authErrorEmailInUse: "This email is already in use.",
     authErrorWeakPassword: "Password must be at least 6 characters.",
     authErrorInvalidEmail: "Please enter a valid email address.",
-    authErrorProviderDisabled:
-      "This sign-in method is not enabled.",
+    authErrorProviderDisabled: "This sign-in method is not enabled.",
     authErrorGeneric: "Something went wrong. Please try again.",
     authSignedInAs: "Signed in as",
     savedProjects: "Saved projects",
@@ -160,7 +159,7 @@ export const UI_TEXT = {
     newToolMenuTitle: "Agregar nodo",
     newToolConfirmTitle: "¿Empezar desde cero?",
     newToolConfirmDescription:
-      "Esto eliminará todos los nodos y contenedores del lienzo. Esta acción no se puede deshacer.",
+      "Esto eliminará todos los nodos y contenedores del lienzo. No se puede deshacer esta acción.",
     newToolConfirmAction: "Limpiar lienzo",
     newToolConfirmCancel: "Cancelar",
     addTool: (toolName: string) => `Agregar ${toolName}`,
@@ -215,7 +214,8 @@ export const UI_TEXT = {
     azDescription: "Zona de Disponibilidad dentro de una VPC o Región.",
     asg: "Auto Scaling",
     dragAsg: "Arrastrar Auto Scaling Group",
-    asgDescription: "Contenedor de Auto Scaling Group para grupos de instancias EC2 que escalan automáticamente.",
+    asgDescription:
+      "Contenedor de Auto Scaling Group para grupos de instancias EC2 que escalan automáticamente.",
     asgMinCapacity: "Instancias mínimas",
     asgDesiredCapacity: "Instancias deseadas",
     asgMaxCapacity: "Instancias máximas",
@@ -361,8 +361,10 @@ const EN_SERVICE_DESCRIPTIONS: Record<string, string> = {
   qldb: "Managed ledger with cryptographically verifiable and immutable history.",
   timestream: "Serverless database for IoT and operations time series.",
   vpc: "Isolated virtual network for launching and connecting AWS resources.",
-  "internet-gateway": "Enables communication between instances in a VPC and the internet.",
-  "vpn-gateway": "Gateway that connects the VPC to on-premises networks via IPsec VPN.",
+  "internet-gateway":
+    "Enables communication between instances in a VPC and the internet.",
+  "vpn-gateway":
+    "Gateway that connects the VPC to on-premises networks via IPsec VPN.",
   cloudfront: "Global CDN that delivers content and APIs with low latency.",
   route53: "Scalable DNS service with domain registration and traffic routing.",
   "api-gateway":

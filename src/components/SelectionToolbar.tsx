@@ -1,6 +1,7 @@
 import { useStore, useReactFlow } from "@xyflow/react";
 import { useFlowStore } from "@/store/flowStore";
 import { getAbsolutePosition, getNodeSize } from "@/lib/graph-utils";
+import { SELECTION_BOX_PADDING } from "@/lib/selection-constants";
 import { HoverOnlyTooltip } from "@/components/HoverOnlyTooltip";
 import { Button } from "@/components/ui/button";
 import { AlignCenterHorizontallyIcon } from "@/components/icons/AlignCenterHorizontallyIcon";
@@ -23,7 +24,7 @@ export function SelectionToolbar() {
   const [vpX, vpY, zoom] = transform;
 
   const screenCenterX = (bounds.x + bounds.width / 2) * zoom + vpX;
-  const screenTopY = bounds.y * zoom + vpY;
+  const screenBoxTopY = (bounds.y - SELECTION_BOX_PADDING) * zoom + vpY;
 
   function alignCenterH() {
     const targetX = bounds.x + bounds.width / 2;
@@ -74,7 +75,7 @@ export function SelectionToolbar() {
       className="absolute z-10 flex items-center gap-0.5 rounded-lg border border-border bg-card px-1.5 py-1 shadow-lg"
       style={{
         left: screenCenterX,
-        top: screenTopY - 90,
+        top: screenBoxTopY - 76,
         transform: "translateX(-50%)",
         pointerEvents: "all",
       }}

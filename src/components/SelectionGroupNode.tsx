@@ -6,8 +6,8 @@ export type SelectionGroupNodeType = Node<SelectionGroupNodeData, "selectionGrou
 export default function SelectionGroupNode() {
   return (
     <div className="selection-group-node">
-      <Handle type="target" position={Position.Left} />
-      <Handle type="source" position={Position.Right} />
+      <Handle type="target" position={Position.Left} id="left" />
+      <Handle type="source" position={Position.Right} id="right" />
     </div>
   );
 }

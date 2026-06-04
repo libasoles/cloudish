@@ -109,6 +109,7 @@ import {
   clearUrlArchitectureId,
   setUrlArchitectureId,
 } from "@/lib/url-utils";
+import { SELECTION_BOX_PADDING } from "@/lib/selection-constants";
 import { HoverOnlyTooltip } from "@/components/HoverOnlyTooltip";
 
 const SELECTION_GROUP_ID = "__selection-group__";
@@ -1361,13 +1362,12 @@ export default function Canvas() {
     const maxX = Math.max(...rects.map((r) => r.x + r.width));
     const maxY = Math.max(...rects.map((r) => r.y + r.height));
     const bounds = { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
-    const PADDING = 14;
-    const w = bounds.width + PADDING * 2;
-    const h = bounds.height + PADDING * 2;
+    const w = bounds.width + SELECTION_BOX_PADDING * 2;
+    const h = bounds.height + SELECTION_BOX_PADDING * 2;
     const groupNode = {
       id: SELECTION_GROUP_ID,
       type: "selectionGroup" as const,
-      position: { x: bounds.x - PADDING, y: bounds.y - PADDING },
+      position: { x: bounds.x - SELECTION_BOX_PADDING, y: bounds.y - SELECTION_BOX_PADDING },
       data: {} as Record<string, never>,
       style: { width: w, height: h },
       // Pre-supply measured dimensions so React Flow doesn't set visibility:hidden

@@ -1,0 +1,1 @@
+export const SELECTION_BOX_PADDING = 14;
