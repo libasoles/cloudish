@@ -66,30 +66,33 @@ export default function NetworkContainerNode({
   selected,
 }: NodeProps<NetworkContainerNodeType>) {
   const t = UI_TEXT[getBrowserLocale()];
-  const {
-    nodes,
-    setNodes,
-    dropTargetNodeId,
-    dropPreview,
-    commitGraphChange,
-  } = useFlowStore();
+  const setNodes = useFlowStore((state) => state.setNodes);
+  const commitGraphChange = useFlowStore((state) => state.commitGraphChange);
+  const isDropTarget = useFlowStore((state) => state.dropTargetNodeId === id);
+  const previewChildType = useFlowStore((state) =>
+    state.dropPreview?.parentId === id ? state.dropPreview.childType : null,
+  );
+  const previewChildCount = useFlowStore((state) => {
+    if (state.dropPreview?.parentId !== id) {
+      return 0;
+    }
+
+    const childType = state.dropPreview.childType;
+    return (
+      state.nodes.filter(
+        (node) =>
+          node.parentId === id &&
+          (node.data as { containerType?: NetworkContainerType }).containerType ===
+            childType,
+      ).length + 1
+    );
+  });
   const isVpc = data.containerType === "vpc";
   const isRegion = data.containerType === "region";
   const isAz = data.containerType === "az";
   const isAsg = data.containerType === "asg";
   const isPrivateSubnet = data.subnetType === "Private";
   const displayLabel = String(data.label);
-  const isDropTarget = dropTargetNodeId === id;
-  const previewChildType =
-    dropPreview?.parentId === id ? dropPreview.childType : null;
-  const previewChildCount = previewChildType
-    ? nodes.filter(
-        (node) =>
-          node.parentId === id &&
-          (node.data as { containerType?: NetworkContainerType }).containerType ===
-            previewChildType,
-      ).length + 1
-    : 0;
 
   const handleResize = (
     _: unknown,
