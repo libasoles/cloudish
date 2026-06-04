@@ -224,6 +224,9 @@ body {
   box-sizing: border-box;
   position: relative;
   pointer-events: none;
+  border: 1px dashed rgba(56, 189, 248, 0.7);
+  border-radius: 10px;
+  background: rgba(56, 189, 248, 0.04);
 }
 
 .react-flow__node-selectionGroup .react-flow__handle {
@@ -315,13 +318,7 @@ code {
 }
 
 .react-flow__nodesselection-rect::before {
-  content: '';
-  position: absolute;
-  inset: -14px;
-  border: 1px dashed rgba(56, 189, 248, 0.7);
-  border-radius: 10px;
-  background: rgba(56, 189, 248, 0.04);
-  pointer-events: none;
+  display: none !important;
 }
 
 .react-flow__attribution {

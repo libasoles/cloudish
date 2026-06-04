@@ -1440,6 +1440,7 @@ export default function Canvas() {
             if (node.type === "plainText") return;
             if (!inspectorOpen) setInspectorOpen(true);
           }}
+          onSelectionStart={() => setSelectionBoxActive(false)}
           onSelectionEnd={() => setSelectionBoxActive(true)}
           onPaneClick={() => setSelectionBoxActive(false)}
           zoomOnDoubleClick={false}
