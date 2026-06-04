@@ -3,6 +3,7 @@ import {
   Suspense,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type DragEvent,
@@ -14,6 +15,7 @@ import {
   MiniMap,
   Background,
   BackgroundVariant,
+  getNodesBounds,
   type OnConnect,
   type Connection,
   type NodeTypes,
@@ -22,6 +24,8 @@ import {
   type OnMoveEnd,
   type ReactFlowInstance,
   type NodeChange,
+  type NodeSelectionChange,
+  SelectionMode,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { Button } from "@/components/ui/button";
@@ -37,6 +41,7 @@ import AwsServiceNode from "@/components/AwsServiceNode";
 import NetworkContainerNode from "@/components/NetworkContainerNode";
 import PlainTextNode from "@/components/PlainTextNode";
 import UserNode from "@/components/UserNode";
+import SelectionGroupNode from "@/components/SelectionGroupNode";
 import EditableEdge from "@/components/EditableEdge";
 import ServiceSearch from "@/components/ServiceSearch";
 import { SelectionToolbar } from "@/components/SelectionToolbar";
@@ -102,11 +107,14 @@ import {
 } from "@/lib/url-utils";
 import { HoverOnlyTooltip } from "@/components/HoverOnlyTooltip";
 
+const SELECTION_GROUP_ID = "__selection-group__";
+
 const nodeTypes: NodeTypes = {
   awsService: AwsServiceNode,
   networkContainer: NetworkContainerNode,
   plainText: PlainTextNode,
   user: UserNode,
+  selectionGroup: SelectionGroupNode,
 };
 
 const edgeTypes: EdgeTypes = {
@@ -154,6 +162,7 @@ export default function Canvas() {
     setDropTargetNodeId,
     setDropPreview,
     setEditingEdgeId,
+    selectionBoxActive,
     setSelectionBoxActive,
     resetCanvas,
   } = useFlowStore();
@@ -203,10 +212,14 @@ export default function Canvas() {
   // uses to re-sync its internal nodeLookup *before the browser paints* — so the
   // user never sees a visual flash.
   const handleNodesChange = useCallback((changes: NodeChange<AppNode>[]) => {
+    const realChanges = changes.filter(
+      (c) => !("id" in c && c.id === SELECTION_GROUP_ID),
+    );
     const base = shiftSelectionBaseRef.current;
     if (base.size > 0) {
-      const baseDeselections = changes.filter(
-        (c) => c.type === "select" && c.selected === false && base.has(c.id),
+      const baseDeselections = realChanges.filter(
+        (c): c is NodeSelectionChange =>
+          c.type === "select" && !(c as NodeSelectionChange).selected && base.has((c as NodeSelectionChange).id),
       );
       if (baseDeselections.length > 0) {
         const reselections: NodeChange<AppNode>[] = baseDeselections.map((c) => ({
@@ -214,11 +227,11 @@ export default function Canvas() {
           id: c.id,
           selected: true,
         }));
-        onNodesChange([...changes, ...reselections]);
+        onNodesChange([...realChanges, ...reselections]);
         return;
       }
     }
-    onNodesChange(changes);
+    onNodesChange(realChanges);
   }, [onNodesChange]);
 
   useEffect(() => {
@@ -424,6 +437,30 @@ export default function Canvas() {
   const onConnect: OnConnect = useCallback(
     (connection: Connection) => {
       if (!connection.source || !connection.target) return;
+
+      const isGroupSource = connection.source === SELECTION_GROUP_ID;
+      const isGroupTarget = connection.target === SELECTION_GROUP_ID;
+
+      if (isGroupSource || isGroupTarget) {
+        commitGraphChange(({ nodes: n, edges }) => {
+          const selectedIds = n
+            .filter((node) => node.selected && node.type !== "selectionGroup")
+            .map((node) => node.id);
+          let result = edges;
+          for (const memberId of selectedIds) {
+            const edge: AppEdge = {
+              ...connection,
+              id: `edge-${edgeIdRef.current++}`,
+              source: isGroupSource ? memberId : connection.source!,
+              target: isGroupTarget ? memberId : connection.target!,
+              style: EDGE_STYLE,
+            };
+            result = addEdgeWithAzSync(edge, n, result);
+          }
+          return { nodes: n, edges: result };
+        });
+        return;
+      }
 
       const edge: AppEdge = {
         ...connection,
@@ -1176,6 +1213,28 @@ export default function Canvas() {
     [addToolAtPosition, reactFlowInstance],
   );
 
+  const displayNodes = useMemo(() => {
+    if (!selectionBoxActive) return nodes;
+    const eligible = nodes.filter(
+      (n) => n.selected && n.type !== "selectionGroup",
+    );
+    if (eligible.length < 2) return nodes;
+    const bounds = getNodesBounds(eligible);
+    const PADDING = 20;
+    const groupNode = {
+      id: SELECTION_GROUP_ID,
+      type: "selectionGroup" as const,
+      position: { x: bounds.x - PADDING, y: bounds.y - PADDING },
+      data: {} as Record<string, never>,
+      style: { width: bounds.width + PADDING * 2, height: bounds.height + PADDING * 2 },
+      selectable: false,
+      draggable: false,
+      focusable: false,
+      zIndex: -1,
+    };
+    return [...nodes, groupNode];
+  }, [nodes, selectionBoxActive]);
+
   return (
     <>
       <DragDropSidebar
@@ -1212,7 +1271,7 @@ export default function Canvas() {
       >
         <ReactFlow
           className="dark"
-          nodes={nodes}
+          nodes={displayNodes}
           edges={edges}
           onNodesChange={handleNodesChange}
           onEdgesChange={onEdgesChange}
@@ -1235,7 +1294,7 @@ export default function Canvas() {
           onPaneClick={() => setSelectionBoxActive(false)}
           zoomOnDoubleClick={false}
           multiSelectionKeyCode="Shift"
-          selectionMode="partial"
+          selectionMode={SelectionMode.Partial}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           defaultEdgeOptions={DEFAULT_EDGE_OPTIONS}
