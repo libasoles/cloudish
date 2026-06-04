@@ -3,30 +3,8 @@ import { useFlowStore } from "@/store/flowStore";
 import { getAbsolutePosition, getNodeSize } from "@/lib/graph-utils";
 import { HoverOnlyTooltip } from "@/components/HoverOnlyTooltip";
 import { Button } from "@/components/ui/button";
-
-function IconSideBySide() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="0" y1="8" x2="16" y2="8" />
-      <rect x="1" y="3" width="5" height="10" rx="1" fill="hsl(var(--card))" />
-      <rect x="1" y="3" width="5" height="10" rx="1" />
-      <rect x="10" y="3" width="5" height="10" rx="1" fill="hsl(var(--card))" />
-      <rect x="10" y="3" width="5" height="10" rx="1" />
-    </svg>
-  );
-}
-
-function IconStacked() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="8" y1="0" x2="8" y2="16" />
-      <rect x="3" y="1" width="10" height="5" rx="1" fill="hsl(var(--card))" />
-      <rect x="3" y="1" width="10" height="5" rx="1" />
-      <rect x="3" y="10" width="10" height="5" rx="1" fill="hsl(var(--card))" />
-      <rect x="3" y="10" width="10" height="5" rx="1" />
-    </svg>
-  );
-}
+import { AlignCenterHorizontallyIcon } from "@/components/icons/AlignCenterHorizontallyIcon";
+import { AlignCenterVerticallyIcon } from "@/components/icons/AlignCenterVerticallyIcon";
 
 export function SelectionToolbar() {
   const nodes = useFlowStore((s) => s.nodes);
@@ -108,7 +86,7 @@ export function SelectionToolbar() {
           className="h-9 w-9"
           onClick={alignMiddleV}
         >
-          <IconSideBySide />
+          <AlignCenterHorizontallyIcon />
         </Button>
       </HoverOnlyTooltip>
       <div className="h-4 w-px bg-border" />
@@ -119,7 +97,7 @@ export function SelectionToolbar() {
           className="h-9 w-9"
           onClick={alignCenterH}
         >
-          <IconStacked />
+          <AlignCenterVerticallyIcon />
         </Button>
       </HoverOnlyTooltip>
     </div>

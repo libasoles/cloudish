@@ -1,5 +1,6 @@
 import { Suspense, useEffect, useState } from 'react'
 import { useParams, Link, NavLink } from 'react-router-dom'
+import { ChevronLeftIcon } from '@/components/icons/ChevronLeftIcon'
 import { getTutorial, TUTORIALS, TUTORIAL_LAZY_MAP } from '../docs/tutorial-registry'
 
 export default function DocsPage() {
@@ -41,9 +42,7 @@ export default function DocsPage() {
             className="flex items-center gap-2 text-sm font-medium mb-4 opacity-60 hover:opacity-100 transition-opacity"
             style={{ color: 'var(--text)' }}
           >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            <ChevronLeftIcon width="16" height="16" />
             Volver a la app
           </Link>
           <div className="flex items-center gap-2">
@@ -111,9 +110,7 @@ export default function DocsPage() {
               className="lg:hidden flex items-center gap-1 text-sm mb-6 opacity-60 hover:opacity-100 transition-opacity"
               style={{ color: 'var(--text)' }}
             >
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <ChevronLeftIcon width="14" height="14" />
               Volver a la app
             </Link>
 

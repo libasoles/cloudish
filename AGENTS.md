@@ -31,6 +31,15 @@ Don't use inline styles in JSX except for dynamic values that can't be handled v
 - Do not call `setState` synchronously inside `useEffect` to derive state from props, state, or render-time calculations. Prefer computing derived values during render, or update related state in the event handler that caused the change.
 - Effects should synchronize with external systems, subscriptions, timers, browser APIs, or imperative libraries. If an effect only mirrors React state into more React state, redesign the state shape first.
 
+## Zustand Subscription Rule
+
+- Subscriptions to Zustand stores must be as restrictive as possible to avoid unnecessary re-renders.
+- Never subscribe to the full store object inside React components (for example, `const state = useFlowStore()`).
+- Always use focused selectors for only the exact fields/actions needed (for example, `useFlowStore((s) => s.commitGraphChange)`).
+- If a component needs multiple store values, select only those values and use `shallow` equality when returning an object/array selector.
+- Keep derived values out of store selectors when possible; derive them in render with `useMemo` if needed.
+- Use `useFlowStore.getState()` only for imperative/event-path reads where React subscription is not required (for example, drag handlers), not as a replacement for broad subscriptions in render.
+
 ## Internationalization (i18n)
 
 This project supports two languages: **English (EN)** and **Spanish (ES)**.
@@ -148,6 +157,14 @@ When an icon button may be `disabled`, a disabled button does not fire pointer e
 
 The span receives hover events even when the button inside is disabled, so the tooltip shows. Wrap the whole group in a single `<TooltipProvider>`.
 
+## Icon Components
+
+- Never embed raw `<svg>` markup directly inside feature/page components.
+- Always abstract SVGs into dedicated React icon components under `src/components/icons`.
+- Reuse icon components via imports to keep visual assets centralized and easier to maintain.
+
 ## Before Commit
 
 - Run `npm run lint` before committing changes.
+- For tasks that touch Tailwind classes, run a class-level lint check before finishing the task (for example, warnings like `suggestCanonicalClasses`).
+- Apply Tailwind class suggestions when possible only if they are low risk and do not change behavior, layout intent, or responsive/accessibility semantics.
