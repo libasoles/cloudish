@@ -5,9 +5,9 @@ export type SelectionGroupNodeType = Node<SelectionGroupNodeData, "selectionGrou
 
 export default function SelectionGroupNode() {
   return (
-    <div style={{ width: "100%", height: "100%" }} className="pointer-events-none">
-      <Handle type="target" position={Position.Left} style={{ pointerEvents: "all" }} />
-      <Handle type="source" position={Position.Right} style={{ pointerEvents: "all" }} />
+    <div className="selection-group-node">
+      <Handle type="target" position={Position.Left} />
+      <Handle type="source" position={Position.Right} />
     </div>
   );
 }

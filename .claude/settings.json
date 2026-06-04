@@ -6,10 +6,10 @@
       "Bash(git commit -m ' *)",
       "Bash(curl -s http://localhost:5174/)",
       "Read(//tmp/**)",
-      "Bash(pkill -f \"vite --port 5199\")",
       "Bash(pkill -f \"vite --port 5174\")",
       "Bash(grep -E \"\\(firebase|config|\\\\.tsx?$\\)\")",
-      "Bash(npx husky *)"
+      "Bash(npx husky *)",
+      "Bash(npx eslint *)"
     ]
   }
 }

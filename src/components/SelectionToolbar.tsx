@@ -1,4 +1,4 @@
-import { useStore, getNodesBounds } from "@xyflow/react";
+import { useStore, useReactFlow } from "@xyflow/react";
 import { useFlowStore } from "@/store/flowStore";
 import { getAbsolutePosition, getNodeSize } from "@/lib/graph-utils";
 import { HoverOnlyTooltip } from "@/components/HoverOnlyTooltip";
@@ -33,6 +33,7 @@ export function SelectionToolbar() {
   const commitGraphChange = useFlowStore((s) => s.commitGraphChange);
   const selectionBoxActive = useFlowStore((s) => s.selectionBoxActive);
   const transform = useStore((s) => s.transform);
+  const { getNodesBounds } = useReactFlow();
 
   const selectedNodes = nodes.filter(
     (n) => n.selected && n.type !== "networkContainer",
