@@ -288,6 +288,12 @@ export default function Canvas() {
           (c as NodeSelectionChange).id !== clickedId,
       );
       if (baseDeselections.length > 0) {
+        // Single deselection is likely an intentional Shift+Click; allow it.
+        // Multiple deselections suggest accidental drag-clearing; re-select them.
+        if (baseDeselections.length === 1) {
+          onNodesChange(realChanges);
+          return;
+        }
         const reselections: NodeChange<AppNode>[] = baseDeselections.map((c) => ({
           type: "select" as const,
           id: c.id,
