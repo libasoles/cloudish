@@ -1,8 +1,8 @@
 import { AWS_SERVICES, type AwsService } from "@/data/aws-services";
 
 export const TOP_AWS_SERVICE_IDS = [
-  "s3",
   "ec2",
+  "s3",
   "lambda",
   "fargate",
   "rds",

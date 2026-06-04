@@ -1,5 +1,5 @@
 import type { DragEvent, ReactNode } from "react";
-import { Container, User, Globe, Layers, Type, Cloud, TrendingUp } from "lucide-react";
+import { User, Globe, Layers, Type, Cloud, TrendingUp, Network } from "lucide-react";
 import { AwsServiceIcon } from "@/components/AwsServiceIcon";
 import { HoverOnlyTooltip } from "@/components/HoverOnlyTooltip";
 import {
@@ -13,6 +13,32 @@ import {
   encodeDragTool,
   type DragTool,
 } from "@/lib/drag-tools";
+
+function VpcIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <defs>
+        <mask id="vpc-icon-mask">
+          <rect width="24" height="24" fill="white" />
+          <path d="M15 23Q19 21 19 17V14L15 13L11 14V17Q11 21 15 23Z" fill="black" stroke="none" />
+        </mask>
+      </defs>
+      {/* Cloud — masked where shield overlaps */}
+      <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" mask="url(#vpc-icon-mask)" />
+      {/* Shield on top */}
+      <path d="M15 23Q19 21 19 17V14L15 13L11 14V17Q11 21 15 23Z" />
+    </svg>
+  );
+}
 
 type DragDropSidebarProps = {
   labels: {
@@ -176,12 +202,7 @@ export default function DragDropSidebar({
             onToolDragStart={onToolDragStart}
             onToolDragEnd={onToolDragEnd}
           >
-            <AwsServiceIcon
-              slug={vpcService.slug}
-              category={vpcService.category}
-              name={vpcService.name}
-              size={40}
-            />
+            <VpcIcon className="h-8 w-8 text-muted-foreground" />
           </SidebarToolButton>
         )}
         <SidebarToolButton
@@ -206,7 +227,7 @@ export default function DragDropSidebar({
           onToolDragStart={onToolDragStart}
           onToolDragEnd={onToolDragEnd}
         >
-          <Container className="h-8 w-8 text-muted-foreground" />
+          <Network className="h-8 w-8 text-muted-foreground" />
         </SidebarToolButton>
         <SidebarToolButton
           name={labels.asg}
