@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { Input } from "@/components/ui/input";
+import LabeledSlider from "@/components/LabeledSlider";
 import {
   MAX_TEXT_FONT_SIZE,
   MIN_TEXT_FONT_SIZE,
@@ -86,23 +87,14 @@ export function PlainTextInspectorPanel({ node }: PlainTextInspectorPanelProps) 
           onChange={(event) => onTextChange(event.target.value)}
         />
       </label>
-      <label className="grid gap-2 text-sm font-medium text-foreground">
-        <span className="flex items-center justify-between gap-3">
-          <span>{t.textFontSize}</span>
-          <output className="font-mono text-sm text-muted-foreground">
-            {fontSize}px
-          </output>
-        </span>
-        <input
-          type="range"
-          min={MIN_TEXT_FONT_SIZE}
-          max={MAX_TEXT_FONT_SIZE}
-          step={1}
-          value={fontSize}
-          className="h-0.5 w-full cursor-pointer accent-primary"
-          onChange={(event) => onFontSizeChange(Number(event.target.value))}
-        />
-      </label>
+      <LabeledSlider
+        label={t.textFontSize}
+        value={fontSize}
+        min={MIN_TEXT_FONT_SIZE}
+        max={MAX_TEXT_FONT_SIZE}
+        formatValue={(v) => `${v}px`}
+        onChange={onFontSizeChange}
+      />
     </div>
   );
 }

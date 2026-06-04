@@ -1,3 +1,5 @@
+import LabeledSlider from "./LabeledSlider";
+
 type ChildCountSliderProps = {
   label: string;
   value: number;
@@ -16,25 +18,13 @@ export default function ChildCountSlider({
   value,
   onChange,
 }: ChildCountSliderProps) {
-  const sliderValue = clampChildCount(value);
-
   return (
-    <label className="grid gap-4 text-sm font-medium text-foreground">
-      <span className="flex items-center justify-between gap-3">
-        <span>{label}</span>
-        <output className="font-mono text-sm text-muted-foreground">
-          {sliderValue}
-        </output>
-      </span>
-      <input
-        type="range"
-        min={MIN_CHILD_COUNT}
-        max={MAX_CHILD_COUNT}
-        step={1}
-        value={sliderValue}
-        className="h-0.5 w-full cursor-pointer accent-primary"
-        onChange={(event) => onChange(Number(event.target.value))}
-      />
-    </label>
+    <LabeledSlider
+      label={label}
+      value={clampChildCount(value)}
+      min={MIN_CHILD_COUNT}
+      max={MAX_CHILD_COUNT}
+      onChange={onChange}
+    />
   );
 }
