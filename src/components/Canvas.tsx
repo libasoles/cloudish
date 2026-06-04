@@ -39,6 +39,7 @@ import PlainTextNode from "@/components/PlainTextNode";
 import UserNode from "@/components/UserNode";
 import EditableEdge from "@/components/EditableEdge";
 import ServiceSearch from "@/components/ServiceSearch";
+import { SelectionToolbar } from "@/components/SelectionToolbar";
 import { AWS_SERVICES } from "@/data/aws-services";
 import {
   AWS_SERVICE_NODE_TYPE,
@@ -153,6 +154,7 @@ export default function Canvas() {
     setDropTargetNodeId,
     setDropPreview,
     setEditingEdgeId,
+    setSelectionBoxActive,
     resetCanvas,
   } = useFlowStore();
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance<
@@ -1229,6 +1231,8 @@ export default function Canvas() {
             if (node.type === "plainText") return;
             if (!inspectorOpen) setInspectorOpen(true);
           }}
+          onSelectionEnd={() => setSelectionBoxActive(true)}
+          onPaneClick={() => setSelectionBoxActive(false)}
           zoomOnDoubleClick={false}
           multiSelectionKeyCode="Shift"
           selectionMode="partial"
@@ -1240,6 +1244,7 @@ export default function Canvas() {
           <MiniMap className="max-md:!hidden" />
           <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
           <ServiceSearch />
+          <SelectionToolbar />
         </ReactFlow>
         <ProjectNameEditor
           value={projectName}

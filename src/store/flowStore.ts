@@ -39,6 +39,8 @@ type FlowStore = {
   dropTargetNodeId: string | null;
   dropPreview: ContainerDropPreview | null;
   editingEdgeId: string | null;
+  selectionBoxActive: boolean;
+  setSelectionBoxActive: (v: boolean) => void;
   setNodes: (updater: AppNode[] | ((prev: AppNode[]) => AppNode[])) => void;
   onNodesChange: (changes: NodeChange<AppNode>[]) => void;
   setEdges: (updater: AppEdge[] | ((prev: AppEdge[]) => AppEdge[])) => void;
@@ -113,6 +115,8 @@ export const useFlowStore = create<FlowStore>()((set) => ({
   history: [],
   isDirty: false,
   inspectorOpen: true,
+  selectionBoxActive: false,
+  setSelectionBoxActive: (v) => set({ selectionBoxActive: v }),
 
   setNodes: (updater) =>
     set((s) => ({
@@ -145,11 +149,25 @@ export const useFlowStore = create<FlowStore>()((set) => ({
         change.type === "remove" ? [change.id] : [],
       );
 
+      const selectionCleared =
+        changes.some((c) => c.type === "select" && !c.selected) &&
+        !nextNodes.some((n) => n.selected);
+
       if (!removedNodeIds.length) {
-        return { nodes: nextNodes, history, isDirty: s.isDirty || hasMeaningfulChanges };
+        return {
+          nodes: nextNodes,
+          history,
+          isDirty: s.isDirty || hasMeaningfulChanges,
+          ...(selectionCleared ? { selectionBoxActive: false } : {}),
+        };
       }
 
-      return { ...removeSyncedNodes(removedNodeIds, s.nodes, nextNodes, s.edges), history, isDirty: true };
+      return {
+        ...removeSyncedNodes(removedNodeIds, s.nodes, nextNodes, s.edges),
+        history,
+        isDirty: true,
+        ...(selectionCleared ? { selectionBoxActive: false } : {}),
+      };
     }),
 
   setEdges: (updater) =>
