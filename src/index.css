@@ -201,6 +201,19 @@ body {
   height: 12px;
 }
 
+/* Vertical handles: dot hidden by default, revealed only on direct hover */
+.react-flow__handle.handle-vertical::after {
+  opacity: 0;
+  transition: width 120ms ease, height 120ms ease, opacity 150ms ease;
+}
+
+.react-flow__handle.handle-vertical:hover::after,
+.react-flow__handle.handle-vertical.connectingfrom::after,
+.react-flow__handle.handle-vertical.connectingto::after {
+  opacity: 1;
+}
+
+
 .react-flow__node-selectionGroup {
   overflow: visible !important;
 }

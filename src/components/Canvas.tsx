@@ -15,6 +15,7 @@ import {
   MiniMap,
   Background,
   BackgroundVariant,
+  ConnectionMode,
   type OnConnect,
   type Connection,
   type NodeTypes,
@@ -1444,6 +1445,7 @@ export default function Canvas() {
           zoomOnDoubleClick={false}
           multiSelectionKeyCode="Shift"
           selectionMode={SelectionMode.Partial}
+          connectionMode={ConnectionMode.Loose}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           defaultEdgeOptions={DEFAULT_EDGE_OPTIONS}

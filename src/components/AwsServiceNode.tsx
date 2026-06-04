@@ -47,7 +47,10 @@ export default function AwsServiceNode({
   if (isCircular) {
     return (
       <div className="flex flex-col items-center gap-1.5 w-14">
-        <Handle type="target" position={Position.Left} style={{ top: 28 }} />
+        <Handle type="source" position={Position.Left} id="left" style={{ top: 28 }} />
+        <Handle type="source" position={Position.Right} id="right" style={{ top: 28 }} />
+        <Handle type="source" position={Position.Top} id="top" className="handle-vertical" style={{ left: 28 }} />
+        <Handle type="source" position={Position.Bottom} id="bottom" className="handle-vertical" style={{ left: 28, top: 56 }} />
         <div
           className={cn(
             "size-14 rounded-full bg-white border-2 shadow-sm flex items-center justify-center",
@@ -70,7 +73,6 @@ export default function AwsServiceNode({
           className="text-white"
           onCommit={renameNode}
         />
-        <Handle type="source" position={Position.Right} style={{ top: 28 }} />
       </div>
     );
   }
@@ -85,7 +87,10 @@ export default function AwsServiceNode({
           : "border-gray-200",
       )}
     >
-      <Handle type="target" position={Position.Left} />
+      <Handle type="source" position={Position.Left} id="left" />
+      <Handle type="source" position={Position.Right} id="right" />
+      <Handle type="source" position={Position.Top} id="top" className="handle-vertical" />
+      <Handle type="source" position={Position.Bottom} id="bottom" className="handle-vertical" />
       <AwsServiceIcon
         slug={data.slug}
         category={data.category}
@@ -97,7 +102,6 @@ export default function AwsServiceNode({
         editLabel={t.editNodeName}
         onCommit={renameNode}
       />
-      <Handle type="source" position={Position.Right} />
     </div>
   );
 }
