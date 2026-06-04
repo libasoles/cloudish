@@ -96,7 +96,7 @@ export function SelectionToolbar() {
       className="absolute z-10 flex items-center gap-0.5 rounded-lg border border-border bg-card px-1.5 py-1 shadow-lg"
       style={{
         left: screenCenterX,
-        top: screenTopY - 68,
+        top: screenTopY - 90,
         transform: "translateX(-50%)",
         pointerEvents: "all",
       }}
