@@ -281,6 +281,14 @@ export default function Canvas() {
       }
 
       if (containerRef.current) {
+        const { nodes: currentNodes } = useFlowStore.getState();
+        if (currentNodes.length === 0) {
+          // With no nodes, calling fitView() leaves fitViewQueued: true inside React Flow.
+          // That queued fit fires when the first node's dimensions are measured (ResizeObserver),
+          // causing an unwanted auto-zoom on the first drop. Skip fitView entirely.
+          return;
+        }
+
         isRestoringViewportRef.current = true;
         void instance
           .fitView({ padding: INITIAL_FIT_VIEW_PADDING })
@@ -302,9 +310,12 @@ export default function Canvas() {
   );
 
   const applyFallbackViewport = useCallback(async () => {
-    if (!reactFlowInstance || !containerRef.current || nodes.length === 0) {
+    if (!reactFlowInstance || !containerRef.current) {
       return;
     }
+
+    const { nodes: currentNodes } = useFlowStore.getState();
+    if (currentNodes.length === 0) return;
 
     isRestoringViewportRef.current = true;
     try {
@@ -318,7 +329,7 @@ export default function Canvas() {
     } finally {
       isRestoringViewportRef.current = false;
     }
-  }, [nodes.length, reactFlowInstance]);
+  }, [reactFlowInstance]);
 
   useEffect(() => {
     if (!reactFlowInstance || viewportRestoreKey === 0) {
