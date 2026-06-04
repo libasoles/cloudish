@@ -176,6 +176,7 @@ export default function ServiceSearch() {
             onFocus={() => {
               if (results.length > 0) setOpen(true);
             }}
+            onBlur={() => setOpen(false)}
             onKeyDown={handleKeyDown}
           />
           {query && (
