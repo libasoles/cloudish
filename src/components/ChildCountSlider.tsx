@@ -19,7 +19,7 @@ export default function ChildCountSlider({
   const sliderValue = clampChildCount(value);
 
   return (
-    <label className="grid gap-2 text-sm font-medium text-foreground">
+    <label className="grid gap-4 text-sm font-medium text-foreground">
       <span className="flex items-center justify-between gap-3">
         <span>{label}</span>
         <output className="font-mono text-sm text-muted-foreground">

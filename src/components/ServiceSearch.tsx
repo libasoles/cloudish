@@ -34,7 +34,8 @@ function getSearchResults(query: string, locale: Locale) {
         service.name.toLowerCase().includes(normalizedQuery) ||
         service.category.toLowerCase().includes(normalizedQuery) ||
         categoryLabel.toLowerCase().includes(normalizedQuery) ||
-        description.toLowerCase().includes(normalizedQuery)
+        description.toLowerCase().includes(normalizedQuery) ||
+        (service.aliases?.toLowerCase().includes(normalizedQuery) ?? false)
       );
     }
   ).slice(0, 8);
