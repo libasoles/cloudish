@@ -1,5 +1,5 @@
 import type { DragEvent, ReactNode } from "react";
-import { Container, User, Globe, Layers, Type } from "lucide-react";
+import { Container, User, Globe, Layers, Type, Cloud, TrendingUp } from "lucide-react";
 import { AwsServiceIcon } from "@/components/AwsServiceIcon";
 import { HoverOnlyTooltip } from "@/components/HoverOnlyTooltip";
 import {
@@ -28,10 +28,15 @@ type DragDropSidebarProps = {
     az: string;
     user: string;
     userDescription: string;
+    internet: string;
+    internetDescription: string;
     regionDescription: string;
     azDescription: string;
     subnetDescription: string;
     textDescription: string;
+    asg: string;
+    dragAsg: string;
+    asgDescription: string;
     dragService: (serviceName: string) => string;
     getServiceDescription: (service: AwsService) => string;
   };
@@ -135,6 +140,17 @@ export default function DragDropSidebar({
           <User className="size-10 text-muted-foreground" />
         </SidebarToolButton>
         <SidebarToolButton
+          name={labels.internet}
+          description={`${labels.internetDescription} ${labels.dragOrClickToAdd}`}
+          ariaLabel={`Drag ${labels.internet}`}
+          tool={{ type: "internet" }}
+          onToolClick={onToolClick}
+          onToolDragStart={onToolDragStart}
+          onToolDragEnd={onToolDragEnd}
+        >
+          <Cloud className="size-10 text-muted-foreground" />
+        </SidebarToolButton>
+        <SidebarToolButton
           name={labels.region}
           description={`${labels.regionDescription} ${labels.dragOrClickToAdd}`}
           ariaLabel={labels.dragRegion}
@@ -191,6 +207,18 @@ export default function DragDropSidebar({
           onToolDragEnd={onToolDragEnd}
         >
           <Container className="h-8 w-8 text-muted-foreground" />
+        </SidebarToolButton>
+        <SidebarToolButton
+          name={labels.asg}
+          description={`${labels.asgDescription} ${labels.dragOrClickToAdd}`}
+          ariaLabel={labels.dragAsg}
+          tool={{ type: "asg" }}
+          featured
+          onToolClick={onToolClick}
+          onToolDragStart={onToolDragStart}
+          onToolDragEnd={onToolDragEnd}
+        >
+          <TrendingUp className="h-8 w-8 text-muted-foreground" />
         </SidebarToolButton>
         <SidebarToolButton
           name={labels.text}

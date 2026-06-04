@@ -49,7 +49,7 @@ const MANAGED_CHILD_CONFIGS = {
         labelFn ?? ((type, i) => `Subnet ${type} ${i}`),
       ),
   },
-} satisfies Record<Exclude<NetworkContainerType, "subnet">, ManagedChildConfig>;
+} satisfies Record<Exclude<NetworkContainerType, "subnet" | "asg">, ManagedChildConfig>;
 
 export function setManagedChildCount(
   nodeId: string,

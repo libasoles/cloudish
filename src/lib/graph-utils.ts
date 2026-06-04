@@ -21,6 +21,10 @@ export const SUBNET_HEIGHT = 220;
 export const AZ_WIDTH = 450;
 export const AZ_HEIGHT = 300;
 
+export const ASG_WIDTH = 400;
+export const ASG_HEIGHT = 260;
+export const ASG_STYLE = { width: ASG_WIDTH, height: ASG_HEIGHT } as const;
+
 export const REGION_STYLE = { width: REGION_WIDTH, height: REGION_HEIGHT } as const;
 export const VPC_STYLE = { width: VPC_WIDTH, height: VPC_HEIGHT } as const;
 export const AZ_STYLE = { width: AZ_WIDTH, height: AZ_HEIGHT } as const;

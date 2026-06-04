@@ -3,6 +3,7 @@ import { RegionInspectorPanel } from "@/components/inspector/RegionInspectorPane
 import { VpcInspectorPanel } from "@/components/inspector/VpcInspectorPanel";
 import { AzInspectorPanel } from "@/components/inspector/AzInspectorPanel";
 import { SubnetInspectorPanel } from "@/components/inspector/SubnetInspectorPanel";
+import { AsgInspectorPanel } from "@/components/inspector/AsgInspectorPanel";
 
 type ContainerRouterProps = {
   node: AppNode;
@@ -22,5 +23,7 @@ export function ContainerInspectorRouter({
       return <AzInspectorPanel node={node} />;
     case "subnet":
       return <SubnetInspectorPanel node={node} />;
+    case "asg":
+      return <AsgInspectorPanel node={node} />;
   }
 }

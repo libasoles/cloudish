@@ -1,9 +1,11 @@
 export type DragTool =
   | { type: "container" }
   | { type: "az" }
+  | { type: "asg" }
   | { type: "text" }
   | { type: "awsService"; serviceId: string }
   | { type: "user" }
+  | { type: "internet" }
   | { type: "region" };
 
 export const CONTAINER_NODE_TYPE = "container";
@@ -30,12 +32,20 @@ export function decodeDragTool(value: string): DragTool | null {
       return { type: "az" };
     }
 
+    if (tool.type === "asg") {
+      return { type: "asg" };
+    }
+
     if (tool.type === "text") {
       return { type: "text" };
     }
 
     if (tool.type === "user") {
       return { type: "user" };
+    }
+
+    if (tool.type === "internet") {
+      return { type: "internet" };
     }
 
     if (tool.type === "region") {

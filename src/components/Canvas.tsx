@@ -40,6 +40,7 @@ import AwsServiceNode from "@/components/AwsServiceNode";
 import NetworkContainerNode from "@/components/NetworkContainerNode";
 import PlainTextNode from "@/components/PlainTextNode";
 import UserNode from "@/components/UserNode";
+import InternetNode from "@/components/InternetNode";
 import SelectionGroupNode from "@/components/SelectionGroupNode";
 import EditableEdge from "@/components/EditableEdge";
 import ServiceSearch from "@/components/ServiceSearch";
@@ -79,6 +80,9 @@ import {
   AZ_STYLE,
   AZ_WIDTH,
   AZ_HEIGHT,
+  ASG_STYLE,
+  ASG_WIDTH,
+  ASG_HEIGHT,
   CONTAINER_STYLE,
   CONTAINER_WIDTH,
   CONTAINER_HEIGHT,
@@ -113,6 +117,7 @@ const nodeTypes: NodeTypes = {
   networkContainer: NetworkContainerNode,
   plainText: PlainTextNode,
   user: UserNode,
+  internet: InternetNode,
   selectionGroup: SelectionGroupNode,
 };
 
@@ -641,6 +646,12 @@ export default function Canvas() {
         return;
       }
 
+      if (droppedTool.type === "asg") {
+        setDropTargetNodeId(null);
+        setDropPreview(null);
+        return;
+      }
+
       setDropTargetNodeId(null);
       setDropPreview(null);
     },
@@ -799,6 +810,33 @@ export default function Canvas() {
         return;
       }
 
+      if (tool.type === "internet") {
+        const nodeId = `internet-${serviceIdRef.current++}`;
+        const nodePosition = {
+          x: position.x - SERVICE_DROP_OFFSET.x,
+          y: position.y - SERVICE_DROP_OFFSET.y,
+        };
+        commitGraphChange(({ nodes, edges }) => {
+          const parentedPosition = getParentedPosition(
+            nodePosition,
+            { width: DEFAULT_NODE_WIDTH, height: DEFAULT_NODE_HEIGHT },
+            nodes,
+          );
+
+          const newNode: AppNode = {
+            id: nodeId,
+            type: "internet",
+            zIndex: 10,
+            selected: true,
+            ...parentedPosition,
+            data: { label: t.internet, fields: { label: t.internet }, ...pulseData },
+          };
+
+          return { nodes: addNodeWithAzSync(newNode, nodes.map((n) => ({ ...n, selected: false }))), edges };
+        });
+        return;
+      }
+
       if (tool.type === "text") {
         const nodePosition = {
           x: position.x - TEXT_DROP_OFFSET.x,
@@ -911,6 +949,36 @@ export default function Canvas() {
             edges,
           };
         });
+        return;
+      }
+
+      if (tool.type === "asg") {
+        const containerNumber = containerIdRef.current++;
+        const asgPosition = {
+          x: position.x - ASG_WIDTH / 2,
+          y: position.y - ASG_HEIGHT / 2,
+        };
+        const asgId = `asg-${containerNumber}`;
+
+        commitGraphChange(({ nodes, edges }) => ({
+          nodes: orderNodesForSubflows([
+            ...nodes.map((n) => ({ ...n, selected: false })),
+            {
+              id: asgId,
+              type: "networkContainer",
+              selected: true,
+              position: asgPosition,
+              data: {
+                containerType: "asg" as const,
+                label: "Auto Scaling Group",
+                fields: { minCapacity: 1, desiredCapacity: 2, maxCapacity: 4 },
+                ...pulseData,
+              },
+              style: ASG_STYLE,
+            },
+          ]),
+          edges,
+        }));
         return;
       }
 
@@ -1326,8 +1394,13 @@ export default function Canvas() {
           az: t.availabilityZone,
           user: t.user,
           userDescription: t.userDescription,
+          internet: t.internet,
+          internetDescription: t.internetDescription,
           regionDescription: t.regionDescription,
           azDescription: t.azDescription,
+          asg: t.asg,
+          dragAsg: t.dragAsg,
+          asgDescription: t.asgDescription,
           subnetDescription: t.subnetDescription,
           textDescription: t.textDescription,
           dragService: t.dragService,
