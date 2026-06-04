@@ -64,6 +64,18 @@ export default function ServiceSearch() {
     return () => document.removeEventListener('mousedown', handleMouseDown);
   }, []);
 
+  useEffect(() => {
+    function handleGlobalKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        inputRef.current?.focus();
+        inputRef.current?.select();
+      }
+    }
+    document.addEventListener('keydown', handleGlobalKeyDown);
+    return () => document.removeEventListener('keydown', handleGlobalKeyDown);
+  }, []);
+
   function addServiceNode(service: AwsService) {
     const position = screenToFlowPosition({
       x: window.innerWidth / 2,

@@ -1,7 +1,7 @@
 /**
  * Playwright script to take tutorial screenshots.
  * Run with: npm run screenshots
- * Requires the dev server to be running on port 5174.
+ * Requires the dev server to be running on port 5173.
  */
 
 import { chromium, type Page } from 'playwright'
@@ -11,7 +11,7 @@ import fs from 'fs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const SCREENSHOTS_DIR = path.join(__dirname, '../public/docs/screenshots')
-const BASE_URL = process.env.BASE_URL ?? 'http://localhost:5175'
+const BASE_URL = process.env.BASE_URL ?? 'http://localhost:5173'
 const VIEWPORT = { width: 1280, height: 800 }
 
 async function shot(page: Page, name: string) {
@@ -27,7 +27,6 @@ async function loadApp(page: Page) {
 }
 
 async function addNodeBySidebarClick(page: Page, index = 0) {
-  // Click the nth draggable sidebar button
   const buttons = page.locator('aside button[draggable="true"]')
   const count = await buttons.count()
   if (count > index) {
@@ -40,20 +39,19 @@ async function main() {
   fs.mkdirSync(SCREENSHOTS_DIR, { recursive: true })
 
   const browser = await chromium.launch({ headless: true })
-  const context = await browser.newContext({ viewport: VIEWPORT })
+  // locale: 'es-ES' makes navigator.language return 'es-ES' so the app renders in Spanish
+  const context = await browser.newContext({ viewport: VIEWPORT, locale: 'es-ES' })
   const page = await context.newPage()
 
-  // Dismiss any auth modal that might appear
   page.on('dialog', d => d.dismiss())
 
   console.log('Starting screenshot capture...\n')
   await loadApp(page)
 
-  // Close any modal that appeared
   await page.keyboard.press('Escape')
   await page.waitForTimeout(500)
 
-  // ── 01: sidebar drag (show the sidebar with hover) ────────────────
+  // ── 01: sidebar drag ──────────────────────────────────────────────
   console.log('1/13 Sidebar drag...')
   const firstDraggable = page.locator('aside button[draggable="true"]').first()
   await firstDraggable.hover()
@@ -62,7 +60,6 @@ async function main() {
 
   // ── 02: sidebar click ─────────────────────────────────────────────
   console.log('2/13 Sidebar click...')
-  // Find an AWS service button — skip container-type buttons (first ~5 are Region/VPC/AZ/Subnet/Text)
   const serviceBtn = page.locator('aside button[draggable="true"]').nth(6)
   await serviceBtn.hover()
   await page.waitForTimeout(300)
@@ -70,11 +67,15 @@ async function main() {
   await page.waitForTimeout(600)
   await shot(page, '02-sidebar-click.png')
 
-  // ── 03: search panel ─────────────────────────────────────────────
+  // ── 03: search panel — empty canvas ──────────────────────────────
   console.log('3/13 Search panel...')
+  await loadApp(page)
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(300)
+  // ⌘K / Ctrl+K focuses the search input
   await page.keyboard.press('Meta+k')
-  await page.waitForTimeout(700)
-  const searchInput = page.locator('input[placeholder*="earch"], input[placeholder*="uscar"]').first()
+  await page.waitForTimeout(400)
+  const searchInput = page.locator('input[placeholder*="uscar"]').first()
   if (await searchInput.count() > 0) {
     await searchInput.fill('lambda')
     await page.waitForTimeout(600)
@@ -83,21 +84,85 @@ async function main() {
   await page.keyboard.press('Escape')
   await page.waitForTimeout(400)
 
-  // ── 04: connect nodes ─────────────────────────────────────────────
+  // ── 04: two nodes connected by an edge ───────────────────────────
   console.log('4/13 Connect nodes...')
   await loadApp(page)
   await page.keyboard.press('Escape')
   await page.waitForTimeout(300)
-  // Add two nodes
+
+  // Add first service node
   await addNodeBySidebarClick(page, 6)
-  await addNodeBySidebarClick(page, 7)
-  await page.waitForTimeout(300)
-  // Hover over first node to reveal handles
-  const firstNode = page.locator('.react-flow__node').first()
-  if (await firstNode.count() > 0) {
-    await firstNode.hover({ force: true })
-    await page.waitForTimeout(500)
+  await page.waitForTimeout(400)
+
+  // Move first node to left side of canvas so the two nodes don't overlap
+  const nodes = page.locator('.react-flow__node')
+  const firstNode = nodes.first()
+  const box1 = await firstNode.boundingBox()
+  if (box1) {
+    const cx = box1.x + box1.width / 2
+    const cy = box1.y + box1.height / 2
+    await page.mouse.move(cx, cy)
+    await page.waitForTimeout(150)
+    await page.mouse.down()
+    await page.mouse.move(cx - 260, cy, { steps: 12 })
+    await page.waitForTimeout(150)
+    await page.mouse.up()
+    await page.waitForTimeout(300)
   }
+
+  // Click empty area to deselect
+  await page.mouse.click(640, 400)
+  await page.waitForTimeout(200)
+
+  // Add second service node (it lands at canvas center, to the right of the first)
+  await addNodeBySidebarClick(page, 7)
+  await page.waitForTimeout(400)
+
+  // Move second node to right side
+  const secondNode = nodes.nth(1)
+  const box2 = await secondNode.boundingBox()
+  if (box2) {
+    const cx = box2.x + box2.width / 2
+    const cy = box2.y + box2.height / 2
+    await page.mouse.move(cx, cy)
+    await page.waitForTimeout(150)
+    await page.mouse.down()
+    await page.mouse.move(cx + 200, cy, { steps: 12 })
+    await page.waitForTimeout(150)
+    await page.mouse.up()
+    await page.waitForTimeout(300)
+  }
+
+  // Click empty area to deselect
+  await page.mouse.click(640, 200)
+  await page.waitForTimeout(200)
+
+  // Get updated positions after both nodes have been moved
+  const updatedBox1 = await firstNode.boundingBox()
+  const updatedBox2 = await secondNode.boundingBox()
+
+  if (updatedBox1 && updatedBox2) {
+    // Source: right-edge center of node 1 (where the right handle sits)
+    const srcX = updatedBox1.x + updatedBox1.width
+    const srcY = updatedBox1.y + updatedBox1.height / 2
+    // Target: left-edge center of node 2 (where the left/target handle sits)
+    const tgtX = updatedBox2.x
+    const tgtY = updatedBox2.y + updatedBox2.height / 2
+
+    // Hover node 1 center first so handles become visible
+    await page.mouse.move(updatedBox1.x + updatedBox1.width / 2, updatedBox1.y + updatedBox1.height / 2)
+    await page.waitForTimeout(400)
+    // Move to the right handle
+    await page.mouse.move(srcX, srcY)
+    await page.waitForTimeout(300)
+    // Drag slowly to the left handle of node 2
+    await page.mouse.down()
+    await page.mouse.move(tgtX, tgtY, { steps: 40 })
+    await page.waitForTimeout(500)
+    await page.mouse.up()
+    await page.waitForTimeout(800)
+  }
+
   await shot(page, '04-connect-nodes.png')
 
   // ── 05: region + vpc ──────────────────────────────────────────────
@@ -105,7 +170,6 @@ async function main() {
   await loadApp(page)
   await page.keyboard.press('Escape')
   await page.waitForTimeout(300)
-  // Add Region (index 0) and VPC (index 1)
   await addNodeBySidebarClick(page, 0)
   await addNodeBySidebarClick(page, 1)
   await page.waitForTimeout(500)
@@ -113,13 +177,12 @@ async function main() {
 
   // ── 06: AZ inspector (VPC selected) ──────────────────────────────
   console.log('6/13 AZ inspector...')
-  // Click on VPC node to open inspector
-  const nodes = page.locator('.react-flow__node')
-  const nodeCount = await nodes.count()
+  const allNodes = page.locator('.react-flow__node')
+  const nodeCount = await allNodes.count()
   for (let i = 0; i < nodeCount; i++) {
-    const text = await nodes.nth(i).textContent()
+    const text = await allNodes.nth(i).textContent()
     if (text?.toLowerCase().includes('vpc')) {
-      await nodes.nth(i).click({ force: true })
+      await allNodes.nth(i).click({ force: true })
       break
     }
   }
@@ -131,9 +194,8 @@ async function main() {
   await loadApp(page)
   await page.keyboard.press('Escape')
   await page.waitForTimeout(300)
-  await addNodeBySidebarClick(page, 3) // Subnet
+  await addNodeBySidebarClick(page, 3)
   await page.waitForTimeout(400)
-  // Click the subnet node
   const subnetNode = page.locator('.react-flow__node').first()
   if (await subnetNode.count() > 0) {
     await subnetNode.click()
@@ -146,16 +208,13 @@ async function main() {
   await loadApp(page)
   await page.keyboard.press('Escape')
   await page.waitForTimeout(300)
-  // Add VPC with at least 2 AZs via inspector
-  await addNodeBySidebarClick(page, 1) // VPC
+  await addNodeBySidebarClick(page, 1)
   await page.waitForTimeout(500)
-  // Select VPC and use inspector to add AZs
   const vpcNode = page.locator('.react-flow__node').first()
   if (await vpcNode.count() > 0) {
     await vpcNode.click()
     await page.waitForTimeout(600)
   }
-  // Try to increase AZ count slider
   const slider = page.locator('input[type="range"]').first()
   if (await slider.count() > 0) {
     await slider.fill('2')
@@ -164,11 +223,11 @@ async function main() {
     await page.waitForTimeout(800)
   }
   await shot(page, '08-az-sync.png')
-  // Click on an AZ to see sync control
-  for (let i = 0; i < await nodes.count(); i++) {
-    const text = await nodes.nth(i).textContent()
+  const azNodes = page.locator('.react-flow__node')
+  for (let i = 0; i < await azNodes.count(); i++) {
+    const text = await azNodes.nth(i).textContent()
     if (text?.toLowerCase().includes('az') || text?.toLowerCase().includes('availability')) {
-      await nodes.nth(i).click({ force: true })
+      await azNodes.nth(i).click({ force: true })
       break
     }
   }
@@ -182,12 +241,10 @@ async function main() {
   await page.waitForTimeout(300)
   for (let i = 6; i < 9; i++) await addNodeBySidebarClick(page, i)
   await page.waitForTimeout(300)
-  // Click first node
   const n0 = page.locator('.react-flow__node').nth(0)
   await n0.click({ force: true })
   await page.waitForTimeout(300)
-  // Shift+click second
-  await page.locator(".react-flow__node").nth(1).click({ modifiers: ["Shift"], force: true })
+  await page.locator('.react-flow__node').nth(1).click({ modifiers: ['Shift'], force: true })
   await page.waitForTimeout(400)
   await shot(page, '10-shift-click.png')
 
@@ -213,21 +270,20 @@ async function main() {
   // ── 12: add to selection ──────────────────────────────────────────
   console.log('12/13 Add to selection...')
   await page.waitForTimeout(300)
-  const allNodes = page.locator('.react-flow__node')
-  const total = await allNodes.count()
+  const selNodes = page.locator('.react-flow__node')
+  const total = await selNodes.count()
   if (total >= 3) {
-    await allNodes.nth(0).click({ force: true })
+    await selNodes.nth(0).click({ force: true })
     await page.waitForTimeout(200)
-    await allNodes.nth(1).click({ modifiers: ["Shift"], force: true })
+    await selNodes.nth(1).click({ modifiers: ['Shift'], force: true })
     await page.waitForTimeout(200)
-    await allNodes.nth(2).click({ modifiers: ["Shift"], force: true })
+    await selNodes.nth(2).click({ modifiers: ['Shift'], force: true })
     await page.waitForTimeout(400)
   }
   await shot(page, '12-add-to-selection.png')
 
   // ── 13: alignment toolbar ─────────────────────────────────────────
   console.log('13/13 Alignment toolbar...')
-  // Toolbar should be visible with 2+ nodes selected
   await page.waitForTimeout(200)
   await shot(page, '13-alignment-toolbar.png')
 
