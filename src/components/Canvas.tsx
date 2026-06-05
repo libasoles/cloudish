@@ -1180,6 +1180,38 @@ export default function Canvas() {
         return;
       }
 
+      if (tool.type === "genericContainer") {
+        const containerNumber = containerIdRef.current++;
+        const genericPosition = {
+          x: position.x - CONTAINER_WIDTH / 2,
+          y: position.y - CONTAINER_HEIGHT / 2,
+        };
+        const genericId = `container-generic-${containerNumber}`;
+
+        commitGraphChange(({ nodes, edges }) => ({
+          nodes: orderNodesForSubflows([
+            ...nodes.map((n) => ({ ...n, selected: false })),
+            {
+              id: genericId,
+              type: "networkContainer",
+              selected: true,
+              position: genericPosition,
+              data: {
+                containerType: "generic" as const,
+                label: "Container",
+                ...pulseData,
+              },
+              style: {
+                width: CONTAINER_WIDTH,
+                height: CONTAINER_HEIGHT,
+              },
+            },
+          ]),
+          edges,
+        }));
+        return;
+      }
+
       const containerNumber = containerIdRef.current++;
       const subnetNumber = subnetIdRef.current++;
       const subnetPosition = {

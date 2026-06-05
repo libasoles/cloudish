@@ -82,6 +82,10 @@ export const UI_TEXT = {
     dragAsg: "Drag Auto Scaling Group",
     asgDescription:
       "Auto Scaling Group container for groups of EC2 instances that scale automatically.",
+    genericContainer: "Container",
+    dragGenericContainer: "Drag Container",
+    genericContainerDescription:
+      "Generic container to visually group any set of nodes without AWS hierarchy constraints.",
     asgMinCapacity: "Min instances",
     asgDesiredCapacity: "Desired instances",
     asgMaxCapacity: "Max instances",
@@ -228,6 +232,10 @@ export const UI_TEXT = {
     dragAsg: "Arrastrar Auto Scaling Group",
     asgDescription:
       "Contenedor de Auto Scaling Group para grupos de instancias EC2 que escalan automáticamente.",
+    genericContainer: "Contenedor",
+    dragGenericContainer: "Arrastrar Contenedor",
+    genericContainerDescription:
+      "Contenedor genérico para agrupar visualmente nodos sin restricciones de jerarquía AWS.",
     asgMinCapacity: "Instancias mínimas",
     asgDesiredCapacity: "Instancias deseadas",
     asgMaxCapacity: "Instancias máximas",

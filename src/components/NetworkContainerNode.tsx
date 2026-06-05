@@ -91,6 +91,7 @@ export default function NetworkContainerNode({
   const isRegion = data.containerType === "region";
   const isAz = data.containerType === "az";
   const isAsg = data.containerType === "asg";
+  const isGeneric = data.containerType === "generic";
   const isPrivateSubnet = data.subnetType === "Private";
   const displayLabel = String(data.label);
 
@@ -100,7 +101,7 @@ export default function NetworkContainerNode({
   ) => {
     if (isRegion || isVpc) {
       setNodes((prev) => resizeContainerNode(id, params.width, params.height, prev));
-    } else if (isAsg) {
+    } else if (isAsg || isGeneric) {
       setNodes((prev) =>
         prev.map((n) =>
           n.id === id
@@ -140,9 +141,11 @@ export default function NetworkContainerNode({
               ? "border-indigo-400/55 bg-indigo-400/5 border-dashed"
               : isAsg
                 ? "border-orange-400/60 bg-orange-400/8 border-dashed"
-                : isPrivateSubnet
-                  ? "border-blue-500/45 bg-blue-500/10"
-                  : "border-emerald-500/45 bg-emerald-500/10",
+                : isGeneric
+                  ? "border-zinc-400/50 bg-zinc-400/8 border-dashed"
+                  : isPrivateSubnet
+                    ? "border-blue-500/45 bg-blue-500/10"
+                    : "border-emerald-500/45 bg-emerald-500/10",
         selected && "ring-2 ring-primary ring-offset-4 ring-offset-background",
         isDropTarget && "ring-2 ring-emerald-400 ring-offset-2 ring-offset-background",
         data.pulseKey && "node-click-pulse",
@@ -168,9 +171,11 @@ export default function NetworkContainerNode({
                 ? "!border-purple-400/70"
                 : isAsg
                   ? "!border-orange-400/70"
-                  : isPrivateSubnet
-                    ? "!border-blue-400/70"
-                    : "!border-emerald-400/70",
+                  : isGeneric
+                    ? "!border-zinc-400/70"
+                    : isPrivateSubnet
+                      ? "!border-blue-400/70"
+                      : "!border-emerald-400/70",
           )}
           handleClassName={cn(
             "!h-3 !w-3 !rounded-full !border-2 !bg-background",
@@ -180,9 +185,11 @@ export default function NetworkContainerNode({
                 ? "!border-purple-400"
                 : isAsg
                   ? "!border-orange-400"
-                  : isPrivateSubnet
-                    ? "!border-blue-400"
-                    : "!border-emerald-400",
+                  : isGeneric
+                    ? "!border-zinc-400"
+                    : isPrivateSubnet
+                      ? "!border-blue-400"
+                      : "!border-emerald-400",
           )}
         />
       )}
@@ -197,9 +204,11 @@ export default function NetworkContainerNode({
                 ? "border-indigo-400/60 bg-background text-indigo-200"
                 : isAsg
                   ? "border-orange-400/60 bg-background text-orange-200"
-                  : isPrivateSubnet
-                    ? "border-blue-500/50 bg-background text-blue-200"
-                    : "border-emerald-500/50 bg-background text-emerald-200",
+                  : isGeneric
+                    ? "border-zinc-400/50 bg-background text-zinc-300"
+                    : isPrivateSubnet
+                      ? "border-blue-500/50 bg-background text-blue-200"
+                      : "border-emerald-500/50 bg-background text-emerald-200",
         )}
       >
         <EditableNodeLabel

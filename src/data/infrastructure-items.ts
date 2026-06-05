@@ -1,4 +1,4 @@
-import { User, Cloud, Globe, Layers, Network, TrendingUp } from 'lucide-react';
+import { User, Cloud, Globe, Layers, Network, TrendingUp, Box } from 'lucide-react';
 import type { DragTool } from '@/lib/drag-tools';
 
 export type InfrastructureItem = {
@@ -9,6 +9,7 @@ export type InfrastructureItem = {
   tool: DragTool;
   Icon: React.ComponentType<{ className?: string }>;
   aliases?: string;
+  searchOnly?: boolean;
 };
 
 export const INFRASTRUCTURE_ITEMS: InfrastructureItem[] = [
@@ -65,5 +66,15 @@ export const INFRASTRUCTURE_ITEMS: InfrastructureItem[] = [
     tool: { type: 'asg' },
     Icon: TrendingUp,
     aliases: 'auto scaling group escalado ec2',
+  },
+  {
+    id: 'infra-generic-container',
+    name: 'Container',
+    descriptionKey: 'genericContainerDescription',
+    tooltipKey: 'genericContainer',
+    tool: { type: 'genericContainer' },
+    Icon: Box,
+    aliases: 'container grupo group box agrupador genérico generic contenedor',
+    searchOnly: true,
   },
 ];

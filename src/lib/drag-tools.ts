@@ -1,5 +1,6 @@
 export type DragTool =
   | { type: "container" }
+  | { type: "genericContainer" }
   | { type: "az" }
   | { type: "asg" }
   | { type: "text" }
@@ -26,6 +27,10 @@ export function decodeDragTool(value: string): DragTool | null {
 
     if (tool.type === "container") {
       return { type: "container" };
+    }
+
+    if (tool.type === "genericContainer") {
+      return { type: "genericContainer" };
     }
 
     if (tool.type === "az") {

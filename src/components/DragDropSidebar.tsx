@@ -118,7 +118,7 @@ export default function DragDropSidebar({
         {labels.dragAndDrop}
       </div>
       <div className="flex-1 space-y-2 overflow-y-auto p-2">
-        {INFRASTRUCTURE_ITEMS.map((item) => {
+        {INFRASTRUCTURE_ITEMS.filter((item) => !item.searchOnly).map((item) => {
           const infraLabel = infraLabels[item.id];
           const isFeatured =
             item.tool.type !== "user" &&
