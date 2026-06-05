@@ -1,5 +1,5 @@
 import type { DragEvent, ReactNode } from "react";
-import { User, Globe, Layers, Type, Cloud, TrendingUp, Network } from "lucide-react";
+import { Type } from "lucide-react";
 import { AwsServiceIcon } from "@/components/AwsServiceIcon";
 import { VpcIcon } from "@/components/icons/VpcIcon";
 import { HoverOnlyTooltip } from "@/components/HoverOnlyTooltip";
@@ -7,6 +7,7 @@ import {
   dragServices,
   vpcService,
 } from "@/data/drag-tool-catalog";
+import { INFRASTRUCTURE_ITEMS } from "@/data/infrastructure-items";
 import type { AwsService } from "@/data/aws-services";
 import {
   AWS_SERVICE_NODE_TYPE,
@@ -19,28 +20,20 @@ type DragDropSidebarProps = {
   labels: {
     dragAndDrop: string;
     dragOrClickToAdd: string;
-    dragSubnet: string;
     dragText: string;
-    dragRegion: string;
-    dragAz: string;
-    subnet: string;
     text: string;
-    region: string;
-    az: string;
-    user: string;
-    userDescription: string;
-    internet: string;
-    internetDescription: string;
-    regionDescription: string;
-    azDescription: string;
-    subnetDescription: string;
     textDescription: string;
-    asg: string;
-    dragAsg: string;
-    asgDescription: string;
     dragService: (serviceName: string) => string;
     getServiceDescription: (service: AwsService) => string;
   };
+  infraLabels: Record<
+    string,
+    {
+      name: string;
+      description: string;
+      tooltipKey?: string;
+    }
+  >;
   onToolClick?: (tool: DragTool) => void;
   onToolDragStart?: (tool: DragTool) => void;
   onToolDragEnd?: () => void;
@@ -119,6 +112,7 @@ function SidebarToolButton({
 
 export default function DragDropSidebar({
   labels,
+  infraLabels,
   onToolClick,
   onToolDragStart,
   onToolDragEnd,
@@ -129,40 +123,25 @@ export default function DragDropSidebar({
         {labels.dragAndDrop}
       </div>
       <div className="flex-1 space-y-2 overflow-y-auto p-2">
-        <SidebarToolButton
-          name={labels.user}
-          description={`${labels.userDescription} ${labels.dragOrClickToAdd}`}
-          ariaLabel={`Drag ${labels.user}`}
-          tool={{ type: "user" }}
-          onToolClick={onToolClick}
-          onToolDragStart={onToolDragStart}
-          onToolDragEnd={onToolDragEnd}
-        >
-          <User className="size-10 text-muted-foreground" />
-        </SidebarToolButton>
-        <SidebarToolButton
-          name={labels.internet}
-          description={`${labels.internetDescription} ${labels.dragOrClickToAdd}`}
-          ariaLabel={`Drag ${labels.internet}`}
-          tool={{ type: "internet" }}
-          onToolClick={onToolClick}
-          onToolDragStart={onToolDragStart}
-          onToolDragEnd={onToolDragEnd}
-        >
-          <Cloud className="size-10 text-muted-foreground" />
-        </SidebarToolButton>
-        <SidebarToolButton
-          name={labels.region}
-          description={`${labels.regionDescription} ${labels.dragOrClickToAdd}`}
-          ariaLabel={labels.dragRegion}
-          tool={{ type: "region" }}
-          featured
-          onToolClick={onToolClick}
-          onToolDragStart={onToolDragStart}
-          onToolDragEnd={onToolDragEnd}
-        >
-          <Globe className="h-8 w-8 text-muted-foreground" />
-        </SidebarToolButton>
+        {INFRASTRUCTURE_ITEMS.map((item) => {
+          const infraLabel = infraLabels[item.id];
+          const isFeatured = item.tool.type !== "user" && item.tool.type !== "internet" && item.tool.type !== "text";
+          return (
+            <SidebarToolButton
+              key={item.id}
+              name={infraLabel.name}
+              description={`${infraLabel.description} ${labels.dragOrClickToAdd}`}
+              ariaLabel={`Drag ${infraLabel.name}`}
+              tool={item.tool}
+              featured={isFeatured}
+              onToolClick={onToolClick}
+              onToolDragStart={onToolDragStart}
+              onToolDragEnd={onToolDragEnd}
+            >
+              <item.Icon className={isFeatured ? "h-8 w-8 text-muted-foreground" : "size-10 text-muted-foreground"} />
+            </SidebarToolButton>
+          );
+        })}
         {vpcService && (
           <SidebarToolButton
             name={vpcService.name}
@@ -180,42 +159,6 @@ export default function DragDropSidebar({
             <VpcIcon className="h-8 w-8 text-muted-foreground" />
           </SidebarToolButton>
         )}
-        <SidebarToolButton
-          name={labels.az}
-          description={`${labels.azDescription} ${labels.dragOrClickToAdd}`}
-          ariaLabel={labels.dragAz}
-          tool={{ type: "az" }}
-          featured
-          onToolClick={onToolClick}
-          onToolDragStart={onToolDragStart}
-          onToolDragEnd={onToolDragEnd}
-        >
-          <Layers className="h-8 w-8 text-muted-foreground" />
-        </SidebarToolButton>
-        <SidebarToolButton
-          name={labels.subnet}
-          description={`${labels.subnetDescription} ${labels.dragOrClickToAdd}`}
-          ariaLabel={labels.dragSubnet}
-          tool={{ type: "container" }}
-          featured
-          onToolClick={onToolClick}
-          onToolDragStart={onToolDragStart}
-          onToolDragEnd={onToolDragEnd}
-        >
-          <Network className="h-8 w-8 text-muted-foreground" />
-        </SidebarToolButton>
-        <SidebarToolButton
-          name={labels.asg}
-          description={`${labels.asgDescription} ${labels.dragOrClickToAdd}`}
-          ariaLabel={labels.dragAsg}
-          tool={{ type: "asg" }}
-          featured
-          onToolClick={onToolClick}
-          onToolDragStart={onToolDragStart}
-          onToolDragEnd={onToolDragEnd}
-        >
-          <TrendingUp className="h-8 w-8 text-muted-foreground" />
-        </SidebarToolButton>
         <SidebarToolButton
           name={labels.text}
           description={`${labels.textDescription} ${labels.dragOrClickToAdd}`}

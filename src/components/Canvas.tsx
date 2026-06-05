@@ -37,6 +37,7 @@ import "@xyflow/react/dist/style.css";
 import { Button } from "@/components/ui/button";
 import { PanelRightClose, PanelRightOpen } from "lucide-react";
 import DragDropSidebar from "@/components/DragDropSidebar";
+import { INFRASTRUCTURE_ITEMS } from "@/data/infrastructure-items";
 import NewToolMenu from "@/components/NewToolMenu";
 import ExportMenu from "@/components/ExportMenu";
 import SaveArchitectureButton from "@/components/SaveArchitectureButton";
@@ -1621,29 +1622,22 @@ export default function Canvas() {
         labels={{
           dragAndDrop: t.dragAndDrop,
           dragOrClickToAdd: t.dragOrClickToAdd,
-          dragSubnet: t.dragSubnet,
           dragText: t.dragText,
-          dragRegion: t.dragRegion,
-          dragAz: t.dragAz,
-          subnet: t.subnet,
           text: t.text,
-          region: t.region,
-          az: t.availabilityZone,
-          user: t.user,
-          userDescription: t.userDescription,
-          internet: t.internet,
-          internetDescription: t.internetDescription,
-          regionDescription: t.regionDescription,
-          azDescription: t.azDescription,
-          asg: t.asg,
-          dragAsg: t.dragAsg,
-          asgDescription: t.asgDescription,
-          subnetDescription: t.subnetDescription,
           textDescription: t.textDescription,
           dragService: t.dragService,
           getServiceDescription: (service) =>
             getServiceDescription(service, locale),
         }}
+        infraLabels={Object.fromEntries(
+          INFRASTRUCTURE_ITEMS.map((item) => [
+            item.id,
+            {
+              name: t[item.tooltipKey as keyof typeof t] as string,
+              description: t[item.descriptionKey as keyof typeof t] as string,
+            },
+          ]),
+        )}
         onToolClick={addToolAtViewportCenter}
         onToolDragStart={handleToolDragStart}
         onToolDragEnd={handleToolDragEnd}
@@ -1693,7 +1687,7 @@ export default function Canvas() {
           <Controls className="max-md:!hidden" />
           <MiniMap className="max-md:!hidden" />
           <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
-          <ServiceSearch />
+          <ServiceSearch onToolClick={addToolAtViewportCenter} />
           <SelectionToolbar />
           <ContainerSelectionGuard
             preDragContainersRef={preDragContainersRef}
