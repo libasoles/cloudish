@@ -6,9 +6,11 @@ import {
   useMemo,
   useRef,
   useState,
+  type Dispatch,
   type DragEvent,
   type MouseEvent,
   type PointerEvent,
+  type SetStateAction,
 } from "react";
 import {
   ReactFlow,
@@ -27,6 +29,8 @@ import {
   type NodeChange,
   type NodeSelectionChange,
   SelectionMode,
+  useStore,
+  useStoreApi,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { Button } from "@/components/ui/button";
@@ -187,6 +191,95 @@ function getClickedAppNodeId(
   return null;
 }
 
+function areSetsEqual<T>(a: Set<T>, b: Set<T>) {
+  if (a.size !== b.size) return false;
+
+  for (const value of a) {
+    if (!b.has(value)) return false;
+  }
+
+  return true;
+}
+
+// Rendered inside <ReactFlow> so it can access the internal store.
+// Deselects networkContainer nodes that were only *partially* inside the
+// bounding-box selection — they require full enclosure to be selected.
+function ContainerSelectionGuard({
+  preDragContainersRef,
+  setSuppressedContainerSelectionIds,
+}: {
+  preDragContainersRef: React.RefObject<Set<string>>;
+  setSuppressedContainerSelectionIds: Dispatch<SetStateAction<Set<string>>>;
+}) {
+  const { onNodesChange } = useFlowStore();
+  const nodes = useFlowStore((state) => state.nodes);
+  const storeApi = useStoreApi();
+  const userSelectionRect = useStore((s) => s.userSelectionRect);
+  const lastRectRef = useRef<typeof userSelectionRect>(null);
+
+  useEffect(() => {
+    const getPartiallySelectedContainerIds = (
+      rect: NonNullable<typeof userSelectionRect>,
+    ) => {
+      const { transform, nodeLookup } = storeApi.getState();
+      const [tx, ty, tZoom] = transform;
+
+      return nodes
+        .filter(
+          (node) =>
+            node.type === "networkContainer" &&
+            node.selected &&
+            !preDragContainersRef.current?.has(node.id),
+        )
+        .filter((node) => {
+          const internal = nodeLookup.get(node.id);
+          const posAbs = internal?.internals?.positionAbsolute;
+          if (!posAbs) return false;
+
+          const { width: w, height: h } = getNodeSize(node);
+          const sx = posAbs.x * tZoom + tx;
+          const sy = posAbs.y * tZoom + ty;
+
+          return !(
+            sx >= rect.x &&
+            sy >= rect.y &&
+            sx + w * tZoom <= rect.x + rect.width &&
+            sy + h * tZoom <= rect.y + rect.height
+          );
+        })
+        .map((node) => node.id);
+    };
+
+    if (userSelectionRect) {
+      lastRectRef.current = { ...userSelectionRect };
+      const ids = new Set(getPartiallySelectedContainerIds(userSelectionRect));
+      setSuppressedContainerSelectionIds((current) =>
+        areSetsEqual(current, ids) ? current : ids,
+      );
+    } else if (lastRectRef.current) {
+      const rect = lastRectRef.current;
+      const changes: NodeSelectionChange[] = getPartiallySelectedContainerIds(
+        rect,
+      ).map((id) => ({ type: "select" as const, id, selected: false }));
+
+      if (changes.length > 0) onNodesChange(changes);
+      lastRectRef.current = null;
+      setSuppressedContainerSelectionIds((current) =>
+        current.size === 0 ? current : new Set(),
+      );
+    }
+  }, [
+    nodes,
+    userSelectionRect,
+    storeApi,
+    onNodesChange,
+    preDragContainersRef,
+    setSuppressedContainerSelectionIds,
+  ]);
+
+  return null;
+}
+
 export default function Canvas() {
   const locale = getBrowserLocale();
   const t = UI_TEXT[locale];
@@ -229,6 +322,10 @@ export default function Canvas() {
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
   const [authDialogMounted, setAuthDialogMounted] = useState(false);
   const [pendingSave, setPendingSave] = useState(false);
+  const [
+    suppressedContainerSelectionIds,
+    setSuppressedContainerSelectionIds,
+  ] = useState<Set<string>>(new Set());
 
   const containerIdRef = useRef(1);
   const subnetIdRef = useRef(1);
@@ -244,6 +341,10 @@ export default function Canvas() {
   // clear this selection; we intercept and re-select any base node except the one the
   // user intentionally Shift-clicked on.
   const shiftSelectionBaseRef = useRef<Set<string>>(new Set());
+  // networkContainer IDs that were selected when the current bounding-box drag started.
+  // ContainerSelectionGuard uses this to preserve containers already in the selection
+  // when the user does a Shift+drag (additive selection).
+  const preDragContainersRef = useRef<Set<string>>(new Set());
   // ID of the node the user Shift-clicked (detected in capture phase via DOM, before
   // React Flow fires its own selection changes). null means the click was on empty pane.
   const shiftClickedNodeRef = useRef<string | null>(null);
@@ -1355,8 +1456,17 @@ export default function Canvas() {
     [syncNodeSubnet, setDropPreview, setDropTargetNodeId],
   );
 
-  const handleSelectionStart = useCallback(() => {
+  const handleSelectionStart = useCallback((event: MouseEvent<Element>) => {
     isSelectionBoxInProgressRef.current = true;
+    // Snapshot which containers were already selected before this drag.
+    // nodesRef.current still reflects pre-reset state here (useEffect hasn't re-run).
+    preDragContainersRef.current = event.shiftKey
+      ? new Set(
+          nodesRef.current
+            .filter((n) => n.type === "networkContainer" && n.selected)
+            .map((n) => n.id),
+        )
+      : new Set();
     setSelectionBoxActive(false);
   }, [setSelectionBoxActive]);
 
@@ -1400,12 +1510,20 @@ export default function Canvas() {
   );
 
   const displayNodes = useMemo(() => {
-    if (!selectionBoxActive) return nodes;
-    const eligible = nodes.filter(
+    const visibleNodes =
+      suppressedContainerSelectionIds.size === 0
+        ? nodes
+        : nodes.map((node) => {
+            if (!suppressedContainerSelectionIds.has(node.id)) return node;
+            return { ...node, selected: false };
+          });
+
+    if (!selectionBoxActive) return visibleNodes;
+    const eligible = visibleNodes.filter(
       (n) => n.selected && n.type !== "selectionGroup",
     );
-    if (eligible.length < 2) return nodes;
-    const nodesById = new Map(nodes.map((n) => [n.id, n]));
+    if (eligible.length < 2) return visibleNodes;
+    const nodesById = new Map(visibleNodes.map((n) => [n.id, n]));
     const rects = eligible.map((n) => getNodeRect(n, nodesById));
     const minX = Math.min(...rects.map((r) => r.x));
     const minY = Math.min(...rects.map((r) => r.y));
@@ -1426,8 +1544,8 @@ export default function Canvas() {
       draggable: false,
       zIndex: 1000,
     };
-    return [...nodes, groupNode];
-  }, [nodes, selectionBoxActive]);
+    return [...visibleNodes, groupNode];
+  }, [nodes, selectionBoxActive, suppressedContainerSelectionIds]);
 
   return (
     <>
@@ -1509,6 +1627,12 @@ export default function Canvas() {
           <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
           <ServiceSearch />
           <SelectionToolbar />
+          <ContainerSelectionGuard
+            preDragContainersRef={preDragContainersRef}
+            setSuppressedContainerSelectionIds={
+              setSuppressedContainerSelectionIds
+            }
+          />
         </ReactFlow>
         <ProjectNameEditor
           value={projectName}
