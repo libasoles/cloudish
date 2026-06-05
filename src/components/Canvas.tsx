@@ -98,6 +98,7 @@ import {
 } from "@/lib/az-sync";
 import { getAwsServiceNodeData } from "@/lib/node-utils";
 import { EDGE_STYLE } from "@/lib/edge-tools";
+import { resolveVpnGatewayEdgeLabel } from "@/lib/vpn-gateway-edges";
 import type { ExportFormat } from "@/lib/export/types";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -549,12 +550,16 @@ export default function Canvas() {
             .map((node) => node.id);
           let result = edges;
           for (const memberId of selectedIds) {
+            const edgeSrc = isGroupSource ? memberId : connection.source!;
+            const edgeTgt = isGroupTarget ? memberId : connection.target!;
+            const groupLabel = resolveVpnGatewayEdgeLabel(edgeTgt, n);
             const edge: AppEdge = {
               ...connection,
               id: `edge-${edgeIdRef.current++}`,
-              source: isGroupSource ? memberId : connection.source!,
-              target: isGroupTarget ? memberId : connection.target!,
+              source: edgeSrc,
+              target: edgeTgt,
               style: EDGE_STYLE,
+              ...(groupLabel && { label: groupLabel }),
             };
             result = addEdgeWithAzSync(edge, n, result);
           }
@@ -563,12 +568,18 @@ export default function Canvas() {
         return;
       }
 
+      const currentNodes = useFlowStore.getState().nodes;
+      const autoLabel = resolveVpnGatewayEdgeLabel(
+        connection.target,
+        currentNodes,
+      );
       const edge: AppEdge = {
         ...connection,
         id: `edge-${edgeIdRef.current++}`,
         source: connection.source,
         target: connection.target,
         style: EDGE_STYLE,
+        ...(autoLabel && { label: autoLabel }),
       };
 
       commitGraphChange(({ nodes: n, edges }) => ({

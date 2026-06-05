@@ -67,8 +67,8 @@ export default function EditableEdge({
     setIsEditing(false);
     commitGraphChange(({ nodes, edges }) => ({
       nodes,
-      edges: edges.map((e) =>
-        e.id === id ? { ...e, label: nextValue || undefined } : e,
+      edges: edges.map((edge) =>
+        edge.id === id ? { ...edge, label: nextValue || undefined } : edge,
       ),
     }));
   }
@@ -107,24 +107,24 @@ export default function EditableEdge({
               )}
               style={{ width: `${inputCharacterWidth}ch` }}
               value={draft}
-              onChange={(e) => setDraft(e.target.value)}
+              onChange={(event) => setDraft(event.target.value)}
               onBlur={commit}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") commit();
-                if (e.key === "Escape") {
+              onKeyDown={(event) => {
+                if (event.key === "Enter") commit();
+                if (event.key === "Escape") {
                   setDraft(String(label ?? ""));
                   setIsEditing(false);
                 }
               }}
-              onPointerDown={(e) => e.stopPropagation()}
-              onDoubleClick={(e) => e.stopPropagation()}
+              onPointerDown={(event) => event.stopPropagation()}
+              onDoubleClick={(event) => event.stopPropagation()}
             />
           ) : label ? (
             <span
               className="cursor-default select-none rounded px-1.5 py-0.5 text-xs font-medium text-white"
               style={{ background: "hsl(var(--background) / 0.84)" }}
-              onDoubleClick={(e) => {
-                e.stopPropagation();
+              onDoubleClick={(event) => {
+                event.stopPropagation();
                 startEditing();
               }}
             >
