@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "screenshots": "npx tsx scripts/take-screenshots.ts",
+    "demo": "tsx scripts/record-demo.ts",
     "prepare": "husky"
   },
   "dependencies": {
@@ -46,6 +47,7 @@
     "husky": "^9.1.7",
     "playwright": "^1.60.0",
     "tailwindcss": "^4.3.0",
+    "testreel": "^0.2.0",
     "tsx": "^4.22.4",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.59.2",

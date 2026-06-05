@@ -27,7 +27,7 @@ export default function Selection() {
           },
           {
             src: "/docs/screenshots/shift-click/after.png",
-            alt: "Múltiples nodos seleccionados con Shift+clic",
+            alt: "Dos nodos seleccionados con Shift+clic y un tercer nodo sin seleccionar",
           },
         ]}
         caption="Primero selecciona un nodo; luego usa Shift+clic sobre otros nodos para acumular la selección"
@@ -173,6 +173,10 @@ export default function Selection() {
           {
             src: "/docs/screenshots/multiple-edges/handle.png",
             alt: "Indicador de clic sobre el asa lateral de un nodo Lambda seleccionado",
+          },
+          {
+            src: "/docs/screenshots/multiple-edges/dragging.png",
+            alt: "Edge temporal a mitad de camino entre el Lambda seleccionado y RDS",
           },
           {
             src: "/docs/screenshots/multiple-edges/selected-to-rds.png",

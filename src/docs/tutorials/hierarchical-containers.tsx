@@ -37,6 +37,10 @@ export default function HierarchicalContainers() {
             alt: "Una Region vacía en el lienzo",
           },
           {
+            src: "/docs/screenshots/region-vpc/vpc-tool.png",
+            alt: "Indicador de clic sobre la herramienta VPC del panel lateral",
+          },
+          {
             src: "/docs/screenshots/region-vpc/nested.png",
             alt: "VPC anidado dentro de la Region",
           },
@@ -102,19 +106,19 @@ export default function HierarchicalContainers() {
             alt: "Subnet seleccionada con el selector Tipo cerrado",
           },
           {
-            src: "/docs/screenshots/subnet-type/dropdown-open.png",
-            alt: "Selector Tipo abierto mostrando opciones Pública y Privada",
-          },
-          {
             src: "/docs/screenshots/subnet-type/public.png",
             alt: "Subnet con tipo Pública seleccionado (verde)",
+          },
+          {
+            src: "/docs/screenshots/subnet-type/dropdown-open.png",
+            alt: "Selector Tipo abierto con indicador de clic sobre la opción Privada",
           },
           {
             src: "/docs/screenshots/subnet-type/private.png",
             alt: "Subnet con tipo Privada seleccionado (azul)",
           },
         ]}
-        caption="Abre el selector Tipo, elige entre Pública o Privada, y el color se actualiza automáticamente"
+        caption="Parte de una subnet pública, abre el selector Tipo y elige Privada para cambiar su color automáticamente"
       />
       <Tip>
         Las subnets públicas se muestran en verde esmeralda; las privadas en

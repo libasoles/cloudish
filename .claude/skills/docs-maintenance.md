@@ -299,10 +299,12 @@ Cada tutorial tiene **2-3 secciones principales** (`<h2>`), cada una con:
 **CRÍTICO**: cuando un tutorial documente el uso de un dropdown/selector, el carrusel **DEBE** incluir:
 
 1. **Estado inicial**: el selector cerrado (para contexto visual)
-2. **Dropdown abierto**: con todas las opciones visibles y la opción objetivo **destacada/highlighted**
+2. **Dropdown abierto**: con todas las opciones visibles y la opción objetivo **destacada/highlighted** con hover/cursor/indicador de click
 3. **Estado final**: resultado después de la selección
 
 **Por qué**: el usuario necesita ver exactamente dónde está cada opción en el dropdown. Sin esto, el tutorial pierde claridad.
+
+**CRÍTICO**: la opción resaltada debe coincidir con la acción que describe el texto. Si el flujo dice "cambiar de Pública a Privada", la captura del dropdown abierto debe mostrar el foco/click sobre **Privada**, no sobre Pública. El estado previo muestra el valor actual; el dropdown abierto muestra la opción nueva que se va a elegir; el estado final muestra el resultado de esa elección.
 
 **Ejemplo:**
 
@@ -331,7 +333,8 @@ Cada tutorial tiene **2-3 secciones principales** (`<h2>`), cada una con:
 - Interactúa con el dropdown (click para abrir)
 - Espera a que se rendericen las opciones
 - Captura con las opciones visibles
-- Opcionalmente: hover/select en la opción objetivo para que esté destacada
+- Hacer hover sobre la opción objetivo y agregar indicador de click/cursor sobre esa opción antes de capturar
+- Fallar o corregir el script si la opción objetivo no aparece; no guardar una captura con foco en otra opción
 
 ### Nodos dentro de contenedores
 
@@ -356,7 +359,9 @@ Cada tutorial tiene **2-3 secciones principales** (`<h2>`), cada una con:
 
 **Por qué**: sin el antes/después, no se ve qué cambió ni se entiende el resultado.
 
-**Cantidad de nodos**: si el tutorial dice "selecciona múltiples nodos", **DEBE haber 3+ nodos visibles y todos seleccionados** en el estado final. No mostrar "1 nodo seleccionado" cuando se habla de "múltiples".
+**CRÍTICO**: los estados deben ser graduales y cada slide debe enseñar un solo cambio conceptual. Si el texto dice "con un nodo preseleccionado, agrega uno más", el estado previo debe mostrar exactamente 1 nodo seleccionado y el indicador sobre el segundo; el estado posterior debe mostrar exactamente 2 nodos seleccionados. No saltar a 3 nodos seleccionados en ese carrusel, aunque haya un tercer nodo visible como contexto.
+
+**Cantidad de nodos**: si el tutorial muestra una selección grupal completa, **DEBE haber 3+ nodos visibles y todos seleccionados** en el estado final. Si el tutorial muestra un incremento gradual con Shift+clic, puede haber 3+ nodos visibles como contexto, pero el estado final debe seleccionar solo los nodos que el paso acaba de agregar.
 
 **🔴 SEPARACIÓN ESPACIAL DE NODOS (OBLIGATORIO)**: Los nodos agregados **DEBEN estar bien separados y visibles en el canvas** — no pueden solaparse ni estar uno encima del otro. Son diagramas de arquitectura, no listas. Después de agregar cada nodo con `addNodeBySidebarClick()`, **arrastrar explícitamente el nodo a una posición distinta** usando `page.mouse.move()` + `page.mouse.down/up()`. Distribuir horizontalmente (columnas): primera fila izquierda, primera fila centro, primera fila derecha. La separación debe ser claramente visible en las capturas finales.
 
@@ -370,6 +375,24 @@ Cada tutorial tiene **2-3 secciones principales** (`<h2>`), cada una con:
 - Antes de la primera captura, limpiar cualquier selección heredada de pasos anteriores con `Escape` o click en una zona vacía del canvas. No reutilizar un estado donde el nodo objetivo ya aparece seleccionado y luego se lo vuelve a seleccionar.
 
 **Ejemplo:** Para "Shift+clic", agregar 3 nodos → arrastrar el primero a (x1, y), el segundo a (x2, y), el tercero a (x3, y) con x1 < x2 < x3 → capturar sin seleccionar → shift+click en 2 → capturar con esos 2 resaltados.
+
+### Creación de edges
+
+**CRÍTICO**: cuando un tutorial documente crear un edge mediante drag entre handles, el carrusel debe mostrar la progresión completa:
+
+1. **Estado inicial**: nodos visibles y todavía sin edge.
+2. **Handle origen**: hover/click sobre el asa de salida, con indicador de click en el handle.
+3. **Edge en progreso**: mouse arrastrando y la línea temporal visible cerca del handle destino, antes de soltar.
+4. **Resultado**: edge creado entre los nodos.
+
+**Por qué**: si solo se ve el handle y el resultado final, el usuario no ve que debe mantener el mouse presionado y arrastrar entre handles. La captura intermedia debe ubicar el cursor cerca del handle destino, sin tocarlo ni soltar todavía el mouse, para que se entienda claramente hacia dónde se está conectando el edge.
+
+**En el script de screenshots** (`scripts/take-screenshots.ts`):
+
+- Calcular coordenadas del handle origen y destino.
+- Capturar el handle origen con indicador de click antes de `mouse.down()`.
+- Ejecutar `mouse.down()`, mover a un punto cercano al destino, por ejemplo `source + (target - source) * 0.82`, agregar cursor en ese punto y capturar el edge en progreso antes de `mouse.up()`.
+- Recién después mover al handle destino, soltar, esperar a que aparezca el edge final y capturar el resultado.
 
 ### Toolbars y controles flotantes
 

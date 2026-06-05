@@ -78,12 +78,16 @@ export default function GettingStarted() {
       <Carousel
         slides={[
           {
-            src: "/docs/screenshots/connect-nodes/done.png",
-            alt: "Edge conectando EC2 y RDS",
-          },
-          {
             src: "/docs/screenshots/connect-nodes/handle.png",
             alt: "Hover sobre EC2, handle visible en la derecha",
+          },
+          {
+            src: "/docs/screenshots/connect-nodes/dragging.png",
+            alt: "Edge temporal cerca del handle de destino de RDS",
+          },
+          {
+            src: "/docs/screenshots/connect-nodes/done.png",
+            alt: "Edge conectando EC2 y RDS",
           },
         ]}
         caption="Arrastra desde el asa de un nodo hasta el asa de destino para crear una conexión"

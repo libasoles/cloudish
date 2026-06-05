@@ -222,6 +222,13 @@ function getNodeClickPoint(bbox: { x: number; y: number; width: number; height: 
   }
 }
 
+function getNearTargetPoint(sourceX: number, sourceY: number, targetX: number, targetY: number) {
+  return {
+    x: sourceX + (targetX - sourceX) * 0.82,
+    y: sourceY + (targetY - sourceY) * 0.82,
+  }
+}
+
 async function main() {
   fs.mkdirSync(SCREENSHOTS_DIR, { recursive: true })
 
@@ -354,6 +361,14 @@ async function main() {
 
     // Drag to create edge
     await page.mouse.down()
+    const nearTarget = getNearTargetPoint(srcX, srcY, tgtX, tgtY)
+    await page.mouse.move(nearTarget.x, nearTarget.y, { steps: 30 })
+    await page.waitForTimeout(300)
+    await addMouseCursor(page, nearTarget.x - 8, nearTarget.y - 8)
+    await page.waitForTimeout(300)
+    await shot(page, 'connect-nodes', 'dragging.png')
+    await removeMouseCursor(page)
+
     await page.mouse.move(tgtX, tgtY, { steps: 40 })
     await page.waitForTimeout(500)
     await page.mouse.up()
@@ -371,6 +386,19 @@ async function main() {
   await addNodeBySidebarClick(page, 2) // Region
   await page.waitForTimeout(600)
   await shot(page, 'region-vpc', 'region.png')
+
+  const vpcTool = page.locator('aside button[draggable="true"]').nth(6)
+  const vpcToolBox = await vpcTool.boundingBox()
+  if (vpcToolBox) {
+    const vpcToolX = vpcToolBox.x + vpcToolBox.width / 2
+    const vpcToolY = vpcToolBox.y + vpcToolBox.height / 2
+    await addClickIndicator(page, vpcToolX, vpcToolY)
+    await addMouseCursor(page, vpcToolX - 8, vpcToolY - 8)
+    await page.waitForTimeout(300)
+    await shot(page, 'region-vpc', 'vpc-tool.png')
+    await removeClickIndicator(page)
+    await removeMouseCursor(page)
+  }
 
   await addNodeBySidebarClick(page, 6) // VPC
   await page.waitForTimeout(600)
@@ -423,20 +451,21 @@ async function main() {
 
   // 1. Subnet selected (closed selector)
   await shot(page, 'subnet-type', 'subnet-selected.png')
+  await shot(page, 'subnet-type', 'public.png')
 
   // 2. Open dropdown
   const typeSelect = page.locator('select, [role="combobox"]').nth(0)
   if (await typeSelect.count() > 0) {
     await typeSelect.click()
     await page.waitForTimeout(400)
-    const publicOption = page.locator('[role="option"]').filter({ hasText: /pública/i }).first()
-    const publicOptionBox = await publicOption.boundingBox()
-    if (publicOptionBox) {
-      const publicOptionX = publicOptionBox.x + publicOptionBox.width * 0.72
-      const publicOptionY = publicOptionBox.y + publicOptionBox.height / 2
-      await publicOption.hover()
-      await addClickIndicator(page, publicOptionX, publicOptionY)
-      await addMouseCursor(page, publicOptionX - 8, publicOptionY - 8)
+    const privateOption = page.locator('[role="option"]').filter({ hasText: /privada/i }).first()
+    const privateOptionBox = await privateOption.boundingBox()
+    if (privateOptionBox) {
+      const privateOptionX = privateOptionBox.x + privateOptionBox.width * 0.72
+      const privateOptionY = privateOptionBox.y + privateOptionBox.height / 2
+      await privateOption.hover()
+      await addClickIndicator(page, privateOptionX, privateOptionY)
+      await addMouseCursor(page, privateOptionX - 8, privateOptionY - 8)
       await page.waitForTimeout(300)
     }
     // Capture with dropdown open
@@ -444,31 +473,12 @@ async function main() {
     await removeClickIndicator(page)
     await removeMouseCursor(page)
 
-    // 3. Select "Pública"
+    // 3. Select "Privada"
     const options = page.locator('[role="option"]')
     for (let i = 0; i < await options.count(); i++) {
       const text = await options.nth(i).textContent()
-      if (text?.toLowerCase().includes('pública')) {
-        await options.nth(i).click()
-        break
-      }
-    }
-    await page.waitForTimeout(600)
-  }
-
-  // 3. Public selected
-  await shot(page, 'subnet-type', 'public.png')
-
-  // 4. Change to private
-  const typeSelect2 = page.locator('select, [role="combobox"]').nth(0)
-  if (await typeSelect2.count() > 0) {
-    await typeSelect2.click()
-    await page.waitForTimeout(300)
-    const options2 = page.locator('[role="option"]')
-    for (let i = 0; i < await options2.count(); i++) {
-      const text = await options2.nth(i).textContent()
       if (text?.toLowerCase().includes('privada')) {
-        await options2.nth(i).click()
+        await options.nth(i).click()
         break
       }
     }
@@ -605,24 +615,9 @@ async function main() {
   await shiftClickNodes.nth(1).click({ modifiers: ['Shift'], force: true })
   await page.waitForTimeout(300)
 
-  // Shift+click on third node
-  const n2Box = await shiftClickNodes.nth(2).boundingBox()
-  if (n2Box) {
-    const { x: n2X, y: n2Y } = getNodeClickPoint(n2Box)
-    await removeClickIndicator(page)
-    await removeMouseCursor(page)
-    await addClickIndicator(page, n2X, n2Y)
-    await addMouseCursor(page, n2X - 8, n2Y - 8)
-    await page.waitForTimeout(300)
-  }
-
-  // Shift+click to add third node to selection
-  await shiftClickNodes.nth(2).click({ modifiers: ['Shift'], force: true })
-  await page.waitForTimeout(400)
-
   await removeClickIndicator(page)
   await removeMouseCursor(page)
-  // After: show 3 selected nodes
+  // After: show the gradual result, with only one more node added.
   await shot(page, 'shift-click', 'after.png')
 
   // ── shift-drag: Selection box (3 steps) ────────────────────────────
@@ -845,11 +840,19 @@ async function main() {
     await shot(page, 'multiple-edges', 'handle.png')
 
     await page.mouse.down()
-    await page.mouse.move(targetX, targetY, { steps: 35 })
+    const nearTarget = getNearTargetPoint(sourceX, sourceY, targetX, targetY)
+    await page.mouse.move(nearTarget.x, nearTarget.y, { steps: 20 })
+    await page.waitForTimeout(300)
+    await removeClickIndicator(page)
+    await removeMouseCursor(page)
+    await addMouseCursor(page, nearTarget.x - 8, nearTarget.y - 8)
+    await page.waitForTimeout(300)
+    await shot(page, 'multiple-edges', 'dragging.png')
+
+    await page.mouse.move(targetX, targetY, { steps: 20 })
     await page.waitForTimeout(300)
     await page.mouse.up()
     await page.waitForTimeout(800)
-    await removeClickIndicator(page)
     await removeMouseCursor(page)
   }
 
