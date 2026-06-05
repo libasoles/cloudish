@@ -19,6 +19,7 @@ export const TUTORIAL_LAZY_MAP: Record<string, LazyComponent> = {
   'getting-started': lazy(() => import('./tutorials/getting-started')),
   'hierarchical-containers': lazy(() => import('./tutorials/hierarchical-containers')),
   'selection': lazy(() => import('./tutorials/selection')),
+  'keyboard-shortcuts': lazy(() => import('./tutorials/keyboard-shortcuts')),
 }
 
 export const TUTORIALS: TutorialMeta[] = [
@@ -48,6 +49,17 @@ export const TUTORIALS: TutorialMeta[] = [
       { id: 'seleccion-multiple', title: 'Selección múltiple' },
       { id: 'agregar-a-seleccion', title: 'Agregar a la selección' },
       { id: 'alineacion', title: 'Herramientas de alineación' },
+      { id: 'multiples-edges', title: 'Crear múltiples edges desde selección' },
+    ],
+  },
+  {
+    id: 'keyboard-shortcuts',
+    title: 'Atajos de teclado',
+    description: 'Domina el lienzo con atajos de teclado rápidos.',
+    sections: [
+      { id: 'busqueda-navegacion', title: 'Búsqueda y navegación' },
+      { id: 'seleccion-movimiento', title: 'Selección y movimiento' },
+      { id: 'edicion-eliminacion', title: 'Edición y eliminación' },
     ],
   },
 ]

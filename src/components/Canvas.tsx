@@ -321,7 +321,6 @@ export default function Canvas() {
     setDropTargetNodeId,
     setDropPreview,
     setEditingEdgeId,
-    selectionBoxActive,
     setSelectionBoxActive,
     resetCanvas,
   } = useFlowStore();
@@ -365,9 +364,7 @@ export default function Canvas() {
   // ID of the node the user Shift-clicked (detected in capture phase via DOM, before
   // React Flow fires its own selection changes). null means the click was on empty pane.
   const shiftClickedNodeRef = useRef<string | null>(null);
-  // True while a Shift+box-drag selection is in progress (between onSelectionStart and
-  // onSelectionEnd). Used to gate setSelectionBoxActive, not for selection logic.
-  const isSelectionBoxInProgressRef = useRef(false);
+  const [selectionDragActive, setSelectionDragActive] = useState(false);
   // Set to true by onPaneClick — which fires BEFORE resetSelectedElements() in React
   // Flow's onClick handler — so handleNodesChange can pass through the deselections
   // instead of re-selecting the base nodes.
@@ -1526,7 +1523,7 @@ export default function Canvas() {
   );
 
   const handleSelectionStart = useCallback((event: MouseEvent<Element>) => {
-    isSelectionBoxInProgressRef.current = true;
+    setSelectionDragActive(true);
     // Snapshot which containers were already selected before this drag.
     // nodesRef.current still reflects pre-reset state here (useEffect hasn't re-run).
     preDragContainersRef.current = event.shiftKey
@@ -1540,7 +1537,7 @@ export default function Canvas() {
   }, [setSelectionBoxActive]);
 
   const handleSelectionEnd = useCallback(() => {
-    isSelectionBoxInProgressRef.current = false;
+    setSelectionDragActive(false);
     shiftSelectionBaseRef.current.clear();
     setSelectionBoxActive(true);
   }, [setSelectionBoxActive]);
@@ -1587,11 +1584,10 @@ export default function Canvas() {
             return { ...node, selected: false };
           });
 
-    if (!selectionBoxActive) return visibleNodes;
     const eligible = visibleNodes.filter(
       (n) => n.selected && n.type !== "selectionGroup",
     );
-    if (eligible.length < 2) return visibleNodes;
+    if (selectionDragActive || eligible.length < 2) return visibleNodes;
     const nodesById = new Map(visibleNodes.map((n) => [n.id, n]));
     const rects = eligible.map((n) => getNodeRect(n, nodesById));
     const minX = Math.min(...rects.map((r) => r.x));
@@ -1614,7 +1610,7 @@ export default function Canvas() {
       zIndex: 1000,
     };
     return [...visibleNodes, groupNode];
-  }, [nodes, selectionBoxActive, suppressedContainerSelectionIds]);
+  }, [nodes, selectionDragActive, suppressedContainerSelectionIds]);
 
   return (
     <>
@@ -1688,7 +1684,7 @@ export default function Canvas() {
           <MiniMap className="max-md:!hidden" />
           <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
           <ServiceSearch onToolClick={addToolAtViewportCenter} />
-          <SelectionToolbar />
+          <SelectionToolbar hidden={selectionDragActive} />
           <ContainerSelectionGuard
             preDragContainersRef={preDragContainersRef}
             setSuppressedContainerSelectionIds={

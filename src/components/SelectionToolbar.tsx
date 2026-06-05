@@ -7,10 +7,9 @@ import { Button } from "@/components/ui/button";
 import { AlignCenterHorizontallyIcon } from "@/components/icons/AlignCenterHorizontallyIcon";
 import { AlignCenterVerticallyIcon } from "@/components/icons/AlignCenterVerticallyIcon";
 
-export function SelectionToolbar() {
+export function SelectionToolbar({ hidden = false }: { hidden?: boolean }) {
   const nodes = useFlowStore((s) => s.nodes);
   const commitGraphChange = useFlowStore((s) => s.commitGraphChange);
-  const selectionBoxActive = useFlowStore((s) => s.selectionBoxActive);
   const transform = useStore((s) => s.transform);
   const { getNodesBounds } = useReactFlow();
 
@@ -18,7 +17,7 @@ export function SelectionToolbar() {
     (n) => n.selected && n.type !== "networkContainer",
   );
 
-  if (!selectionBoxActive || selectedNodes.length < 2) return null;
+  if (hidden || selectedNodes.length < 2) return null;
 
   const bounds = getNodesBounds(selectedNodes);
   const [vpX, vpY, zoom] = transform;
@@ -86,6 +85,8 @@ export function SelectionToolbar() {
           size="icon"
           className="h-9 w-9"
           onClick={alignMiddleV}
+          data-testid="align-horizontal"
+          title="Align center horizontally"
         >
           <AlignCenterHorizontallyIcon />
         </Button>
@@ -97,6 +98,8 @@ export function SelectionToolbar() {
           size="icon"
           className="h-9 w-9"
           onClick={alignCenterH}
+          data-testid="align-vertical"
+          title="Align center vertically"
         >
           <AlignCenterVerticallyIcon />
         </Button>

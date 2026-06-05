@@ -3,7 +3,8 @@
     "allow": [
       "Bash(pkill -f \"vite\")",
       "Bash(git add *)",
-      "Bash(git commit -m ' *)",
+      "Bash(git commit *)",
+      "Bash(git add * && git commit *)",
       "Bash(curl -s http://localhost:5174/)",
       "Read(//tmp/**)",
       "Bash(pkill -f \"vite --port 5174\")",
