@@ -358,14 +358,18 @@ Cada tutorial tiene **2-3 secciones principales** (`<h2>`), cada una con:
 
 **Cantidad de nodos**: si el tutorial dice "selecciona múltiples nodos", **DEBE haber 3+ nodos visibles y todos seleccionados** en el estado final. No mostrar "1 nodo seleccionado" cuando se habla de "múltiples".
 
+**🔴 SEPARACIÓN ESPACIAL DE NODOS (OBLIGATORIO)**: Los nodos agregados **DEBEN estar bien separados y visibles en el canvas** — no pueden solaparse ni estar uno encima del otro. Son diagramas de arquitectura, no listas. Después de agregar cada nodo con `addNodeBySidebarClick()`, **arrastrar explícitamente el nodo a una posición distinta** usando `page.mouse.move()` + `page.mouse.down/up()`. Distribuir horizontalmente (columnas): primera fila izquierda, primera fila centro, primera fila derecha. La separación debe ser claramente visible en las capturas finales.
+
 **En el script de screenshots** (`scripts/take-screenshots.ts`):
 
 - Agregar 3+ nodos (no 2, que parecería solo "un par")
-- Capturar el estado inicial (nodos sin seleccionar)
+- **Después de cada `addNodeBySidebarClick()`, arrastrar el nodo a una posición distinta** para evitar solapamiento
+- Capturar el estado inicial con el nodo objetivo **deseleccionado**. Si el tutorial muestra una selección desde cero, todos los nodos deben estar sin seleccionar. Si muestra "agregar a la selección", los nodos existentes pueden estar seleccionados, pero el nodo que se va a agregar debe estar claramente deseleccionado.
 - Ejecutar la acción de selección (shift+click, shift+drag, etc.)
-- Capturar el estado final (nodos con highlight de selección)
+- Capturar el estado final con el mismo nodo objetivo **seleccionado** (con highlight visual), manteniendo separación clara.
+- Antes de la primera captura, limpiar cualquier selección heredada de pasos anteriores con `Escape` o click en una zona vacía del canvas. No reutilizar un estado donde el nodo objetivo ya aparece seleccionado y luego se lo vuelve a seleccionar.
 
-**Ejemplo:** Para "Shift+clic", capturar con 3 nodos sin seleccionar → hacer shift+click en 2 de ellos → capturar con esos 2 resaltados.
+**Ejemplo:** Para "Shift+clic", agregar 3 nodos → arrastrar el primero a (x1, y), el segundo a (x2, y), el tercero a (x3, y) con x1 < x2 < x3 → capturar sin seleccionar → shift+click en 2 → capturar con esos 2 resaltados.
 
 ### Indicadores visuales de clicks en capturas
 
@@ -480,6 +484,28 @@ Después de capturar, abre `/docs` y verifica **para cada sección**:
 - ✅ Los servicios AWS son típicos (EC2+RDS, Lambda+API Gateway, etc.)
 - ✅ La interfaz está en español
 - ✅ El viewport es fullscreen (sin barras de scroll innecesarias)
+- ✅ El mouse no deja hovers residuales, tooltips abiertos, highlights o estados visuales que no correspondan a la acción documentada
+
+### Posición del mouse en capturas
+
+**IMPORTANTE**: antes de tomar cada screenshot, mover el mouse a una posición neutra o a una posición relevante para la acción que se está documentando.
+
+**Por qué**: Playwright puede dejar el puntero sobre un elemento anterior aunque el foco esté en otra parte de la UI. Eso puede producir estados inconsistentes en la captura, por ejemplo un tooltip del sidebar abierto mientras el buscador está enfocado.
+
+**Regla práctica**:
+
+- Si la captura no documenta hover, mover el mouse a una zona neutra del lienzo antes de capturar.
+- Si la captura documenta hover, colocar el mouse exactamente sobre el elemento relevante y asegurarse de que no haya otros tooltips o highlights abiertos.
+- Si la captura documenta foco o escritura en un input, evitar que el puntero quede sobre botones del sidebar, toolbar o inspector.
+
+**En el script de screenshots** (`scripts/take-screenshots.ts`):
+
+```javascript
+// Zona neutra del canvas antes de una captura que no depende de hover.
+await page.mouse.move(960, 540);
+await page.waitForTimeout(150);
+await shot(page, "search", "rds.png");
+```
 
 ### Ejemplos AWS realistas
 
