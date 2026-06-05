@@ -36,3 +36,7 @@ TODO.md
 
 # Local agent worktrees
 .claude/worktrees/
+
+# Generated videos
+testreel-output/
+*.webm

@@ -18,6 +18,8 @@ import { recordPage } from 'testreel'
 
 const BASE_URL = process.env.BASE_URL ?? 'http://localhost:8888'
 const VIEWPORT = { width: 1920, height: 1080 }
+const AZ_NODE_SELECTOR = '.react-flow__node[data-id^="az-"]'
+const VPC_NODE_SELECTOR = '.react-flow__node[data-id^="vpc-"]'
 
 // ── Helpers (verbatim copies from take-screenshots.ts) ─────────────────────
 
@@ -40,6 +42,47 @@ async function addNodeBySidebarClick(page: Page, index = 0) {
     )
     await page.waitForTimeout(300)
   }
+}
+
+async function addNodeBySidebarLabel(page: Page, label: RegExp) {
+  const button = page.locator('aside button[draggable="true"]').filter({ hasText: label }).first()
+  const previousNodeCount = await page.locator('.react-flow__node').count()
+
+  await button.waitFor({ state: 'visible', timeout: 8000 })
+  await button.click()
+  await page.waitForFunction(
+    (expectedCount) => document.querySelectorAll('.react-flow__node').length > expectedCount,
+    previousNodeCount,
+    { timeout: 5000 },
+  )
+  await page.waitForTimeout(300)
+}
+
+async function waitForAzNodeCount(page: Page, minCount = 1) {
+  await page.waitForFunction(
+    ({ selector, expectedCount }) =>
+      document.querySelectorAll(selector).length >= expectedCount,
+    { selector: AZ_NODE_SELECTOR, expectedCount: minCount },
+    { timeout: 8000 },
+  )
+}
+
+function getFirstAzNode(page: Page) {
+  return page.locator(AZ_NODE_SELECTOR).first()
+}
+
+function firstVpcNode(page: Page) {
+  return page.locator(VPC_NODE_SELECTOR).first()
+}
+
+async function clickContainerHeader(page: Page, node: Locator) {
+  const bbox = await node.boundingBox()
+  if (bbox) {
+    await page.mouse.click(bbox.x + 44, bbox.y + 18)
+    return
+  }
+
+  await node.click({ force: true })
 }
 
 async function addClickIndicator(page: Page, x: number, y: number) {
@@ -228,18 +271,18 @@ async function main() {
   await page.mouse.click(960, 200)
   await page.waitForTimeout(200)
 
-  // Open ServiceSearch
+  // Show ServiceSearch as visual demo (open → type → close)
   await page.keyboard.press('Meta+k')
   await page.waitForTimeout(400)
-
-  // Fill search with 'rds'
   const searchInput = page.locator('input[placeholder*="uscar"]').first()
   await searchInput.fill('rds')
-  await page.waitForTimeout(500)
+  await page.waitForTimeout(800)
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(400)
 
-  // Add RDS to canvas
-  await page.keyboard.press('Enter')
-  await page.waitForTimeout(500)
+  // Add RDS via sidebar (reliable)
+  await addNodeBySidebarClick(page, 12)
+  await page.waitForTimeout(400)
 
   // Move RDS right
   await positionNodeAt(page, 1, 1200, 400)
@@ -294,49 +337,50 @@ async function main() {
   await addNodeBySidebarClick(page, 2)
   await page.waitForTimeout(600)
 
-  // Add VPC (index 6) — auto-nests inside Region
-  await addNodeBySidebarClick(page, 6)
+  // Add VPC — auto-nests inside Region
+  await addNodeBySidebarLabel(page, /^VPC$/i)
   await page.waitForTimeout(600)
 
   // Click on VPC node
-  const vpcNode = page.locator('.react-flow__node').filter({ hasText: /vpc/i }).first()
-  await vpcNode.click({ force: true })
+  const vpcNode = firstVpcNode(page)
+  await vpcNode.waitFor({ state: 'visible', timeout: 8000 })
+  await clickContainerHeader(page, vpcNode)
   await page.waitForTimeout(600)
 
   // Fill slider to 2 AZs
   const slider = page.locator('input[type="range"]').first()
-  if (await slider.count() > 0) {
-    await slider.fill('2')
-    await slider.dispatchEvent('input')
-    await slider.dispatchEvent('change')
-    await page.waitForTimeout(1000)
-  }
+  await slider.waitFor({ state: 'visible', timeout: 8000 })
+  await slider.fill('2')
+  await slider.dispatchEvent('input')
+  await slider.dispatchEvent('change')
+  await waitForAzNodeCount(page, 2)
+  await page.waitForTimeout(1000)
 
-  // Add Subnet (index 4)
-  await addNodeBySidebarClick(page, 4)
-  await page.waitForTimeout(500)
-
-  // Find first AZ bounding box and drag subnet inside it
-  const firstAzNode = page
-    .locator('.react-flow__node')
-    .filter({ hasText: /az|availability/i })
-    .first()
+  // Find first AZ bounding box before adding subnet
+  const firstAzNode = getFirstAzNode(page)
   const firstAzBox = await firstAzNode.boundingBox()
 
+  // Add Subnet — capture count before to reference it by index
+  const countBeforeSubnet = await page.locator('.react-flow__node').count()
+  await addNodeBySidebarLabel(page, /^Subred$/i)
+  await page.waitForTimeout(500)
+
+  // Drag subnet inside first AZ using index-based reference
   if (firstAzBox) {
-    const subnetNode = page.locator('.react-flow__node').filter({ hasText: /subnet/i }).first()
+    const subnetNode = page.locator('.react-flow__node').nth(countBeforeSubnet)
     const subnetTargetX = firstAzBox.x + firstAzBox.width * 0.5
     const subnetTargetY = firstAzBox.y + firstAzBox.height * 0.5
     await positionNodeLocatorAt(page, subnetNode, subnetTargetX, subnetTargetY)
   }
 
-  // Add EC2 (index 8)
+  // Add EC2 (index 8) — capture count before to reference it by index
+  const countBeforeEc2 = await page.locator('.react-flow__node').count()
   await addNodeBySidebarClick(page, 8)
   await page.waitForTimeout(400)
 
   // Drag EC2 inside the subnet
   if (firstAzBox) {
-    const ec2ServiceNode = page.locator('.react-flow__node').filter({ hasText: /ec2/i }).first()
+    const ec2ServiceNode = page.locator('.react-flow__node').nth(countBeforeEc2)
     const ec2TargetX = firstAzBox.x + firstAzBox.width * 0.5
     const ec2TargetY = firstAzBox.y + firstAzBox.height * 0.5
     await positionNodeLocatorAt(page, ec2ServiceNode, ec2TargetX, ec2TargetY)
@@ -347,76 +391,89 @@ async function main() {
 
   // ── Scene 4 — Subnet type + AZ Sync ───────────────────────────────────
   console.log('Scene 4: Subnet type + AZ Sync...')
-  // Continue from Scene 3 state
+  await loadApp(page)
 
-  // Find and click subnet node
-  const subnetNode = page.locator('.react-flow__node').filter({ hasText: /subnet/i }).first()
-  await subnetNode.click({ force: true })
-  await page.waitForTimeout(400)
+  // Add VPC — auto-nests inside Region if present; standalone here
+  await addNodeBySidebarLabel(page, /^VPC$/i)
+  await page.waitForTimeout(600)
 
-  // Open combobox/select
-  const typeSelect = page.locator('select, [role="combobox"]').nth(0)
-  await typeSelect.click()
-  await page.waitForTimeout(400)
+  // AZ Sync — set VPC to 2 AZs while the canvas is unobstructed.
+  const vpcNodeS4 = firstVpcNode(page)
+  await vpcNodeS4.waitFor({ state: 'visible', timeout: 8000 })
+  await clickContainerHeader(page, vpcNodeS4)
+  await page.waitForTimeout(600)
 
-  // Find and click "pública" option
-  const publicaOption = page.locator('[role="option"]').filter({ hasText: /pública/i }).first()
-  const publicaOptionBox = await publicaOption.boundingBox()
-  if (publicaOptionBox) {
-    const optX = publicaOptionBox.x + publicaOptionBox.width / 2
-    const optY = publicaOptionBox.y + publicaOptionBox.height / 2
-    await addClickIndicator(page, optX, optY)
-    await page.waitForTimeout(300)
-    await publicaOption.click()
-    await removeClickIndicator(page)
-  } else {
-    await publicaOption.click()
-  }
-  await page.waitForTimeout(500)
-
-  await clearCanvasSelection(page)
-  await page.waitForTimeout(300)
-
-  // Click VPC node to make slider available
-  const vpcNode4 = page.locator('.react-flow__node').filter({ hasText: /vpc/i }).first()
-  await vpcNode4.click({ force: true })
-  await page.waitForTimeout(400)
-
-  // Fill slider to 2 AZs (may already be 2)
-  const slider4 = page.locator('input[type="range"]').first()
-  if (await slider4.count() > 0) {
-    await slider4.fill('2')
-    await slider4.dispatchEvent('input')
-    await slider4.dispatchEvent('change')
-    await page.waitForTimeout(500)
-  }
-
-  // Add Lambda (index 10)
-  await addNodeBySidebarClick(page, 10)
-  await page.waitForTimeout(400)
-
-  // Drag Lambda into first AZ
-  const firstAzBox4 = await firstAzNode.boundingBox()
-  if (firstAzBox4) {
-    const lambdaNode = page.locator('.react-flow__node').filter({ hasText: /lambda/i }).first()
-    await positionNodeLocatorAt(page, lambdaNode, firstAzBox4.x + firstAzBox4.width * 0.5, firstAzBox4.y + firstAzBox4.height * 0.65)
-  }
-
-  await clearCanvasSelection(page)
-  await page.waitForTimeout(300)
-
-  // Click first AZ node
-  const firstAzBox4b = await firstAzNode.boundingBox()
-  if (firstAzBox4b) {
-    await page.mouse.click(firstAzBox4b.x + 44, firstAzBox4b.y + 18)
-  } else {
-    await firstAzNode.click({ force: true })
-  }
-  await page.waitForTimeout(500)
-
-  // Click "Sincronizar AZs" button
-  await page.getByText('Sincronizar AZs').click()
+  const sliderS4 = page.locator('input[type="range"]').first()
+  await sliderS4.waitFor({ state: 'visible', timeout: 8000 })
+  await sliderS4.fill('2')
+  await sliderS4.dispatchEvent('input')
+  await sliderS4.dispatchEvent('change')
+  await waitForAzNodeCount(page, 2)
   await page.waitForTimeout(1000)
+
+  // Enable AZ sync from the first AZ inspector.
+  const firstAzNodeS4 = getFirstAzNode(page)
+  await clickContainerHeader(page, firstAzNodeS4)
+  await page.waitForTimeout(500)
+
+  const syncCheckbox = page
+    .locator('label')
+    .filter({ hasText: /Sincronizar AZs|Sync AZs/i })
+    .locator('input[type="checkbox"]')
+    .first()
+  await syncCheckbox.waitFor({ state: 'visible', timeout: 8000 })
+  await syncCheckbox.check()
+  await page.waitForTimeout(700)
+
+  await clearCanvasSelection(page)
+  await page.waitForTimeout(300)
+
+  // Add EC2 to the synced first AZ (capture count before for stable index).
+  const firstAzBoxS4 = await firstAzNodeS4.boundingBox()
+  const countBeforeEc2S4 = await page.locator('.react-flow__node').count()
+  await addNodeBySidebarClick(page, 8)
+  await page.waitForTimeout(400)
+
+  if (firstAzBoxS4) {
+    const ec2NodeS4 = page.locator('.react-flow__node').nth(countBeforeEc2S4)
+    await positionNodeLocatorAt(page, ec2NodeS4, firstAzBoxS4.x + firstAzBoxS4.width * 0.5, firstAzBoxS4.y + firstAzBoxS4.height * 0.5)
+  }
+
+  await clearCanvasSelection(page)
+  await page.waitForTimeout(500)
+
+  // Add Subnet and show its type selector after AZ sync is configured.
+  const countBeforeSubnetS4 = await page.locator('.react-flow__node').count()
+  await addNodeBySidebarLabel(page, /^Subred$/i)
+  await page.waitForTimeout(600)
+
+  const subnetNodeS4 = page.locator('.react-flow__node').nth(countBeforeSubnetS4)
+  await subnetNodeS4.click({ force: true })
+  await page.waitForTimeout(600)
+
+  const typeSelectS4 = page.locator('select, [role="combobox"]').nth(0)
+  if (await typeSelectS4.count() > 0) {
+    await typeSelectS4.click()
+    await page.waitForTimeout(500)
+
+    const optionsS4 = page.locator('[role="option"]')
+    await optionsS4.first().waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
+    const optCountS4 = await optionsS4.count()
+    for (let i = 0; i < optCountS4; i++) {
+      const text = (await optionsS4.nth(i).textContent())?.toLowerCase() ?? ''
+      if (text.includes('p') && (text.includes('blica') || text.includes('blic'))) {
+        const optBox = await optionsS4.nth(i).boundingBox()
+        if (optBox) {
+          await addClickIndicator(page, optBox.x + optBox.width / 2, optBox.y + optBox.height / 2)
+          await page.waitForTimeout(300)
+          await removeClickIndicator(page)
+        }
+        await optionsS4.nth(i).click()
+        break
+      }
+    }
+    await page.waitForTimeout(600)
+  }
 
   await clearCanvasSelection(page)
   await page.waitForTimeout(300)
@@ -492,10 +549,10 @@ async function main() {
   await page.waitForTimeout(300)
 
   // ── Finish ─────────────────────────────────────────────────────────────
-  await browser.close()
-
   const result = await recorder.stop()
   console.log('Video saved:', result.video)
+
+  await browser.close()
 }
 
 main().catch(err => { console.error(err); process.exit(1) })

@@ -6,12 +6,31 @@ import {
   TUTORIALS,
   TUTORIAL_LAZY_MAP,
 } from "../docs/tutorial-registry";
+import { setSeoMeta } from "@/lib/seo";
 
 export default function DocsPage() {
   const { tutorialId = "" } = useParams<{ tutorialId: string }>();
   const tutorial = getTutorial(tutorialId);
   const TutorialContent = TUTORIAL_LAZY_MAP[tutorialId] ?? null;
   const [activeSection, setActiveSection] = useState("");
+
+  useEffect(() => {
+    if (!tutorial) {
+      setSeoMeta({
+        title: "Tutorial no encontrado | Cloudish Docs",
+        description: "La página de documentación solicitada no existe.",
+        path: `/docs/${tutorialId}`,
+      });
+      return;
+    }
+
+    setSeoMeta({
+      title: `${tutorial.title} | Cloudish Docs`,
+      description: tutorial.description,
+      path: `/docs/${tutorial.id}`,
+      type: "article",
+    });
+  }, [tutorial, tutorialId]);
 
   useEffect(() => {
     if (!tutorial) return;

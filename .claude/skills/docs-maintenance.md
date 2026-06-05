@@ -110,6 +110,25 @@ También agrega el import lazy en `TUTORIAL_LAZY_MAP`:
 'nuevo-tutorial': () => import('./tutorials/nuevo-tutorial'),
 ```
 
+### 2.1. Mantener indexación SEO
+
+Cada tutorial registrado en `src/docs/tutorial-registry.ts` se publica como URL indexable en `/docs/:tutorialId`.
+
+**Al agregar, renombrar o eliminar un tutorial:**
+
+1. Actualiza `TUTORIALS` y `TUTORIAL_LAZY_MAP` en `src/docs/tutorial-registry.ts`.
+2. Ejecuta `npm run generate:sitemap` para regenerar:
+   - `public/sitemap.xml`
+   - `public/robots.txt`
+3. Verifica que la URL nueva aparezca en `public/sitemap.xml`.
+4. Verifica que el tutorial tenga `title` y `description` claros en el registry, porque `DocsPage` los usa para:
+   - `<title>`
+   - meta description
+   - canonical
+   - Open Graph / Twitter metadata
+
+**No hardcodear URLs de tutoriales en `public/sitemap.xml` a mano.** El sitemap debe salir del registry para evitar que buscadores reciban páginas viejas o falten páginas nuevas.
+
 ### 3. Capturar las screenshots
 
 Edita `scripts/take-screenshots.ts` y agrega una nueva función que capture tus pasos:
@@ -611,6 +630,8 @@ type CarouselProps = {
 
 - [ ] Todas las secciones tienen títulos (`<h2 id="...">`)?
 - [ ] Todos los `id` de secciones coinciden en `tutorial-registry.ts`?
+- [ ] Si agregaste, renombraste o eliminaste un tutorial, corriste `npm run generate:sitemap`?
+- [ ] La URL del tutorial aparece en `public/sitemap.xml`?
 - [ ] Las imágenes existen en `public/docs/screenshots/`?
 - [ ] Los paths a imágenes son correctos (relativo a `/docs/screenshots/`)?
 - [ ] Cada imagen refleja exactamente lo que dice el texto?
@@ -685,6 +706,12 @@ export default function MiTutorial() {
   title: '...',
   sections: [{ id: 'seccion-1', title: '...' }],
 }
+```
+
+Genera el sitemap para que la nueva página quede descubierta por buscadores:
+
+```bash
+npm run generate:sitemap
 ```
 
 ### 4. Capturar screenshots

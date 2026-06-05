@@ -316,9 +316,6 @@ async function main() {
   await addNodeBySidebarClick(page, 12)
   await page.waitForTimeout(400)
 
-  // Start: both nodes separated
-  await shot(page, 'connect-nodes', 'start.png')
-
   // Move RDS to the right
   const rdsNode = nodes.nth(1)
   const box2 = await rdsNode.boundingBox()
