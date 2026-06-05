@@ -52,18 +52,54 @@ async function addNodeBySidebarClick(page: Page, index = 0) {
 
 async function addClickIndicator(page: Page, x: number, y: number) {
   await page.evaluate(({ xPos, yPos }: { xPos: number; yPos: number }) => {
-    const div = document.createElement('div')
-    div.id = 'click-indicator-temp'
-    div.style.position = 'fixed'
-    div.style.width = '40px'
-    div.style.height = '40px'
-    div.style.border = '3px solid #ff6b6b'
-    div.style.borderRadius = '50%'
-    div.style.left = (xPos - 20) + 'px'
-    div.style.top = (yPos - 20) + 'px'
-    div.style.zIndex = '9999'
-    div.style.pointerEvents = 'none'
-    document.body.appendChild(div)
+    const container = document.createElement('div')
+    container.id = 'click-indicator-temp'
+    container.style.position = 'fixed'
+    container.style.width = '48px'
+    container.style.height = '48px'
+    container.style.left = (xPos - 24) + 'px'
+    container.style.top = (yPos - 24) + 'px'
+    container.style.zIndex = '9999'
+    container.style.pointerEvents = 'none'
+
+    // Outer ring with glow effect
+    const outer = document.createElement('div')
+    outer.style.position = 'absolute'
+    outer.style.width = '100%'
+    outer.style.height = '100%'
+    outer.style.borderRadius = '50%'
+    outer.style.border = '2px solid #3b82f6'
+    outer.style.boxShadow = '0 0 0 8px rgba(59, 130, 246, 0.15), 0 0 12px rgba(59, 130, 246, 0.4)'
+    outer.style.animation = 'pulse-indicator 1.5s ease-in-out infinite'
+    container.appendChild(outer)
+
+    // Center dot
+    const dot = document.createElement('div')
+    dot.style.position = 'absolute'
+    dot.style.width = '4px'
+    dot.style.height = '4px'
+    dot.style.borderRadius = '50%'
+    dot.style.backgroundColor = '#3b82f6'
+    dot.style.top = '50%'
+    dot.style.left = '50%'
+    dot.style.transform = 'translate(-50%, -50%)'
+    container.appendChild(dot)
+
+    // Add animation keyframes
+    if (!document.getElementById('click-indicator-styles')) {
+      const style = document.createElement('style')
+      style.id = 'click-indicator-styles'
+      style.textContent = `
+        @keyframes pulse-indicator {
+          0% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.1); opacity: 0.8; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+      `
+      document.head.appendChild(style)
+    }
+
+    document.body.appendChild(container)
   }, { xPos: x, yPos: y })
 }
 
@@ -71,6 +107,62 @@ async function removeClickIndicator(page: Page) {
   await page.evaluate(() => {
     document.getElementById('click-indicator-temp')?.remove()
   })
+}
+
+async function addMouseCursor(page: Page, x: number, y: number) {
+  await page.evaluate(({ xPos, yPos }: { xPos: number; yPos: number }) => {
+    const cursor = document.createElement('svg')
+    cursor.id = 'mouse-cursor-temp'
+    cursor.style.position = 'fixed'
+    cursor.style.left = xPos + 'px'
+    cursor.style.top = yPos + 'px'
+    cursor.style.width = '24px'
+    cursor.style.height = '32px'
+    cursor.style.pointerEvents = 'none'
+    cursor.style.zIndex = '10000'
+
+    // Standard macOS cursor SVG
+    cursor.innerHTML = `
+      <svg viewBox="0 0 24 32" xmlns="http://www.w3.org/2000/svg">
+        <path d="M3 2 L3 28 L10 20 L15 28 L19 26 L13 19 L21 19 Z" fill="#000" stroke="#fff" stroke-width="0.5"/>
+      </svg>
+    `
+    document.body.appendChild(cursor)
+  }, { xPos: x, yPos: y })
+}
+
+async function removeMouseCursor(page: Page) {
+  await page.evaluate(() => {
+    document.getElementById('mouse-cursor-temp')?.remove()
+  })
+}
+
+async function positionNodeInColumn(page: Page, nodeIndex: number, col: number, row: number = 0) {
+  const nodes = page.locator('.react-flow__node')
+  const nodeCount = await nodes.count()
+  if (nodeCount > nodeIndex) {
+    const node = nodes.nth(nodeIndex)
+    const bbox = await node.boundingBox()
+    if (bbox) {
+      const centerX = bbox.x + bbox.width / 2
+      const centerY = bbox.y + bbox.height / 2
+
+      // Position in grid: cols are 400px apart, rows are 350px apart, starting at (600, 300)
+      const targetX = 600 + col * 400
+      const targetY = 300 + row * 350
+
+      const deltaX = targetX - centerX
+      const deltaY = targetY - centerY
+
+      await page.mouse.move(centerX, centerY)
+      await page.waitForTimeout(100)
+      await page.mouse.down()
+      await page.mouse.move(centerX + deltaX, centerY + deltaY, { steps: 10 })
+      await page.waitForTimeout(150)
+      await page.mouse.up()
+      await page.waitForTimeout(300)
+    }
+  }
 }
 
 async function main() {
@@ -93,7 +185,14 @@ async function main() {
   const ec2Btn = page.locator('aside button[draggable="true"]').nth(8) // EC2
   await ec2Btn.hover()
   await page.waitForTimeout(400)
-  await shot(page, 'sidebar', 'ec2-hover.png')
+  const ec2BtnBox = await ec2Btn.boundingBox()
+  if (ec2BtnBox) {
+    const ec2X = ec2BtnBox.x + ec2BtnBox.width / 2
+    const ec2Y = ec2BtnBox.y + ec2BtnBox.height / 2
+    await addMouseCursor(page, ec2X - 8, ec2Y - 8)
+    await shot(page, 'sidebar', 'ec2-hover.png')
+    await removeMouseCursor(page)
+  }
 
   // ── search: RDS ────────────────────────────────────────────────────
   console.log('2/11 Search (RDS)...')
@@ -107,7 +206,14 @@ async function main() {
     await searchInput.fill('rds')
     await page.waitForTimeout(600)
   }
+  const searchInputBox = await searchInput.boundingBox()
+  if (searchInputBox) {
+    const searchX = searchInputBox.x + searchInputBox.width / 2
+    const searchY = searchInputBox.y + searchInputBox.height / 2
+    await addMouseCursor(page, searchX - 8, searchY - 8)
+  }
   await shot(page, 'search', 'rds.png')
+  await removeMouseCursor(page)
   await page.keyboard.press('Escape')
   await page.waitForTimeout(400)
 
@@ -385,10 +491,11 @@ async function main() {
   await loadApp(page)
   await page.keyboard.press('Escape')
   await page.waitForTimeout(300)
-  // Add 4 nodes
-  for (const idx of [8, 10, 12, 15]) {
-    await addNodeBySidebarClick(page, idx)
+  // Add 3 nodes and position them in different columns
+  for (let i = 0; i < 3; i++) {
+    await addNodeBySidebarClick(page, [8, 10, 12][i])
     await page.waitForTimeout(300)
+    await positionNodeInColumn(page, i, i) // col 0, 1, 2
   }
   await page.waitForTimeout(300)
 
@@ -399,9 +506,11 @@ async function main() {
     const n0X = n0Box.x + n0Box.width / 2
     const n0Y = n0Box.y + n0Box.height / 2
     await addClickIndicator(page, n0X, n0Y)
+    await addMouseCursor(page, n0X - 8, n0Y - 8)
     await page.waitForTimeout(300)
     await shot(page, 'shift-click', 'before.png')
     await removeClickIndicator(page)
+    await removeMouseCursor(page)
   }
 
   // Select first node
@@ -414,6 +523,7 @@ async function main() {
     const n1X = n1Box.x + n1Box.width / 2
     const n1Y = n1Box.y + n1Box.height / 2
     await addClickIndicator(page, n1X, n1Y)
+    await addMouseCursor(page, n1X - 8, n1Y - 8)
     await page.waitForTimeout(300)
   }
 
@@ -427,7 +537,9 @@ async function main() {
     const n2X = n2Box.x + n2Box.width / 2
     const n2Y = n2Box.y + n2Box.height / 2
     await removeClickIndicator(page)
+    await removeMouseCursor(page)
     await addClickIndicator(page, n2X, n2Y)
+    await addMouseCursor(page, n2X - 8, n2Y - 8)
     await page.waitForTimeout(300)
   }
 
@@ -436,6 +548,7 @@ async function main() {
   await page.waitForTimeout(400)
 
   await removeClickIndicator(page)
+  await removeMouseCursor(page)
   // After: show 3 selected nodes
   await shot(page, 'shift-click', 'after.png')
 
@@ -445,15 +558,18 @@ async function main() {
   await page.keyboard.press('Escape')
   await page.waitForTimeout(300)
 
-  // Add 3 nodes
-  for (const idx of [8, 10, 12]) {
-    await addNodeBySidebarClick(page, idx)
+  // Add 3 nodes and position them in different columns
+  for (let i = 0; i < 3; i++) {
+    await addNodeBySidebarClick(page, [8, 10, 12][i])
     await page.waitForTimeout(300)
+    await positionNodeInColumn(page, i, i) // col 0, 1, 2
   }
   await page.waitForTimeout(400)
 
-  // Before: unselected nodes
+  // Before: unselected nodes with cursor
+  await addMouseCursor(page, 960, 400)
   await shot(page, 'shift-drag', 'start.png')
+  await removeMouseCursor(page)
 
   // Get bounds of all nodes to ensure selection box encompasses them
   const allNodes = page.locator('.react-flow__node')
@@ -483,6 +599,7 @@ async function main() {
   if (canvasBox && isFinite(startX) && isFinite(startY) && isFinite(endX) && isFinite(endY)) {
     // Show click indicator at start of drag
     await addClickIndicator(page, startX, startY)
+    await addMouseCursor(page, startX - 8, startY - 8)
     await page.waitForTimeout(300)
 
     await page.keyboard.down('Shift')
@@ -492,18 +609,23 @@ async function main() {
     await page.waitForTimeout(150)
 
     await removeClickIndicator(page)
-    // During drag: show selection box
+    // During drag: show selection box with cursor
     await page.mouse.move(endX, endY, { steps: 15 })
+    await removeMouseCursor(page)
+    await addMouseCursor(page, endX - 8, endY - 8)
     await page.waitForTimeout(300)
     await shot(page, 'shift-drag', 'box.png')
+    await removeMouseCursor(page)
 
     await page.mouse.up()
     await page.keyboard.up('Shift')
     await page.waitForTimeout(400)
   }
 
-  // After: show selected nodes
+  // After: show selected nodes with cursor
+  await addMouseCursor(page, 960, 400)
   await shot(page, 'shift-drag', 'after.png')
+  await removeMouseCursor(page)
 
   // ── add-to-selection ───────────────────────────────────────────────
   console.log('10/11 Add to selection...')
@@ -518,9 +640,11 @@ async function main() {
       const n0X = n0Box.x + n0Box.width / 2
       const n0Y = n0Box.y + n0Box.height / 2
       await addClickIndicator(page, n0X, n0Y)
+      await addMouseCursor(page, n0X - 8, n0Y - 8)
       await page.waitForTimeout(300)
       await shot(page, 'add-to-selection', 'before.png')
       await removeClickIndicator(page)
+      await removeMouseCursor(page)
     }
 
     // Select first node
@@ -533,6 +657,7 @@ async function main() {
       const n1X = n1Box.x + n1Box.width / 2
       const n1Y = n1Box.y + n1Box.height / 2
       await addClickIndicator(page, n1X, n1Y)
+      await addMouseCursor(page, n1X - 8, n1Y - 8)
       await page.waitForTimeout(300)
     }
 
@@ -545,7 +670,9 @@ async function main() {
       const n2X = n2Box.x + n2Box.width / 2
       const n2Y = n2Box.y + n2Box.height / 2
       await removeClickIndicator(page)
+      await removeMouseCursor(page)
       await addClickIndicator(page, n2X, n2Y)
+      await addMouseCursor(page, n2X - 8, n2Y - 8)
       await page.waitForTimeout(300)
     }
 
@@ -553,10 +680,13 @@ async function main() {
     await page.waitForTimeout(400)
 
     await removeClickIndicator(page)
+    await removeMouseCursor(page)
   }
 
-  // After: show 3 selected nodes
+  // After: show 3 selected nodes with cursor in neutral position
+  await addMouseCursor(page, 960, 400)
   await shot(page, 'add-to-selection', 'after.png')
+  await removeMouseCursor(page)
 
   // ── alignment: Nodes misaligned → aligned (2 steps) ────────────────
   console.log('11/11 Alignment toolbar...')
