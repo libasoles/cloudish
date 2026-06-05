@@ -3,6 +3,7 @@ import {
   Suspense,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -224,11 +225,13 @@ function ContainerSelectionGuard({
   preDragContainersRef: React.RefObject<Set<string>>;
   setSuppressedContainerSelectionIds: Dispatch<SetStateAction<Set<string>>>;
 }) {
-  const { onNodesChange } = useFlowStore();
-  const nodes = useFlowStore((state) => state.nodes);
+  const onNodesChange = useFlowStore((state) => state.onNodesChange);
+  const guardNodes = useFlowStore((state) => state.nodes);
   const storeApi = useStoreApi();
   const userSelectionRect = useStore((s) => s.userSelectionRect);
   const lastRectRef = useRef<typeof userSelectionRect>(null);
+  const guardNodesRef = useRef(guardNodes);
+  useLayoutEffect(() => { guardNodesRef.current = guardNodes; });
 
   useEffect(() => {
     const getPartiallySelectedContainerIds = (
@@ -237,7 +240,7 @@ function ContainerSelectionGuard({
       const { transform, nodeLookup } = storeApi.getState();
       const [tx, ty, tZoom] = transform;
 
-      return nodes
+      return guardNodesRef.current
         .filter(
           (node) =>
             node.type === "networkContainer" &&
@@ -282,7 +285,6 @@ function ContainerSelectionGuard({
       );
     }
   }, [
-    nodes,
     userSelectionRect,
     storeApi,
     onNodesChange,
@@ -346,6 +348,7 @@ export default function Canvas() {
   const textIdRef = useRef(1);
   const edgeIdRef = useRef(1);
   const pulseIdRef = useRef(1);
+  const idScanRef = useRef({ nodes: -1, edges: -1, restore: -1 });
   const activeDragToolRef = useRef<DragTool | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const isRestoringViewportRef = useRef(false);
@@ -371,8 +374,16 @@ export default function Canvas() {
   const suppressNextClickRef = useRef(false);
   const nodesRef = useRef(nodes);
   useEffect(() => { nodesRef.current = nodes; }, [nodes]);
-
   useEffect(() => {
+    if (
+      idScanRef.current.nodes === nodes.length &&
+      idScanRef.current.edges === edges.length &&
+      idScanRef.current.restore === viewportRestoreKey
+    ) {
+      return;
+    }
+    idScanRef.current = { nodes: nodes.length, edges: edges.length, restore: viewportRestoreKey };
+
     const containerIds = nodes
       .filter((node) => node.type === "networkContainer")
       .map((node) => node.id);
@@ -408,7 +419,7 @@ export default function Canvas() {
       edgeIdRef.current,
       getNextNumericIdSuffix(edges.map((edge) => edge.id)),
     );
-  }, [edges, nodes]);
+  }, [edges, nodes, viewportRestoreKey]);
 
   // Fires in CAPTURE phase — before React Flow's own handlers — so we can snapshot
   // the current selection as the "base" and identify the clicked node via DOM.
@@ -1478,16 +1489,26 @@ export default function Canvas() {
 
       const { nodes: currentNodes } = useFlowStore.getState();
       const nodesById = new Map(currentNodes.map((n) => [n.id, n]));
-      const nodeRect = getNodeRect(node, nodesById);
       const containerNodes = currentNodes.filter(isNetworkContainerNode);
-      const target = findIntersectingContainer(nodeRect, containerNodes, nodesById, node);
+
+      const nodeRect = getNodeRect(node, nodesById);
+      const target = findIntersectingContainer(
+        nodeRect,
+        containerNodes,
+        nodesById,
+        node,
+      );
       const childType = getNetworkContainerType(node);
       const isNewParent = target && target.id !== node.parentId;
 
       setDropTargetNodeId(isNewParent ? target.id : null);
       setDropPreview(isNewParent && childType ? { parentId: target.id, childType } : null);
     },
-    [dropTargetNodeId, setDropPreview, setDropTargetNodeId],
+    [
+      dropTargetNodeId,
+      setDropPreview,
+      setDropTargetNodeId,
+    ],
   );
 
   const onNodeDragStop: OnNodeDrag<AppNode> = useCallback(

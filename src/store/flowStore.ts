@@ -273,9 +273,21 @@ export const useFlowStore = create<FlowStore>()((set) => ({
     })),
 
   dropTargetNodeId: null,
-  setDropTargetNodeId: (id) => set({ dropTargetNodeId: id }),
+  setDropTargetNodeId: (id) =>
+    set((s) => (s.dropTargetNodeId === id ? s : { dropTargetNodeId: id })),
   dropPreview: null,
-  setDropPreview: (preview) => set({ dropPreview: preview }),
+  setDropPreview: (preview) =>
+    set((s) => {
+      const current = s.dropPreview;
+      if (
+        current?.parentId === preview?.parentId &&
+        current?.childType === preview?.childType
+      ) {
+        return s;
+      }
+
+      return { dropPreview: preview };
+    }),
   editingEdgeId: null,
   setEditingEdgeId: (id) => set({ editingEdgeId: id }),
 
