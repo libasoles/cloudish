@@ -174,3 +174,24 @@ The span receives hover events even when the button inside is disabled, so the t
 - Run `npm run lint` before committing changes.
 - For tasks that touch Tailwind classes, run a class-level lint check before finishing the task (for example, warnings like `suggestCanonicalClasses`).
 - Apply Tailwind class suggestions when possible only if they are low risk and do not change behavior, layout intent, or responsive/accessibility semantics.
+
+## Worktree Isolation
+
+All agents must work in a dedicated git worktree to avoid conflicts with other AI agents or concurrent sessions running against this repository.
+
+- Never make changes directly on the checked-out `main` branch.
+- Before starting any implementation task, create an isolated worktree on a feature branch:
+
+  ```bash
+  git worktree add ../cloudish-<feature-slug> -b feat/<feature-slug>
+  ```
+
+- All file edits, installs, and commits happen inside the worktree directory, not in the main working tree.
+- When the task is complete, open a PR from the feature branch and let the human merge. Remove the worktree afterwards:
+
+  ```bash
+  git worktree remove ../cloudish-<feature-slug>
+  git branch -d feat/<feature-slug>
+  ```
+
+- If another agent's worktree already exists for the same feature, coordinate with the human before creating a new one — do not overwrite in-progress work.
