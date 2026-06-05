@@ -50,6 +50,29 @@ async function addNodeBySidebarClick(page: Page, index = 0) {
   }
 }
 
+async function addClickIndicator(page: Page, x: number, y: number) {
+  await page.evaluate(({ xPos, yPos }: { xPos: number; yPos: number }) => {
+    const div = document.createElement('div')
+    div.id = 'click-indicator-temp'
+    div.style.position = 'fixed'
+    div.style.width = '40px'
+    div.style.height = '40px'
+    div.style.border = '3px solid #ff6b6b'
+    div.style.borderRadius = '50%'
+    div.style.left = (xPos - 20) + 'px'
+    div.style.top = (yPos - 20) + 'px'
+    div.style.zIndex = '9999'
+    div.style.pointerEvents = 'none'
+    document.body.appendChild(div)
+  }, { xPos: x, yPos: y })
+}
+
+async function removeClickIndicator(page: Page) {
+  await page.evaluate(() => {
+    document.getElementById('click-indicator-temp')?.remove()
+  })
+}
+
 async function main() {
   fs.mkdirSync(SCREENSHOTS_DIR, { recursive: true })
 
@@ -336,52 +359,178 @@ async function main() {
   await loadApp(page)
   await page.keyboard.press('Escape')
   await page.waitForTimeout(300)
+  // Add 4 nodes
   for (const idx of [8, 10, 12, 15]) {
     await addNodeBySidebarClick(page, idx)
     await page.waitForTimeout(300)
   }
   await page.waitForTimeout(300)
-  const n0 = page.locator('.react-flow__node').nth(0)
-  await n0.click({ force: true })
+
+  // Before: show unselected nodes with click indicator on first node
+  const shiftClickNodes = page.locator('.react-flow__node')
+  const n0Box = await shiftClickNodes.nth(0).boundingBox()
+  if (n0Box) {
+    const n0X = n0Box.x + n0Box.width / 2
+    const n0Y = n0Box.y + n0Box.height / 2
+    await addClickIndicator(page, n0X, n0Y)
+    await page.waitForTimeout(300)
+    await shot(page, 'shift-click', 'before.png')
+    await removeClickIndicator(page)
+  }
+
+  // Select first node
+  await shiftClickNodes.nth(0).click({ force: true })
   await page.waitForTimeout(300)
-  await page.locator('.react-flow__node').nth(1).click({ modifiers: ['Shift'], force: true })
+
+  // Shift+click on second node with indicator
+  const n1Box = await shiftClickNodes.nth(1).boundingBox()
+  if (n1Box) {
+    const n1X = n1Box.x + n1Box.width / 2
+    const n1Y = n1Box.y + n1Box.height / 2
+    await addClickIndicator(page, n1X, n1Y)
+    await page.waitForTimeout(300)
+  }
+
+  // Shift+click to add to selection
+  await shiftClickNodes.nth(1).click({ modifiers: ['Shift'], force: true })
+  await page.waitForTimeout(300)
+
+  // Shift+click on third node
+  const n2Box = await shiftClickNodes.nth(2).boundingBox()
+  if (n2Box) {
+    const n2X = n2Box.x + n2Box.width / 2
+    const n2Y = n2Box.y + n2Box.height / 2
+    await removeClickIndicator(page)
+    await addClickIndicator(page, n2X, n2Y)
+    await page.waitForTimeout(300)
+  }
+
+  // Shift+click to add third node to selection
+  await shiftClickNodes.nth(2).click({ modifiers: ['Shift'], force: true })
   await page.waitForTimeout(400)
-  await shot(page, 'shift-click', 'shift-click.png')
 
-  // ── shift-drag: Selection box (2 steps) ────────────────────────────
+  await removeClickIndicator(page)
+  // After: show 3 selected nodes
+  await shot(page, 'shift-click', 'after.png')
+
+  // ── shift-drag: Selection box (3 steps) ────────────────────────────
   console.log('9/11 Shift+drag...')
+  await loadApp(page)
   await page.keyboard.press('Escape')
-  await page.waitForTimeout(200)
+  await page.waitForTimeout(300)
 
+  // Add 3 nodes
+  for (const idx of [8, 10, 12]) {
+    await addNodeBySidebarClick(page, idx)
+    await page.waitForTimeout(300)
+  }
+  await page.waitForTimeout(400)
+
+  // Before: unselected nodes
   await shot(page, 'shift-drag', 'start.png')
 
+  // Get bounds of all nodes to ensure selection box encompasses them
+  const allNodes = page.locator('.react-flow__node')
+  const nodeCount = await allNodes.count()
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+
+  for (let i = 0; i < nodeCount; i++) {
+    const nodeBox = await allNodes.nth(i).boundingBox()
+    if (nodeBox) {
+      minX = Math.min(minX, nodeBox.x)
+      minY = Math.min(minY, nodeBox.y)
+      maxX = Math.max(maxX, nodeBox.x + nodeBox.width)
+      maxY = Math.max(maxY, nodeBox.y + nodeBox.height)
+    }
+  }
+
+  // Add padding to selection box
+  const padding = 60
+  const startX = minX - padding
+  const startY = minY - padding
+  const endX = maxX + padding
+  const endY = maxY + padding
+
   const canvas = page.locator('.react-flow__pane')
-  const box = await canvas.boundingBox()
-  if (box) {
+  const canvasBox = await canvas.boundingBox()
+
+  if (canvasBox && isFinite(startX) && isFinite(startY) && isFinite(endX) && isFinite(endY)) {
+    // Show click indicator at start of drag
+    await addClickIndicator(page, startX, startY)
+    await page.waitForTimeout(300)
+
     await page.keyboard.down('Shift')
-    await page.mouse.move(box.x + 70, box.y + 70)
+    await page.mouse.move(startX, startY)
+    await page.waitForTimeout(200)
     await page.mouse.down()
-    await page.mouse.move(box.x + 600, box.y + 500, { steps: 15 })
+    await page.waitForTimeout(150)
+
+    await removeClickIndicator(page)
+    // During drag: show selection box
+    await page.mouse.move(endX, endY, { steps: 15 })
     await page.waitForTimeout(300)
     await shot(page, 'shift-drag', 'box.png')
+
     await page.mouse.up()
     await page.keyboard.up('Shift')
+    await page.waitForTimeout(400)
   }
+
+  // After: show selected nodes
+  await shot(page, 'shift-drag', 'after.png')
 
   // ── add-to-selection ───────────────────────────────────────────────
   console.log('10/11 Add to selection...')
   await page.waitForTimeout(300)
   const selNodes = page.locator('.react-flow__node')
   const total = await selNodes.count()
+
+  // Before: unselected nodes with click indicator on first
   if (total >= 3) {
+    const n0Box = await selNodes.nth(0).boundingBox()
+    if (n0Box) {
+      const n0X = n0Box.x + n0Box.width / 2
+      const n0Y = n0Box.y + n0Box.height / 2
+      await addClickIndicator(page, n0X, n0Y)
+      await page.waitForTimeout(300)
+      await shot(page, 'add-to-selection', 'before.png')
+      await removeClickIndicator(page)
+    }
+
+    // Select first node
     await selNodes.nth(0).click({ force: true })
-    await page.waitForTimeout(200)
+    await page.waitForTimeout(300)
+
+    // Add second node with indicator
+    const n1Box = await selNodes.nth(1).boundingBox()
+    if (n1Box) {
+      const n1X = n1Box.x + n1Box.width / 2
+      const n1Y = n1Box.y + n1Box.height / 2
+      await addClickIndicator(page, n1X, n1Y)
+      await page.waitForTimeout(300)
+    }
+
     await selNodes.nth(1).click({ modifiers: ['Shift'], force: true })
-    await page.waitForTimeout(200)
+    await page.waitForTimeout(300)
+
+    // Add third node with indicator
+    const n2Box = await selNodes.nth(2).boundingBox()
+    if (n2Box) {
+      const n2X = n2Box.x + n2Box.width / 2
+      const n2Y = n2Box.y + n2Box.height / 2
+      await removeClickIndicator(page)
+      await addClickIndicator(page, n2X, n2Y)
+      await page.waitForTimeout(300)
+    }
+
     await selNodes.nth(2).click({ modifiers: ['Shift'], force: true })
     await page.waitForTimeout(400)
+
+    await removeClickIndicator(page)
   }
-  await shot(page, 'add-to-selection', 'add-to-selection.png')
+
+  // After: show 3 selected nodes
+  await shot(page, 'add-to-selection', 'after.png')
 
   // ── alignment: Nodes misaligned → aligned (2 steps) ────────────────
   console.log('11/11 Alignment toolbar...')

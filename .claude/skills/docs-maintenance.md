@@ -347,6 +347,65 @@ Cada tutorial tiene **2-3 secciones principales** (`<h2>`), cada una con:
 
 **Ejemplo:** Para la sección "Sincronización de AZs", agregar EC2 → arrastrarlo dentro de AZ 1 → capturar → esto muestra la estructura jerárquica correctamente.
 
+### Selecciones: antes y después
+
+**CRÍTICO**: cuando un tutorial documente seleccionar nodos (multi-select, shift+click, shift+drag, etc.), el carrusel **DEBE mostrar progresión visual**:
+
+1. **Antes**: nodos sin seleccionar (estado inicial)
+2. **Después**: nodos seleccionados (con highlight visual)
+
+**Por qué**: sin el antes/después, no se ve qué cambió ni se entiende el resultado.
+
+**Cantidad de nodos**: si el tutorial dice "selecciona múltiples nodos", **DEBE haber 3+ nodos visibles y todos seleccionados** en el estado final. No mostrar "1 nodo seleccionado" cuando se habla de "múltiples".
+
+**En el script de screenshots** (`scripts/take-screenshots.ts`):
+
+- Agregar 3+ nodos (no 2, que parecería solo "un par")
+- Capturar el estado inicial (nodos sin seleccionar)
+- Ejecutar la acción de selección (shift+click, shift+drag, etc.)
+- Capturar el estado final (nodos con highlight de selección)
+
+**Ejemplo:** Para "Shift+clic", capturar con 3 nodos sin seleccionar → hacer shift+click en 2 de ellos → capturar con esos 2 resaltados.
+
+### Indicadores visuales de clicks en capturas
+
+**IMPORTANTE**: cuando el tutorial documente una acción de click, la captura **DEBE incluir un indicador visual del click** (círculo, punto, o marca) en la ubicación donde ocurrió.
+
+**Por qué**: el usuario necesita ver exactamente dónde hizo click. Sin esto, es confuso qué elemento recibió el click.
+
+**En el script de screenshots** (`scripts/take-screenshots.ts`):
+
+- Registrar la posición del click (coordenadas X, Y)
+- Inyectar un elemento visual (SVG circle, div con border-radius, etc.) en esa posición usando `page.evaluate()` o `page.addScriptTag()`
+- Esperar a que se renderice
+- Capturar con el indicador visible
+- **Limpiar el indicador después de la captura** (eliminarlo del DOM)
+
+**Ejemplo de inyección en Playwright:**
+
+```javascript
+// Después de hacer click en (x, y):
+await page.evaluate((x, y) => {
+  const div = document.createElement('div');
+  div.style.position = 'fixed';
+  div.style.width = '40px';
+  div.style.height = '40px';
+  div.style.border = '3px solid #ff6b6b';
+  div.style.borderRadius = '50%';
+  div.style.left = (x - 20) + 'px';
+  div.style.top = (y - 20) + 'px';
+  div.style.zIndex = '9999';
+  div.id = 'click-indicator';
+  document.body.appendChild(div);
+}, x, y);
+await page.waitForTimeout(300);
+await shot(page, 'seccion', 'archivo.png');
+// Limpiar
+await page.evaluate(() => {
+  document.getElementById('click-indicator')?.remove();
+});
+```
+
 ---
 
 ## Generar y mantener screenshots

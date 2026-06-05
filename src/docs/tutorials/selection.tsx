@@ -1,22 +1,5 @@
 import { Carousel } from "../Carousel";
 
-function Figure({
-  src,
-  alt,
-  caption,
-}: {
-  src: string;
-  alt: string;
-  caption?: string;
-}) {
-  return (
-    <figure>
-      <img src={src} alt={alt} loading="lazy" />
-      {caption && <figcaption>{caption}</figcaption>}
-    </figure>
-  );
-}
-
 export default function Selection() {
   return (
     <>
@@ -36,10 +19,18 @@ export default function Selection() {
           selección.
         </li>
       </ol>
-      <Figure
-        src="/docs/screenshots/shift-click/shift-click.png"
-        alt="Tres nodos seleccionados con Shift+clic"
-        caption="Shift+clic acumula nodos en la selección"
+      <Carousel
+        slides={[
+          {
+            src: "/docs/screenshots/shift-click/before.png",
+            alt: "Nodos sin seleccionar con indicador de dónde hacer clic",
+          },
+          {
+            src: "/docs/screenshots/shift-click/after.png",
+            alt: "Múltiples nodos seleccionados con Shift+clic",
+          },
+        ]}
+        caption="Haz clic en el primer nodo, luego Shift+clic en otros para acumular la selección"
       />
 
       <h3>Shift + arrastre (caja de selección)</h3>
@@ -61,7 +52,11 @@ export default function Selection() {
           },
           {
             src: "/docs/screenshots/shift-drag/box.png",
-            alt: "Rectángulo de selección siendo dibujado con Shift+arrastre",
+            alt: "Rectángulo de selección siendo dibujado con Shift+arrastre, englobando todos los nodos",
+          },
+          {
+            src: "/docs/screenshots/shift-drag/after.png",
+            alt: "Múltiples nodos seleccionados dentro del rectángulo",
           },
         ]}
         caption="Mantén Shift y arrastra para dibujar una caja de selección — captura todos los nodos que toca"
@@ -81,10 +76,18 @@ export default function Selection() {
         </li>
         <li>El nodo se suma a la selección existente.</li>
       </ol>
-      <Figure
-        src="/docs/screenshots/add-to-selection/add-to-selection.png"
-        alt="Agregando un nodo a una selección existente con Shift"
-        caption="Shift+clic agrega nodos a la selección actual sin deseleccionar"
+      <Carousel
+        slides={[
+          {
+            src: "/docs/screenshots/add-to-selection/before.png",
+            alt: "Nodos sin seleccionar con indicador de dónde hacer el primer clic",
+          },
+          {
+            src: "/docs/screenshots/add-to-selection/after.png",
+            alt: "Múltiples nodos seleccionados, mostrando acumulación con Shift+clic",
+          },
+        ]}
+        caption="Selecciona el primer nodo, luego usa Shift+clic para agregar más sin perder la selección"
       />
 
       {/* ── 3. Herramientas de alineación ────────────────── */}
