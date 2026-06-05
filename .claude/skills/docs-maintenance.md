@@ -371,15 +371,35 @@ Cada tutorial tiene **2-3 secciones principales** (`<h2>`), cada una con:
 
 **Ejemplo:** Para "Shift+clic", agregar 3 nodos → arrastrar el primero a (x1, y), el segundo a (x2, y), el tercero a (x3, y) con x1 < x2 < x3 → capturar sin seleccionar → shift+click en 2 → capturar con esos 2 resaltados.
 
+### Toolbars y controles flotantes
+
+**CRÍTICO**: si el texto del tutorial menciona una toolbar, popover, menú, dropdown, selector o control flotante, la captura **DEBE mostrar ese elemento visible**.
+
+**Por qué**: si el texto dice que aparece una herramienta y la imagen no la muestra, la documentación pierde coherencia. No capturar estados donde el control todavía no renderizó, quedó fuera del viewport, o desapareció por pérdida de selección/foco.
+
+**En el script de screenshots** (`scripts/take-screenshots.ts`):
+
+- Esperar explícitamente el selector del control antes de capturar, por ejemplo `await page.locator('[data-testid="align-horizontal"]').waitFor({ state: 'visible' })`.
+- Si el control no aparece, fallar el script en vez de guardar una imagen incorrecta.
+- Mantener los nodos separados y dentro del viewport para que la toolbar tenga espacio visible.
+
 ### Indicadores visuales de clicks en capturas
 
 **IMPORTANTE**: cuando el tutorial documente una acción de click, la captura **DEBE incluir un indicador visual del click** (círculo, punto, o marca) en la ubicación donde ocurrió.
 
 **Por qué**: el usuario necesita ver exactamente dónde hizo click. Sin esto, es confuso qué elemento recibió el click.
 
+**CRÍTICO**: cuando una captura representa el estado previo a un cambio, debe mostrar la acción que dispara ese cambio. Esto aplica especialmente a bounding boxes/cajas de selección, opciones de dropdown/selectores y cualquier flujo antes → después. La imagen previa debe incluir el indicador de click en la esquina donde comienza el drag, sobre la opción que se va a elegir, o sobre el control que inicia la transición.
+
+**CRÍTICO**: cuando se documente una acción de drag (por ejemplo dibujar una caja de selección), las capturas deben distinguir claramente el inicio y el destino del gesto. La captura inicial muestra el click/mouse en el punto donde empieza el drag. La captura durante o al final del drag muestra el mouse en el destino actual/final del arrastre (por ejemplo la esquina inferior derecha del bounding box), no en la esquina inicial. Si se usan indicadores visuales, mover o recrear el indicador para que la imagen represente la posición real del mouse en ese momento.
+
+**CRÍTICO**: en carruseles de estado previo/posterior, el estado previo es donde se muestra el evento click y el estado posterior es donde se muestra el efecto desencadenado. Mantener igual todo lo demás entre ambas capturas: selección activa, inspector abierto, viewport, nodos visibles y contexto de UI. Si el efecto depende de un nodo seleccionado, seleccionarlo antes de la captura previa para evitar saltos bruscos del inspector entre slides.
+
 **En el script de screenshots** (`scripts/take-screenshots.ts`):
 
 - Registrar la posición del click (coordenadas X, Y)
+- Para drag/caja de selección, registrar dos puntos: inicio `(startX, startY)` y destino `(endX, endY)`. Capturar el estado inicial con el indicador en `start`, y el estado intermedio/final con el cursor o indicador en `end`.
+- Cuando el click sea sobre un nodo, **no hacer click en el centro del nodo**. Usar un punto en el área inferior derecha del nodo, pero con margen suficiente para no quedar pegado al borde ni sobre handles, bordes o controles internos. Como guía: `x = nodeBox.x + nodeBox.width * 0.72`, `y = nodeBox.y + nodeBox.height * 0.72`.
 - Inyectar un elemento visual (SVG circle, div con border-radius, etc.) en esa posición usando `page.evaluate()` o `page.addScriptTag()`
 - Esperar a que se renderice
 - Capturar con el indicador visible
@@ -395,10 +415,13 @@ await page.evaluate((x, y) => {
   div.style.width = '40px';
   div.style.height = '40px';
   div.style.border = '3px solid #ff6b6b';
+  div.style.background = 'rgba(255, 107, 107, 0.22)';
   div.style.borderRadius = '50%';
+  div.style.boxShadow = '0 0 0 8px rgba(255, 107, 107, 0.14)';
   div.style.left = (x - 20) + 'px';
   div.style.top = (y - 20) + 'px';
   div.style.zIndex = '9999';
+  div.style.pointerEvents = 'none';
   div.id = 'click-indicator';
   document.body.appendChild(div);
 }, x, y);

@@ -50,6 +50,12 @@ This project supports two languages: **English (EN)** and **Spanish (ES)**.
 - Key naming: use camelCase, grouped by feature (e.g., `sidebarSearch`, `canvasDropHint`).
 - It's ok to use the ñ char in Spanish translations.
 
+## Documentation Maintenance
+
+When creating or updating documentation, tutorials, docs screenshots, or the docs registry, read and follow the Claude docs-maintenance skill at `.claude/skills/docs-maintenance.md`.
+
+That skill defines the expected documentation architecture, screenshot workflow, Spanish content conventions, carousel/figure usage, and the pre-commit checklist for docs work.
+
 ## Container Hierarchy
 
 The canvas models the standard AWS network topology:

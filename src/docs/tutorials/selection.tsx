@@ -1,5 +1,22 @@
 import { Carousel } from "../Carousel";
 
+function Figure({
+  src,
+  alt,
+  caption,
+}: {
+  src: string;
+  alt: string;
+  caption?: string;
+}) {
+  return (
+    <figure>
+      <img src={src} alt={alt} loading="lazy" />
+      {caption && <figcaption>{caption}</figcaption>}
+    </figure>
+  );
+}
+
 export default function Selection() {
   return (
     <>
@@ -80,14 +97,14 @@ export default function Selection() {
         slides={[
           {
             src: "/docs/screenshots/add-to-selection/before.png",
-            alt: "Nodos sin seleccionar con indicador de dónde hacer el primer clic",
+            alt: "Dos nodos seleccionados y un nodo adicional sin seleccionar con indicador de dónde hacer Shift+clic",
           },
           {
             src: "/docs/screenshots/add-to-selection/after.png",
             alt: "Múltiples nodos seleccionados, mostrando acumulación con Shift+clic",
           },
         ]}
-        caption="Selecciona el primer nodo, luego usa Shift+clic para agregar más sin perder la selección"
+        caption="Con una selección existente, usa Shift+clic sobre un nodo sin seleccionar para agregarlo"
       />
 
       {/* ── 3. Herramientas de alineación ────────────────── */}
@@ -164,6 +181,11 @@ export default function Selection() {
           el nodo destino.
         </li>
       </ol>
+      <Figure
+        src="/docs/screenshots/multiple-edges/selected-to-rds.png"
+        alt="Tres nodos Lambda alineados verticalmente conectados a un nodo RDS"
+        caption="Con tres nodos seleccionados, arrastra desde un asa hacia RDS para crear las tres conexiones en una sola acción"
+      />
       <p style={{ marginTop: "1rem", fontSize: "0.9em", opacity: 0.8 }}>
         <strong>Consejo:</strong> Esta técnica es útil para conectar múltiples
         orígenes (como varios Lambdas) a un destino común (como RDS, DynamoDB, o

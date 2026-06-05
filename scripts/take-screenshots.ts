@@ -15,9 +15,10 @@
  * - shift-drag/
  * - add-to-selection/
  * - alignment/
+ * - multiple-edges/
  */
 
-import { chromium, type Page } from 'playwright'
+import { chromium, type Locator, type Page } from 'playwright'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import fs from 'fs'
@@ -45,8 +46,14 @@ async function addNodeBySidebarClick(page: Page, index = 0) {
   const buttons = page.locator('aside button[draggable="true"]')
   const count = await buttons.count()
   if (count > index) {
+    const previousNodeCount = await page.locator('.react-flow__node').count()
     await buttons.nth(index).click()
-    await page.waitForTimeout(400)
+    await page.waitForFunction(
+      (expectedCount) => document.querySelectorAll('.react-flow__node').length > expectedCount,
+      previousNodeCount,
+      { timeout: 5000 },
+    )
+    await page.waitForTimeout(300)
   }
 }
 
@@ -165,6 +172,49 @@ async function positionNodeInColumn(page: Page, nodeIndex: number, col: number, 
   }
 }
 
+async function positionNodeAt(page: Page, nodeIndex: number, targetX: number, targetY: number) {
+  const nodes = page.locator('.react-flow__node')
+  const nodeCount = await nodes.count()
+  if (nodeCount <= nodeIndex) return
+
+  const node = nodes.nth(nodeIndex)
+  const bbox = await node.boundingBox()
+  if (!bbox) return
+
+  const centerX = bbox.x + bbox.width / 2
+  const centerY = bbox.y + bbox.height / 2
+
+  await page.mouse.move(centerX, centerY)
+  await page.waitForTimeout(100)
+  await page.mouse.down()
+  await page.mouse.move(targetX, targetY, { steps: 10 })
+  await page.waitForTimeout(150)
+  await page.mouse.up()
+  await page.waitForTimeout(300)
+}
+
+async function positionNodeLocatorAt(page: Page, node: Locator, targetX: number, targetY: number) {
+  const bbox = await node.boundingBox()
+  if (!bbox) return
+
+  const centerX = bbox.x + bbox.width / 2
+  const centerY = bbox.y + bbox.height / 2
+
+  await page.mouse.move(centerX, centerY)
+  await page.waitForTimeout(100)
+  await page.mouse.down()
+  await page.mouse.move(targetX, targetY, { steps: 12 })
+  await page.waitForTimeout(150)
+  await page.mouse.up()
+  await page.waitForTimeout(500)
+}
+
+async function clearCanvasSelection(page: Page) {
+  await page.keyboard.press('Escape')
+  await page.mouse.click(420, 920)
+  await page.waitForTimeout(250)
+}
+
 async function main() {
   fs.mkdirSync(SCREENSHOTS_DIR, { recursive: true })
 
@@ -198,6 +248,8 @@ async function main() {
   console.log('2/11 Search (RDS)...')
   await loadApp(page)
   await page.keyboard.press('Escape')
+  await page.waitForTimeout(300)
+  await page.mouse.move(1200, 500)
   await page.waitForTimeout(300)
   await page.keyboard.press('Meta+k')
   await page.waitForTimeout(400)
@@ -286,7 +338,12 @@ async function main() {
     await page.waitForTimeout(400)
     await page.mouse.move(srcX, srcY)
     await page.waitForTimeout(400)
+    await addClickIndicator(page, srcX, srcY)
+    await addMouseCursor(page, srcX - 8, srcY - 8)
+    await page.waitForTimeout(300)
     await shot(page, 'connect-nodes', 'handle.png')
+    await removeClickIndicator(page)
+    await removeMouseCursor(page)
 
     // Drag to create edge
     await page.mouse.down()
@@ -365,8 +422,20 @@ async function main() {
   if (await typeSelect.count() > 0) {
     await typeSelect.click()
     await page.waitForTimeout(400)
+    const publicOption = page.locator('[role="option"]').filter({ hasText: /pública/i }).first()
+    const publicOptionBox = await publicOption.boundingBox()
+    if (publicOptionBox) {
+      const publicOptionX = publicOptionBox.x + publicOptionBox.width * 0.72
+      const publicOptionY = publicOptionBox.y + publicOptionBox.height / 2
+      await publicOption.hover()
+      await addClickIndicator(page, publicOptionX, publicOptionY)
+      await addMouseCursor(page, publicOptionX - 8, publicOptionY - 8)
+      await page.waitForTimeout(300)
+    }
     // Capture with dropdown open
     await shot(page, 'subnet-type', 'dropdown-open.png')
+    await removeClickIndicator(page)
+    await removeMouseCursor(page)
 
     // 3. Select "Pública"
     const options = page.locator('[role="option"]')
@@ -428,59 +497,62 @@ async function main() {
   await addNodeBySidebarClick(page, 8) // EC2
   await page.waitForTimeout(400)
 
-  // Drag EC2 into the first AZ
-  const ec2NodeSync = page.locator('.react-flow__node').nth(1)
-  const ec2BoxSync = await ec2NodeSync.boundingBox()
-  if (ec2BoxSync) {
-    const ec2CxSync = ec2BoxSync.x + ec2BoxSync.width / 2
-    const ec2CySync = ec2BoxSync.y + ec2BoxSync.height / 2
-    // Drag to approximate position inside first AZ (lower-left area of VPC)
-    await page.mouse.move(ec2CxSync, ec2CySync)
-    await page.waitForTimeout(150)
-    await page.mouse.down()
-    await page.mouse.move(ec2CxSync - 150, ec2CySync + 100, { steps: 10 })
-    await page.waitForTimeout(150)
-    await page.mouse.up()
-    await page.waitForTimeout(300)
+  const firstAzNode = page
+    .locator('.react-flow__node')
+    .filter({ hasText: /az|availability/i })
+    .first()
+  const firstAzBox = await firstAzNode.boundingBox()
+
+  if (firstAzBox) {
+    const targetY = firstAzBox.y + firstAzBox.height / 2
+    const ec2TargetX = firstAzBox.x + firstAzBox.width * 0.35
+    const ec2NodeSync = page.locator('.react-flow__node').filter({ hasText: /ec2/i }).first()
+
+    await positionNodeLocatorAt(page, ec2NodeSync, ec2TargetX, targetY)
   }
 
   await addNodeBySidebarClick(page, 12) // RDS
   await page.waitForTimeout(400)
 
-  // Drag RDS into the first AZ (next to EC2)
-  const rdsNodeSync = page.locator('.react-flow__node').nth(2)
-  const rdsBoxSync = await rdsNodeSync.boundingBox()
-  if (rdsBoxSync) {
-    const rdsCxSync = rdsBoxSync.x + rdsBoxSync.width / 2
-    const rdsCySync = rdsBoxSync.y + rdsBoxSync.height / 2
-    // Drag to approximate position inside first AZ (next to EC2)
-    await page.mouse.move(rdsCxSync, rdsCySync)
-    await page.waitForTimeout(150)
-    await page.mouse.down()
-    await page.mouse.move(rdsCxSync - 150, rdsCySync + 150, { steps: 10 })
-    await page.waitForTimeout(150)
-    await page.mouse.up()
+  if (firstAzBox) {
+    const targetY = firstAzBox.y + firstAzBox.height / 2
+    const rdsTargetX = firstAzBox.x + firstAzBox.width * 0.72
+    const rdsNodeSync = page.locator('.react-flow__node').filter({ hasText: /rds/i }).first()
+
+    await positionNodeLocatorAt(page, rdsNodeSync, rdsTargetX, targetY)
+  }
+
+  if (firstAzBox) {
+    await page.mouse.click(firstAzBox.x + 44, firstAzBox.y + 18)
+    await page.waitForTimeout(600)
+  }
+
+  await page.getByText('Sincronizar AZs').waitFor({ state: 'visible', timeout: 5000 })
+  const syncCheckbox = page
+    .locator('label')
+    .filter({ hasText: /Sincronizar AZs/i })
+    .locator('input[type="checkbox"]')
+    .first()
+  const syncCheckboxBox = await syncCheckbox.boundingBox()
+
+  if (syncCheckboxBox) {
+    const syncCheckboxX = syncCheckboxBox.x + syncCheckboxBox.width / 2
+    const syncCheckboxY = syncCheckboxBox.y + syncCheckboxBox.height / 2
+    await addClickIndicator(page, syncCheckboxX, syncCheckboxY)
+    await addMouseCursor(page, syncCheckboxX - 8, syncCheckboxY - 8)
     await page.waitForTimeout(300)
   }
 
-  await page.mouse.click(100, 400)
-  await page.waitForTimeout(200)
-
   await shot(page, 'az-sync', 'off.png')
+  await removeClickIndicator(page)
+  await removeMouseCursor(page)
 
-  const azNodes = page.locator('.react-flow__node')
-  for (let i = 0; i < await azNodes.count(); i++) {
-    const text = await azNodes.nth(i).textContent()
-    if (text?.toLowerCase().includes('az') || text?.toLowerCase().includes('availability')) {
-      await azNodes.nth(i).click({ force: true })
-      break
-    }
-  }
-  await page.waitForTimeout(600)
+  await syncCheckbox.check()
+  await page.waitForTimeout(1000)
 
-  const syncCheckbox = page.locator('input[type="checkbox"]').nth(0)
-  if (await syncCheckbox.count() > 0) {
-    await syncCheckbox.click()
+  const syncedReplicas = page.locator('.react-flow__node').filter({ hasText: /rds/i })
+  if (await syncedReplicas.count() < 2) {
+    await syncCheckbox.check()
     await page.waitForTimeout(1000)
   }
 
@@ -497,6 +569,7 @@ async function main() {
     await page.waitForTimeout(300)
     await positionNodeInColumn(page, i, i) // col 0, 1, 2
   }
+  await clearCanvasSelection(page)
   await page.waitForTimeout(300)
 
   // Before: show unselected nodes with click indicator on first node
@@ -564,12 +637,8 @@ async function main() {
     await page.waitForTimeout(300)
     await positionNodeInColumn(page, i, i) // col 0, 1, 2
   }
+  await clearCanvasSelection(page)
   await page.waitForTimeout(400)
-
-  // Before: unselected nodes with cursor
-  await addMouseCursor(page, 960, 400)
-  await shot(page, 'shift-drag', 'start.png')
-  await removeMouseCursor(page)
 
   // Get bounds of all nodes to ensure selection box encompasses them
   const allNodes = page.locator('.react-flow__node')
@@ -597,10 +666,11 @@ async function main() {
   const canvasBox = await canvas.boundingBox()
 
   if (canvasBox && isFinite(startX) && isFinite(startY) && isFinite(endX) && isFinite(endY)) {
-    // Show click indicator at start of drag
+    // Before: idle canvas with the click point that starts the selection box.
     await addClickIndicator(page, startX, startY)
     await addMouseCursor(page, startX - 8, startY - 8)
     await page.waitForTimeout(300)
+    await shot(page, 'shift-drag', 'start.png')
 
     await page.keyboard.down('Shift')
     await page.mouse.move(startX, startY)
@@ -608,13 +678,15 @@ async function main() {
     await page.mouse.down()
     await page.waitForTimeout(150)
 
-    await removeClickIndicator(page)
     // During drag: show selection box with cursor
     await page.mouse.move(endX, endY, { steps: 15 })
+    await removeClickIndicator(page)
+    await addClickIndicator(page, endX, endY)
     await removeMouseCursor(page)
     await addMouseCursor(page, endX - 8, endY - 8)
     await page.waitForTimeout(300)
     await shot(page, 'shift-drag', 'box.png')
+    await removeClickIndicator(page)
     await removeMouseCursor(page)
 
     await page.mouse.up()
@@ -629,48 +701,44 @@ async function main() {
 
   // ── add-to-selection ───────────────────────────────────────────────
   console.log('10/11 Add to selection...')
+  await loadApp(page)
+  await page.keyboard.press('Escape')
   await page.waitForTimeout(300)
+
+  for (let i = 0; i < 3; i++) {
+    await addNodeBySidebarClick(page, [8, 10, 12][i])
+    await page.waitForTimeout(300)
+    await positionNodeInColumn(page, i, i)
+  }
+  await clearCanvasSelection(page)
+
   const selNodes = page.locator('.react-flow__node')
   const total = await selNodes.count()
 
-  // Before: unselected nodes with click indicator on first
   if (total >= 3) {
-    const n0Box = await selNodes.nth(0).boundingBox()
-    if (n0Box) {
-      const n0X = n0Box.x + n0Box.width / 2
-      const n0Y = n0Box.y + n0Box.height / 2
-      await addClickIndicator(page, n0X, n0Y)
-      await addMouseCursor(page, n0X - 8, n0Y - 8)
+    // Build an existing selection, leaving the target node unselected.
+    await selNodes.nth(0).click({ force: true })
+    await page.waitForTimeout(300)
+    await selNodes.nth(1).click({ modifiers: ['Shift'], force: true })
+    await page.waitForTimeout(300)
+
+    // Before: existing selection plus unselected target node.
+    const n2Box = await selNodes.nth(2).boundingBox()
+    if (n2Box) {
+      const n2X = n2Box.x + n2Box.width / 2
+      const n2Y = n2Box.y + n2Box.height / 2
+      await addClickIndicator(page, n2X, n2Y)
+      await addMouseCursor(page, n2X - 8, n2Y - 8)
       await page.waitForTimeout(300)
       await shot(page, 'add-to-selection', 'before.png')
       await removeClickIndicator(page)
       await removeMouseCursor(page)
     }
 
-    // Select first node
-    await selNodes.nth(0).click({ force: true })
-    await page.waitForTimeout(300)
-
-    // Add second node with indicator
-    const n1Box = await selNodes.nth(1).boundingBox()
-    if (n1Box) {
-      const n1X = n1Box.x + n1Box.width / 2
-      const n1Y = n1Box.y + n1Box.height / 2
-      await addClickIndicator(page, n1X, n1Y)
-      await addMouseCursor(page, n1X - 8, n1Y - 8)
-      await page.waitForTimeout(300)
-    }
-
-    await selNodes.nth(1).click({ modifiers: ['Shift'], force: true })
-    await page.waitForTimeout(300)
-
-    // Add third node with indicator
-    const n2Box = await selNodes.nth(2).boundingBox()
+    // Add target node to the existing selection.
     if (n2Box) {
       const n2X = n2Box.x + n2Box.width / 2
       const n2Y = n2Box.y + n2Box.height / 2
-      await removeClickIndicator(page)
-      await removeMouseCursor(page)
       await addClickIndicator(page, n2X, n2Y)
       await addMouseCursor(page, n2X - 8, n2Y - 8)
       await page.waitForTimeout(300)
@@ -689,16 +757,23 @@ async function main() {
   await removeMouseCursor(page)
 
   // ── alignment: Nodes misaligned → aligned (2 steps) ────────────────
-  console.log('11/11 Alignment toolbar...')
+  console.log('11/12 Alignment toolbar...')
   await loadApp(page)
   await page.keyboard.press('Escape')
   await page.waitForTimeout(300)
 
-  // Add 3 nodes
-  for (const idx of [8, 10, 12]) {
-    await addNodeBySidebarClick(page, idx)
+  // Add 3 separated, intentionally misaligned nodes.
+  const alignPositions = [
+    { x: 600, y: 260 },
+    { x: 1000, y: 370 },
+    { x: 1400, y: 300 },
+  ]
+  for (let i = 0; i < alignPositions.length; i++) {
+    await addNodeBySidebarClick(page, [8, 10, 12][i])
     await page.waitForTimeout(300)
+    await positionNodeAt(page, i, alignPositions[i].x, alignPositions[i].y)
   }
+  await clearCanvasSelection(page)
   await page.waitForTimeout(400)
 
   // Select all nodes
@@ -710,62 +785,86 @@ async function main() {
     await page.waitForTimeout(200)
   }
   await page.waitForTimeout(400)
-
-  // Misalign first node horizontally
-  const node0 = alignNodes.nth(0)
-  const box0 = await node0.boundingBox()
-  if (box0) {
-    const cx = box0.x + box0.width / 2
-    const cy = box0.y + box0.height / 2
-    await page.mouse.move(cx, cy)
-    await page.waitForTimeout(150)
-    await page.mouse.down()
-    await page.mouse.move(cx - 100, cy, { steps: 6 })
-    await page.waitForTimeout(100)
-    await page.mouse.up()
-    await page.waitForTimeout(300)
-
-    // Re-select all nodes
-    await alignNodes.nth(0).click({ force: true })
-    await page.waitForTimeout(200)
-    await alignNodes.nth(1).click({ modifiers: ['Shift'], force: true })
-    await page.waitForTimeout(200)
-    await alignNodes.nth(2).click({ modifiers: ['Shift'], force: true })
-    await page.waitForTimeout(400)
-  }
-
+  await page.locator('[data-testid="align-horizontal"]').waitFor({ state: 'visible', timeout: 5000 })
   await shot(page, 'alignment', 'before.png')
 
-  // Click alignment button
-  // Try multiple selectors to find the alignment button
-  let alignBtn = page.locator('[data-testid="align-horizontal"]').first()
-  let btnCount = await alignBtn.count()
+  await page.locator('[data-testid="align-horizontal"]').click()
+  await page.waitForTimeout(600)
+  await page.locator('[data-testid="align-horizontal"]').waitFor({ state: 'visible', timeout: 5000 })
+  await shot(page, 'alignment', 'after.png')
 
-  if (btnCount === 0) {
-    // Try title selector
-    alignBtn = page.locator('button[title*="horizontal"]').first()
-    btnCount = await alignBtn.count()
+  // ── multiple-edges: Selection → RDS ────────────────────────────────
+  console.log('12/12 Multiple edges from selection...')
+  await loadApp(page)
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(300)
+
+  const lambdaPositions = [
+    { x: 700, y: 260 },
+    { x: 700, y: 430 },
+    { x: 700, y: 600 },
+  ]
+
+  for (let i = 0; i < lambdaPositions.length; i++) {
+    await addNodeBySidebarClick(page, 10) // Lambda
+    await page.waitForTimeout(300)
+    await positionNodeAt(page, i, lambdaPositions[i].x, lambdaPositions[i].y)
   }
 
-  console.log(`  Alignment button found: ${btnCount > 0 ? 'YES' : 'NO'}`)
-  if (btnCount > 0) {
-    await alignBtn.click()
-    await page.waitForTimeout(600)
-    await shot(page, 'alignment', 'after.png')
-  } else {
-    console.log('  ⚠ alignment/after.png skipped (SelectionToolbar not visible)')
+  await addNodeBySidebarClick(page, 12) // RDS
+  await page.waitForTimeout(300)
+  await positionNodeAt(page, 3, 1200, 430)
+  await clearCanvasSelection(page)
+  await page.waitForTimeout(300)
+
+  const lambdaNodes = page.locator('.react-flow__node').filter({ hasText: /lambda/i })
+  const multiEdgeRdsNode = page.locator('.react-flow__node').filter({ hasText: /rds/i }).first()
+  for (let i = 0; i < 3; i++) {
+    await lambdaNodes.nth(i).click({
+      modifiers: i === 0 ? [] : ['Shift'],
+      force: true,
+    })
+    await page.waitForTimeout(250)
   }
+
+  const sourceBox = await lambdaNodes.nth(1).boundingBox()
+  const targetBox = await multiEdgeRdsNode.boundingBox()
+  if (sourceBox && targetBox) {
+    const sourceX = sourceBox.x + sourceBox.width
+    const sourceY = sourceBox.y + sourceBox.height / 2
+    const targetX = targetBox.x
+    const targetY = targetBox.y + targetBox.height / 2
+
+    await page.mouse.move(sourceBox.x + sourceBox.width / 2, sourceY)
+    await page.waitForTimeout(300)
+    await page.mouse.move(sourceX, sourceY)
+    await page.waitForTimeout(300)
+    await addClickIndicator(page, sourceX, sourceY)
+    await addMouseCursor(page, sourceX - 8, sourceY - 8)
+    await page.waitForTimeout(300)
+
+    await page.mouse.down()
+    await page.mouse.move(targetX, targetY, { steps: 35 })
+    await page.waitForTimeout(300)
+    await page.mouse.up()
+    await page.waitForTimeout(800)
+    await removeClickIndicator(page)
+    await removeMouseCursor(page)
+  }
+
+  await page.locator('.react-flow__edge').nth(2).waitFor({ state: 'visible', timeout: 5000 })
+  await shot(page, 'multiple-edges', 'selected-to-rds.png')
 
   // ── Validate all images are working ────────────────────────────────
-  console.log('\n12/12 Validating all screenshot references...')
+  console.log('\n13/13 Validating all screenshot references...')
 
   // Wait for file system to sync before validation
   await page.waitForTimeout(2000)
 
   const tutorialUrls = [
-    'http://localhost:5173/docs/getting-started',
-    'http://localhost:5173/docs/hierarchical-containers',
-    'http://localhost:5173/docs/selection',
+    `${BASE_URL}/docs/getting-started`,
+    `${BASE_URL}/docs/hierarchical-containers`,
+    `${BASE_URL}/docs/selection`,
   ]
 
   let allImagesValid = true
@@ -825,7 +924,7 @@ async function main() {
 
   console.log('\n✅ All screenshots saved and validated successfully:')
   console.log('  sidebar/, search/, connect-nodes/, region-vpc/, az-slider/, subnet-type/')
-  console.log('  az-sync/, shift-click/, shift-drag/, add-to-selection/, alignment/')
+  console.log('  az-sync/, shift-click/, shift-drag/, add-to-selection/, alignment/, multiple-edges/')
 }
 
 main().catch((err) => {
