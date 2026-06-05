@@ -230,7 +230,7 @@ async function main() {
 
   await shot(page, 'az-slider', 'after.png')
 
-  // ── subnet-type: Subnet public → private (2 steps) ─────────────────
+  // ── subnet-type: Subnet public → private (4 steps) ─────────────────
   console.log('6/11 Subnet type...')
 
   await addNodeBySidebarClick(page, 4) // Subnet
@@ -251,16 +251,22 @@ async function main() {
     await page.waitForTimeout(600)
   }
 
-  await shot(page, 'subnet-type', 'public.png')
+  // 1. Subnet selected (closed selector)
+  await shot(page, 'subnet-type', 'subnet-selected.png')
 
+  // 2. Open dropdown
   const typeSelect = page.locator('select, [role="combobox"]').nth(0)
   if (await typeSelect.count() > 0) {
     await typeSelect.click()
-    await page.waitForTimeout(300)
+    await page.waitForTimeout(400)
+    // Capture with dropdown open
+    await shot(page, 'subnet-type', 'dropdown-open.png')
+
+    // 3. Select "Pública"
     const options = page.locator('[role="option"]')
     for (let i = 0; i < await options.count(); i++) {
       const text = await options.nth(i).textContent()
-      if (text?.toLowerCase().includes('privada')) {
+      if (text?.toLowerCase().includes('pública')) {
         await options.nth(i).click()
         break
       }
@@ -268,6 +274,26 @@ async function main() {
     await page.waitForTimeout(600)
   }
 
+  // 3. Public selected
+  await shot(page, 'subnet-type', 'public.png')
+
+  // 4. Change to private
+  const typeSelect2 = page.locator('select, [role="combobox"]').nth(0)
+  if (await typeSelect2.count() > 0) {
+    await typeSelect2.click()
+    await page.waitForTimeout(300)
+    const options2 = page.locator('[role="option"]')
+    for (let i = 0; i < await options2.count(); i++) {
+      const text = await options2.nth(i).textContent()
+      if (text?.toLowerCase().includes('privada')) {
+        await options2.nth(i).click()
+        break
+      }
+    }
+    await page.waitForTimeout(600)
+  }
+
+  // 4. Private selected
   await shot(page, 'subnet-type', 'private.png')
 
   // ── az-sync: Sync OFF → ON (2 steps) ───────────────────────────────
@@ -600,8 +626,74 @@ async function main() {
     console.log('  ⚠ alignment/after.png skipped (SelectionToolbar not visible)')
   }
 
+  // ── Validate all images are working ────────────────────────────────
+  console.log('\n12/12 Validating all screenshot references...')
+
+  // Wait for file system to sync before validation
+  await page.waitForTimeout(2000)
+
+  const tutorialUrls = [
+    'http://localhost:5173/docs/getting-started',
+    'http://localhost:5173/docs/hierarchical-containers',
+    'http://localhost:5173/docs/selection',
+  ]
+
+  let allImagesValid = true
+
+  for (const tutorialUrl of tutorialUrls) {
+    const tutorialPage = await context.newPage()
+    try {
+      await tutorialPage.goto(tutorialUrl, { waitUntil: 'networkidle', timeout: 30000 })
+      // Wait for lazy-loaded images to appear and load
+      await tutorialPage.waitForTimeout(2000)
+
+      // Force trigger lazy loading by scrolling
+      await tutorialPage.evaluate(() => {
+        window.scrollTo(0, document.body.scrollHeight)
+      })
+      await tutorialPage.waitForTimeout(1000)
+
+      // Check for broken images
+      const brokenImages = await tutorialPage.evaluate(() => {
+        const images = document.querySelectorAll('img')
+        return Array.from(images)
+          .filter(img => {
+            // Check if image failed to load or has 0 dimensions
+            return img.naturalWidth === 0 || img.complete === false || img.src.includes('undefined')
+          })
+          .map(img => ({
+            src: img.src,
+            alt: img.alt,
+            naturalWidth: img.naturalWidth,
+            complete: img.complete,
+          }))
+      })
+
+      if (brokenImages.length > 0) {
+        allImagesValid = false
+        console.log(`  ❌ ${tutorialUrl.split('/').pop()} - ${brokenImages.length} broken image(s):`)
+        brokenImages.forEach(img => {
+          console.log(`    - ${img.src}`)
+          console.log(`      alt: "${img.alt}" | width: ${img.naturalWidth} | complete: ${img.complete}`)
+        })
+      } else {
+        console.log(`  ✅ ${tutorialUrl.split('/').pop()} - all images valid`)
+      }
+    } catch {
+      console.log(`  ⚠ ${tutorialUrl.split('/').pop()} - could not load tutorial`)
+    } finally {
+      await tutorialPage.close()
+    }
+  }
+
   await browser.close()
-  console.log('\nAll screenshots saved to public/docs/screenshots/ in organized subdirectories:')
+
+  if (!allImagesValid) {
+    console.error('\n❌ Some images are broken or missing. Check the paths in src/docs/tutorials/')
+    process.exit(1)
+  }
+
+  console.log('\n✅ All screenshots saved and validated successfully:')
   console.log('  sidebar/, search/, connect-nodes/, region-vpc/, az-slider/, subnet-type/')
   console.log('  az-sync/, shift-click/, shift-drag/, add-to-selection/, alignment/')
 }

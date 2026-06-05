@@ -406,6 +406,38 @@ await page.evaluate(() => {
 });
 ```
 
+### Validar que todas las imágenes referenciadas existan
+
+**IMPORTANTE**: después de regenerar screenshots, **verificar que todas las imágenes referenciadas en los tutoriales sean visibles** en el navegador. Las imágenes rotas (404) o mal linkeadas generan frustraciones.
+
+**En el script de screenshots** (`scripts/take-screenshots.ts`):
+
+- Agregar una función de validación final: `validateScreenshots()`
+- La función abre cada tutorial en el navegador
+- Espera a que carguen todas las imágenes
+- Verifica que cada `<img>` en los Carousels tenga `naturalWidth > 0` (está cargada)
+- Reporta cualquier imagen faltante o rota
+- Si hay fallos, aborta y avisa qué imágenes están rotas
+
+**Ejemplo:**
+
+```javascript
+async function validateScreenshots(page: Page) {
+  const missingImages = await page.evaluate(() => {
+    const images = document.querySelectorAll('img[loading="lazy"]')
+    return Array.from(images)
+      .filter(img => img.naturalWidth === 0)
+      .map(img => ({ src: img.src, alt: img.alt }))
+  })
+  if (missingImages.length > 0) {
+    console.error('❌ Broken images found:')
+    missingImages.forEach(img => console.error(`  - ${img.src} (${img.alt})`))
+    throw new Error('Some images are missing or broken')
+  }
+  console.log('✅ All images validated successfully')
+}
+```
+
 ---
 
 ## Generar y mantener screenshots
