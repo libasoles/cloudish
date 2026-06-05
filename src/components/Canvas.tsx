@@ -148,6 +148,19 @@ const CLICK_PULSE_PREFIX = "sidebar-click";
 const DEFAULT_EDGE_OPTIONS = {
   style: EDGE_STYLE,
 };
+const ID_SUFFIX_PATTERN = /-(\d+)(?:$|__)/;
+
+function getNextNumericIdSuffix(ids: string[]) {
+  const maxId = ids.reduce((max, id) => {
+    const match = id.match(ID_SUFFIX_PATTERN);
+    if (!match) return max;
+
+    const value = Number.parseInt(match[1], 10);
+    return Number.isFinite(value) ? Math.max(max, value) : max;
+  }, 0);
+
+  return maxId + 1;
+}
 
 function getAppNodeIdFromElement(element: Element | null) {
   const nodeEl = element?.closest<HTMLElement>(".react-flow__node[data-id]");
@@ -358,6 +371,44 @@ export default function Canvas() {
   const suppressNextClickRef = useRef(false);
   const nodesRef = useRef(nodes);
   useEffect(() => { nodesRef.current = nodes; }, [nodes]);
+
+  useEffect(() => {
+    const containerIds = nodes
+      .filter((node) => node.type === "networkContainer")
+      .map((node) => node.id);
+    const serviceIds = nodes
+      .filter(
+        (node) =>
+          node.type === AWS_SERVICE_NODE_TYPE ||
+          node.type === "user" ||
+          node.type === "internet",
+      )
+      .map((node) => node.id);
+    const textIds = nodes
+      .filter((node) => node.type === "plainText")
+      .map((node) => node.id);
+
+    containerIdRef.current = Math.max(
+      containerIdRef.current,
+      getNextNumericIdSuffix(containerIds),
+    );
+    subnetIdRef.current = Math.max(
+      subnetIdRef.current,
+      getNextNumericIdSuffix(containerIds),
+    );
+    serviceIdRef.current = Math.max(
+      serviceIdRef.current,
+      getNextNumericIdSuffix(serviceIds),
+    );
+    textIdRef.current = Math.max(
+      textIdRef.current,
+      getNextNumericIdSuffix(textIds),
+    );
+    edgeIdRef.current = Math.max(
+      edgeIdRef.current,
+      getNextNumericIdSuffix(edges.map((edge) => edge.id)),
+    );
+  }, [edges, nodes]);
 
   // Fires in CAPTURE phase — before React Flow's own handlers — so we can snapshot
   // the current selection as the "base" and identify the clicked node via DOM.
@@ -641,52 +692,48 @@ export default function Canvas() {
     (connection: Connection) => {
       if (!connection.source || !connection.target) return;
 
-      const isGroupSource = connection.source === SELECTION_GROUP_ID;
-      const isGroupTarget = connection.target === SELECTION_GROUP_ID;
+      commitGraphChange(({ nodes: n, edges }) => {
+        const selectedIds = n
+          .filter((node) => node.selected && node.type !== "selectionGroup")
+          .map((node) => node.id);
+        const selectedIdSet = new Set(selectedIds);
+        const shouldConnectSelection =
+          selectedIds.length > 1 &&
+          selectedIdSet.has(connection.source!) &&
+          !selectedIdSet.has(connection.target!);
 
-      if (isGroupSource || isGroupTarget) {
-        commitGraphChange(({ nodes: n, edges }) => {
-          const selectedIds = n
-            .filter((node) => node.selected && node.type !== "selectionGroup")
-            .map((node) => node.id);
+        if (shouldConnectSelection) {
           let result = edges;
-          for (const memberId of selectedIds) {
-            const edgeSrc = isGroupSource ? memberId : connection.source!;
-            const edgeTgt = isGroupTarget ? memberId : connection.target!;
-            const groupLabel = resolveVpnGatewayEdgeLabel(edgeTgt, n);
+          for (const sourceId of selectedIds) {
+            const autoLabel = resolveVpnGatewayEdgeLabel(connection.target!, n);
             const edge: AppEdge = {
               ...connection,
               id: `edge-${edgeIdRef.current++}`,
-              source: edgeSrc,
-              target: edgeTgt,
+              source: sourceId,
+              target: connection.target!,
               style: EDGE_STYLE,
-              ...(groupLabel && { label: groupLabel }),
+              ...(autoLabel && { label: autoLabel }),
             };
             result = addEdgeWithAzSync(edge, n, result);
           }
           return { nodes: n, edges: result };
-        });
-        return;
-      }
+        }
 
-      const currentNodes = useFlowStore.getState().nodes;
-      const autoLabel = resolveVpnGatewayEdgeLabel(
-        connection.target,
-        currentNodes,
-      );
-      const edge: AppEdge = {
-        ...connection,
-        id: `edge-${edgeIdRef.current++}`,
-        source: connection.source,
-        target: connection.target,
-        style: EDGE_STYLE,
-        ...(autoLabel && { label: autoLabel }),
-      };
+        const autoLabel = resolveVpnGatewayEdgeLabel(connection.target!, n);
+        const edge: AppEdge = {
+          ...connection,
+          id: `edge-${edgeIdRef.current++}`,
+          source: connection.source!,
+          target: connection.target!,
+          style: EDGE_STYLE,
+          ...(autoLabel && { label: autoLabel }),
+        };
 
-      commitGraphChange(({ nodes: n, edges }) => ({
-        nodes: n,
-        edges: addEdgeWithAzSync(edge, n, edges),
-      }));
+        return {
+          nodes: n,
+          edges: addEdgeWithAzSync(edge, n, edges),
+        };
+      });
     },
     [commitGraphChange],
   );

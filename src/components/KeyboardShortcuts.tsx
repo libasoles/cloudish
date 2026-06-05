@@ -82,6 +82,10 @@ export function KeyboardShortcuts() {
     ];
 
     function handleKeyDown(e: KeyboardEvent) {
+      if (e.repeat) {
+        return;
+      }
+
       if (isEditableTarget(e.target)) {
         return;
       }

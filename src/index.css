@@ -177,6 +177,8 @@ body {
   background: transparent !important;
   border: none !important;
   border-radius: 50%;
+  cursor: crosshair;
+  z-index: 20;
 }
 
 .react-flow__handle::after {
@@ -246,9 +248,6 @@ body {
 
 .react-flow__node-selectionGroup {
   pointer-events: none !important;
-}
-.react-flow__node-selectionGroup .react-flow__handle {
-  pointer-events: all !important;
 }
 .react-flow__edgelabel-renderer {
   z-index: 1000 !important;
@@ -335,6 +334,7 @@ code {
 .react-flow__nodesselection-rect {
   border: none !important;
   background: transparent !important;
+  pointer-events: none !important;
   position: relative;
 }
 
