@@ -51,3 +51,22 @@ export function setEdgeArrowDirection(
         : undefined,
   };
 }
+
+export type EdgeLineMode = "solid" | "dashed" | "animated";
+
+export function getEdgeLineMode(edge: AppEdge): EdgeLineMode {
+  if (edge.animated) return "animated";
+  if (edge.style?.strokeDasharray) return "dashed";
+  return "solid";
+}
+
+export function setEdgeLineMode(edge: AppEdge, mode: EdgeLineMode): AppEdge {
+  return {
+    ...edge,
+    animated: mode === "animated",
+    style: {
+      ...edge.style,
+      strokeDasharray: mode === "dashed" ? "6 4" : undefined,
+    },
+  };
+}

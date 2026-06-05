@@ -20,6 +20,7 @@ export const TUTORIAL_LAZY_MAP: Record<string, LazyComponent> = {
   'hierarchical-containers': lazy(() => import('./tutorials/hierarchical-containers')),
   'selection': lazy(() => import('./tutorials/selection')),
   'keyboard-shortcuts': lazy(() => import('./tutorials/keyboard-shortcuts')),
+  'edge-inspector': lazy(() => import('./tutorials/edge-inspector')),
 }
 
 export const TUTORIALS: TutorialMeta[] = [
@@ -60,6 +61,15 @@ export const TUTORIALS: TutorialMeta[] = [
       { id: 'busqueda-navegacion', title: 'Búsqueda y navegación' },
       { id: 'seleccion-movimiento', title: 'Selección y movimiento' },
       { id: 'edicion-eliminacion', title: 'Edición y eliminación' },
+    ],
+  },
+  {
+    id: 'edge-inspector',
+    title: 'Personalizar conexiones',
+    description: 'Ajusta el estilo y la animación de cada conexión desde el inspector.',
+    sections: [
+      { id: 'abrir-inspector-conexion', title: 'Abrir el inspector de una conexión' },
+      { id: 'estilo-de-linea', title: 'Estilo de línea' },
     ],
   },
 ]

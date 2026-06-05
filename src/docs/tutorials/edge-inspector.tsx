@@ -1,0 +1,55 @@
+function Tip({ children }: { children: React.ReactNode }) {
+  return <div className="tip">{children}</div>;
+}
+
+export default function EdgeInspector() {
+  return (
+    <>
+      {/* ── 1. Abrir el inspector de conexiones ────────────── */}
+      <h2 id="abrir-inspector-conexion">Abrir el inspector de una conexión</h2>
+      <p>
+        Cada conexión entre nodos tiene propiedades editables accesibles desde el
+        inspector. Para abrirlo, haz clic sobre cualquier línea de conexión del
+        lienzo.
+      </p>
+      <p>
+        El panel derecho mostrará las opciones de esa conexión: etiqueta,
+        dirección de flechas y estilo de línea.
+      </p>
+
+      {/* ── 2. Estilo de línea ───────────────────────────────── */}
+      <h2 id="estilo-de-linea">Estilo de línea</h2>
+      <p>
+        La sección <strong>Estilo de línea</strong> del inspector ofrece tres
+        modos de visualización para cada conexión. Solo uno puede estar activo a
+        la vez.
+      </p>
+
+      <h3>Sólida</h3>
+      <p>
+        El primer botón aplica una línea continua sin interrupciones. Es el
+        estilo por defecto de todas las conexiones nuevas. Úsalo para representar
+        flujos estables o relaciones directas entre servicios.
+      </p>
+
+      <h3>Punteada</h3>
+      <p>
+        El segundo botón aplica una línea discontinua. Es útil para indicar
+        conexiones opcionales, flujos secundarios o dependencias débiles —por
+        ejemplo, una ruta de fallback o un enlace de solo lectura.
+      </p>
+
+      <h3>Animada</h3>
+      <p>
+        El tercer botón activa el flujo animado: la línea se mueve en dirección
+        origen → destino de forma continua. Úsalo para destacar flujos activos
+        de datos, peticiones en tiempo real, o tráfico principal de la
+        arquitectura.
+      </p>
+      <Tip>
+        Al activar la animación, el estilo punteado se desactiva automáticamente
+        — y viceversa. Los tres modos son excluyentes entre sí.
+      </Tip>
+    </>
+  );
+}
