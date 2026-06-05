@@ -8,6 +8,7 @@ import {
   useState,
   type DragEvent,
   type MouseEvent,
+  type PointerEvent,
 } from "react";
 import {
   ReactFlow,
@@ -143,6 +144,48 @@ const DEFAULT_EDGE_OPTIONS = {
   style: EDGE_STYLE,
 };
 
+function getAppNodeIdFromElement(element: Element | null) {
+  const nodeEl = element?.closest<HTMLElement>(".react-flow__node[data-id]");
+  const nodeId = nodeEl?.dataset.id;
+
+  if (!nodeId || nodeId === SELECTION_GROUP_ID) {
+    return null;
+  }
+
+  return nodeId;
+}
+
+function getClickedAppNodeId(
+  event: MouseEvent<HTMLDivElement> | PointerEvent<HTMLDivElement>,
+) {
+  const path = event.nativeEvent.composedPath();
+
+  for (const item of path) {
+    if (!(item instanceof Element)) {
+      continue;
+    }
+
+    const nodeId = getAppNodeIdFromElement(item);
+    if (nodeId) {
+      return nodeId;
+    }
+  }
+
+  const elementsAtPoint = event.currentTarget.ownerDocument.elementsFromPoint(
+    event.clientX,
+    event.clientY,
+  );
+
+  for (const element of elementsAtPoint) {
+    const nodeId = getAppNodeIdFromElement(element);
+    if (nodeId) {
+      return nodeId;
+    }
+  }
+
+  return null;
+}
+
 export default function Canvas() {
   const locale = getBrowserLocale();
   const t = UI_TEXT[locale];
@@ -195,91 +238,100 @@ export default function Canvas() {
   const activeDragToolRef = useRef<DragTool | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const isRestoringViewportRef = useRef(false);
+  // Set of node IDs that were selected when the user started a Shift interaction.
+  // During a bounding-box drag, React Flow calls resetSelectedElements() which would
+  // clear this selection; we intercept and re-select any base node except the one the
+  // user intentionally Shift-clicked on.
   const shiftSelectionBaseRef = useRef<Set<string>>(new Set());
-  // Tracks which node was Shift+clicked (null = bounding box drag or pane click).
-  // Used to exclude that node from base-set re-selection so the user can deselect it.
+  // ID of the node the user Shift-clicked (detected in capture phase via DOM, before
+  // React Flow fires its own selection changes). null means the click was on empty pane.
   const shiftClickedNodeRef = useRef<string | null>(null);
+  // True while a Shift+box-drag selection is in progress (between onSelectionStart and
+  // onSelectionEnd). Used to gate setSelectionBoxActive, not for selection logic.
+  const isSelectionBoxInProgressRef = useRef(false);
+  // Set to true by onPaneClick — which fires BEFORE resetSelectedElements() in React
+  // Flow's onClick handler — so handleNodesChange can pass through the deselections
+  // instead of re-selecting the base nodes.
+  const paneClickedRef = useRef(false);
+  const suppressNextClickRef = useRef(false);
   const nodesRef = useRef(nodes);
   useEffect(() => { nodesRef.current = nodes; }, [nodes]);
 
-  // Fires in CAPTURE phase (before React Flow's node handlers) so we reset
-  // shiftClickedNodeRef first; handleNodeMouseDown overrides it if a node was hit.
-  const handleContainerMouseDown = useCallback((e: React.MouseEvent) => {
+  // Fires in CAPTURE phase — before React Flow's own handlers — so we can snapshot
+  // the current selection as the "base" and identify the clicked node via DOM.
+  const handleContainerPointerDown = useCallback((e: PointerEvent<HTMLDivElement>) => {
     if (e.shiftKey && e.button === 0) {
-      shiftClickedNodeRef.current = null;
-      shiftSelectionBaseRef.current = new Set(
+      paneClickedRef.current = false;
+      // Identify the clicked node from the DOM now, before React Flow
+      // fires onNodesChange. Using capture-phase timing guarantees we set this before
+      // handleNodesChange runs for the same interaction.
+      const clickedId = getClickedAppNodeId(e);
+      const selectedNodeIds = new Set(
         nodesRef.current.filter((n) => n.selected).map((n) => n.id),
       );
+      shiftClickedNodeRef.current = clickedId;
+      shiftSelectionBaseRef.current = selectedNodeIds;
+
+      if (clickedId && selectedNodeIds.has(clickedId)) {
+        e.preventDefault();
+        e.stopPropagation();
+        suppressNextClickRef.current = true;
+        shiftSelectionBaseRef.current.clear();
+        onNodesChange([{ type: "select", id: clickedId, selected: false }]);
+      }
     }
+  }, [onNodesChange]);
+
+  const handleContainerClick = useCallback((e: MouseEvent<HTMLDivElement>) => {
+    if (!suppressNextClickRef.current) {
+      return;
+    }
+
+    suppressNextClickRef.current = false;
+    e.preventDefault();
+    e.stopPropagation();
   }, []);
 
-
-  // When the selectionGroup node intercepts a Shift+Click (it has zIndex:1000 so React
-  // Flow's hit-test always routes clicks there), we find the actual node at that position
-  // and toggle its selection directly, bypassing handleNodesChange protection.
-  // onNodeClick fires on the 'click' event — AFTER 'mouseup' — which lets the lazy
-  // setTimeout in the mouseup fallback read the updated shiftClickedNodeRef.
-  const handleNodeClick = useCallback(
-    (e: React.MouseEvent, node: AppNode) => {
-      if (node.id !== SELECTION_GROUP_ID || !e.shiftKey || !reactFlowInstance) return;
-
-      const flowPos = reactFlowInstance.screenToFlowPosition({
-        x: e.clientX,
-        y: e.clientY,
-      });
-      const { nodes: currentNodes } = useFlowStore.getState();
-      const nodesById = new Map(currentNodes.map((n) => [n.id, n]));
-
-      const targetNode = [...currentNodes]
-        .filter((n) => n.id !== SELECTION_GROUP_ID && n.type !== "selectionGroup")
-        .reverse()
-        .find((n) => {
-          const pos = getAbsolutePosition(n, nodesById);
-          const w = n.measured?.width ?? DEFAULT_NODE_WIDTH;
-          const h = n.measured?.height ?? DEFAULT_NODE_HEIGHT;
-          return (
-            flowPos.x >= pos.x &&
-            flowPos.x <= pos.x + w &&
-            flowPos.y >= pos.y &&
-            flowPos.y <= pos.y + h
-          );
-        });
-
-      if (!targetNode) return;
-
-      // Update ref so the mouseup fallback (scheduled before this click event fires)
-      // sees the actual clicked node and skips re-selecting it.
-      shiftClickedNodeRef.current = targetNode.id;
-
-      setNodes((current) =>
-        current.map((n) =>
-          n.id === targetNode.id ? { ...n, selected: !n.selected } : n,
-        ),
-      );
-    },
-    [reactFlowInstance, setNodes],
-  );
-
-  // On each pointer-move during a Shift+drag selection box, React Flow calls
-  // resetSelectedElements() which deselects every node (including the "base"
-  // selection we want to preserve) and then fires triggerNodeChanges → onNodesChange.
-  // We intercept those deselections here and re-select every base node that was
-  // spuriously cleared — EXCEPT the one the user deliberately Shift+clicked on.
+  // Intercept React Flow's node changes to:
+  //   1. Drop 'select:true selectionGroup' batches (prevent phantom group selection).
+  //   2. Filter ALL selectionGroup changes (including 'add' from StoreUpdater) so the
+  //      group never leaks into the Zustand nodes store.
+  //   3. During a bounding-box drag, re-select any base node that resetSelectedElements()
+  //      spuriously cleared — unless that node is the one the user intentionally clicked.
+  //   4. On a plain pane click (paneClickedRef=true), pass deselections straight through
+  //      so the selection actually clears.
   const handleNodesChange = useCallback((changes: NodeChange<AppNode>[]) => {
-    // When the user clicks the group node's transparent body (not a handle),
-    // React Flow fires a select:true for the group AND select:false for all other
-    // selected nodes. Drop the entire batch to keep the current selection intact.
+    // If React Flow is trying to select the group node, ignore the whole batch.
     const groupIsBeingSelected = changes.some(
-      (c) => "id" in c && c.id === SELECTION_GROUP_ID && c.type === "select" && (c as NodeSelectionChange).selected,
+      (c) =>
+        "id" in c &&
+        c.id === SELECTION_GROUP_ID &&
+        c.type === "select" &&
+        (c as NodeSelectionChange).selected,
     );
     if (groupIsBeingSelected) return;
 
-    const realChanges = changes.filter(
-      (c) => !("id" in c && c.id === SELECTION_GROUP_ID),
-    );
+    // Remove every change that targets the selectionGroup, including 'add' changes
+    // emitted by StoreUpdater when it first reconciles the group into its nodeLookup.
+    // 'add' changes use { type:'add', item } — no top-level 'id' — so we must check
+    // item.id explicitly.
+    const realChanges = changes.filter((c) => {
+      if ("id" in c) return (c as { id: string }).id !== SELECTION_GROUP_ID;
+      if (c.type === "add")
+        return (c as unknown as { item: AppNode }).item?.id !== SELECTION_GROUP_ID;
+      return true;
+    });
+
+    if (realChanges.length === 0) return;
+
     const base = shiftSelectionBaseRef.current;
-    if (base.size > 0) {
+    // paneClickedRef is set by onPaneClick which fires *before* resetSelectedElements()
+    // inside React Flow's onClick handler, so by the time we reach here on a pane click
+    // the flag is already true — let the deselections through to clear the selection.
+    if (base.size > 0 && !paneClickedRef.current) {
       const clickedId = shiftClickedNodeRef.current;
+      // Re-select any base node that React Flow deselected, *except* the node the user
+      // explicitly Shift+clicked (clickedId) — that one should be allowed to deselect.
       const baseDeselections = realChanges.filter(
         (c): c is NodeSelectionChange =>
           c.type === "select" &&
@@ -288,12 +340,6 @@ export default function Canvas() {
           (c as NodeSelectionChange).id !== clickedId,
       );
       if (baseDeselections.length > 0) {
-        // Single deselection is likely an intentional Shift+Click; allow it.
-        // Multiple deselections suggest accidental drag-clearing; re-select them.
-        if (baseDeselections.length === 1) {
-          onNodesChange(realChanges);
-          return;
-        }
         const reselections: NodeChange<AppNode>[] = baseDeselections.map((c) => ({
           type: "select" as const,
           id: c.id,
@@ -304,30 +350,6 @@ export default function Canvas() {
       }
     }
     onNodesChange(realChanges);
-  }, [onNodesChange]);
-
-  useEffect(() => {
-    const onMouseUp = () => {
-      if (shiftSelectionBaseRef.current.size === 0) {
-        shiftClickedNodeRef.current = null;
-        return;
-      }
-      const base = new Set(shiftSelectionBaseRef.current);
-      shiftSelectionBaseRef.current.clear();
-      // Read shiftClickedNodeRef lazily inside setTimeout: the 'click' event (which
-      // fires handleNodeClick and updates shiftClickedNodeRef) fires after 'mouseup',
-      // so by the time setTimeout runs, the ref has the correct node id.
-      setTimeout(() => {
-        const clickedId = shiftClickedNodeRef.current;
-        shiftClickedNodeRef.current = null;
-        const reselect: NodeChange<AppNode>[] = nodesRef.current
-          .filter((n) => base.has(n.id) && !n.selected && n.id !== clickedId)
-          .map((n) => ({ type: "select" as const, id: n.id, selected: true }));
-        if (reselect.length > 0) onNodesChange(reselect);
-      }, 0);
-    };
-    window.addEventListener("mouseup", onMouseUp);
-    return () => window.removeEventListener("mouseup", onMouseUp);
   }, [onNodesChange]);
 
   const handleExport = useCallback(
@@ -1322,6 +1344,17 @@ export default function Canvas() {
     [syncNodeSubnet, setDropPreview, setDropTargetNodeId],
   );
 
+  const handleSelectionStart = useCallback(() => {
+    isSelectionBoxInProgressRef.current = true;
+    setSelectionBoxActive(false);
+  }, [setSelectionBoxActive]);
+
+  const handleSelectionEnd = useCallback(() => {
+    isSelectionBoxInProgressRef.current = false;
+    shiftSelectionBaseRef.current.clear();
+    setSelectionBoxActive(true);
+  }, [setSelectionBoxActive]);
+
   const handlePaneDoubleClick = useCallback(
     (event: MouseEvent<HTMLDivElement>) => {
       if (!reactFlowInstance) {
@@ -1421,7 +1454,8 @@ export default function Canvas() {
       <div
         ref={containerRef}
         style={{ flex: 1, position: "relative" }}
-        onMouseDownCapture={handleContainerMouseDown}
+        onPointerDownCapture={handleContainerPointerDown}
+        onClickCapture={handleContainerClick}
         onDoubleClickCapture={handlePaneDoubleClick}
       >
         <ReactFlow
@@ -1435,7 +1469,6 @@ export default function Canvas() {
           onDrop={onDrop}
           onInit={handleInit}
           onMoveEnd={handleMoveEnd}
-          onNodeClick={handleNodeClick}
           onNodeDrag={onNodeDrag}
           onNodeDragStop={onNodeDragStop}
           onEdgeDoubleClick={(event, edge) => {
@@ -1446,9 +1479,12 @@ export default function Canvas() {
             if (node.type === "plainText") return;
             if (!inspectorOpen) setInspectorOpen(true);
           }}
-          onSelectionStart={() => setSelectionBoxActive(false)}
-          onSelectionEnd={() => setSelectionBoxActive(true)}
-          onPaneClick={() => setSelectionBoxActive(false)}
+          onSelectionStart={handleSelectionStart}
+          onSelectionEnd={handleSelectionEnd}
+          onPaneClick={() => {
+            paneClickedRef.current = true;
+            setSelectionBoxActive(false);
+          }}
           zoomOnDoubleClick={false}
           multiSelectionKeyCode="Shift"
           selectionMode={SelectionMode.Partial}
