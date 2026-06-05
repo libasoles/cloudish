@@ -294,6 +294,59 @@ Cada tutorial tiene **2-3 secciones principales** (`<h2>`), cada una con:
 
 **Ejemplo de `<Figure>`**: "Search" es una única captura del buscador abierto — no hay cambio progresivo.
 
+### Dropdowns y selectores en carruseles
+
+**CRÍTICO**: cuando un tutorial documente el uso de un dropdown/selector, el carrusel **DEBE** incluir:
+
+1. **Estado inicial**: el selector cerrado (para contexto visual)
+2. **Dropdown abierto**: con todas las opciones visibles y la opción objetivo **destacada/highlighted**
+3. **Estado final**: resultado después de la selección
+
+**Por qué**: el usuario necesita ver exactamente dónde está cada opción en el dropdown. Sin esto, el tutorial pierde claridad.
+
+**Ejemplo:**
+
+```tsx
+<Carousel
+  slides={[
+    {
+      src: "/docs/screenshots/subnet-type/subnet-selected.png",
+      alt: "Subnet seleccionada con selector Tipo cerrado",
+    },
+    {
+      src: "/docs/screenshots/subnet-type/dropdown-open.png",
+      alt: "Selector Tipo abierto — opciones Pública y Privada visibles",
+    },
+    {
+      src: "/docs/screenshots/subnet-type/public-selected.png",
+      alt: "Subnet con tipo Pública seleccionado",
+    },
+  ]}
+  caption="Abre el selector Tipo, elige Pública o Privada"
+/>
+```
+
+**En el script de screenshots** (`scripts/take-screenshots.ts`):
+
+- Interactúa con el dropdown (click para abrir)
+- Espera a que se rendericen las opciones
+- Captura con las opciones visibles
+- Opcionalmente: hover/select en la opción objetivo para que esté destacada
+
+### Nodos dentro de contenedores
+
+**CRÍTICO**: cuando un tutorial documente agregar nodos dentro de contenedores (VPC, AZ, Subnet), **los nodos DEBEN estar visualmente dentro del contenedor** en la captura.
+
+**Por qué**: la jerarquía visual (nodo dentro del contenedor) es el punto central del tutorial — si el nodo aparece fuera del contenedor, el usuario no entiende qué se está enseñando.
+
+**En el script de screenshots** (`scripts/take-screenshots.ts`):
+
+- Después de agregar un nodo, **arrastrarlo explícitamente dentro del contenedor destino** usando `page.mouse.move()` y `page.mouse.down/up()`
+- Esperar a que el nodo se registre dentro del contenedor (pueden haber animaciones de sincronización)
+- Capturar la imagen **solo cuando el nodo esté claramente dentro del contenedor** (borders del contenedor envuelven al nodo)
+
+**Ejemplo:** Para la sección "Sincronización de AZs", agregar EC2 → arrastrarlo dentro de AZ 1 → capturar → esto muestra la estructura jerárquica correctamente.
+
 ---
 
 ## Generar y mantener screenshots
