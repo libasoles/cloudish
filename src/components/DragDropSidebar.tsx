@@ -1,12 +1,9 @@
-import type { DragEvent, ReactNode } from "react";
+import { Fragment, type DragEvent, type ReactNode } from "react";
 import { Type } from "lucide-react";
 import { AwsServiceIcon } from "@/components/AwsServiceIcon";
 import { VpcIcon } from "@/components/icons/VpcIcon";
 import { HoverOnlyTooltip } from "@/components/HoverOnlyTooltip";
-import {
-  dragServices,
-  vpcService,
-} from "@/data/drag-tool-catalog";
+import { dragServices, vpcService } from "@/data/drag-tool-catalog";
 import { INFRASTRUCTURE_ITEMS } from "@/data/infrastructure-items";
 import type { AwsService } from "@/data/aws-services";
 import {
@@ -91,9 +88,7 @@ function SidebarToolButton({
       <button
         type="button"
         draggable
-        onDragStart={(event) =>
-          setDragPayload(event, tool, onToolDragStart)
-        }
+        onDragStart={(event) => setDragPayload(event, tool, onToolDragStart)}
         onDragEnd={onToolDragEnd}
         onClick={() => onToolClick?.(tool)}
         className={
@@ -125,40 +120,50 @@ export default function DragDropSidebar({
       <div className="flex-1 space-y-2 overflow-y-auto p-2">
         {INFRASTRUCTURE_ITEMS.map((item) => {
           const infraLabel = infraLabels[item.id];
-          const isFeatured = item.tool.type !== "user" && item.tool.type !== "internet" && item.tool.type !== "text";
+          const isFeatured =
+            item.tool.type !== "user" &&
+            item.tool.type !== "internet" &&
+            item.tool.type !== "text";
           return (
-            <SidebarToolButton
-              key={item.id}
-              name={infraLabel.name}
-              description={`${infraLabel.description} ${labels.dragOrClickToAdd}`}
-              ariaLabel={`Drag ${infraLabel.name}`}
-              tool={item.tool}
-              featured={isFeatured}
-              onToolClick={onToolClick}
-              onToolDragStart={onToolDragStart}
-              onToolDragEnd={onToolDragEnd}
-            >
-              <item.Icon className={isFeatured ? "h-8 w-8 text-muted-foreground" : "size-10 text-muted-foreground"} />
-            </SidebarToolButton>
+            <Fragment key={item.id}>
+              <SidebarToolButton
+                name={infraLabel.name}
+                description={`${infraLabel.description} ${labels.dragOrClickToAdd}`}
+                ariaLabel={`Drag ${infraLabel.name}`}
+                tool={item.tool}
+                featured={isFeatured}
+                onToolClick={onToolClick}
+                onToolDragStart={onToolDragStart}
+                onToolDragEnd={onToolDragEnd}
+              >
+                <item.Icon
+                  className={
+                    isFeatured
+                      ? "h-8 w-8 text-muted-foreground"
+                      : "size-10 text-muted-foreground"
+                  }
+                />
+              </SidebarToolButton>
+              {item.id === "infra-region" && vpcService ? (
+                <SidebarToolButton
+                  name={vpcService.name}
+                  description={`${labels.getServiceDescription(vpcService)} ${labels.dragOrClickToAdd}`}
+                  ariaLabel={labels.dragService(vpcService.name)}
+                  tool={{
+                    type: AWS_SERVICE_NODE_TYPE,
+                    serviceId: vpcService.id,
+                  }}
+                  featured
+                  onToolClick={onToolClick}
+                  onToolDragStart={onToolDragStart}
+                  onToolDragEnd={onToolDragEnd}
+                >
+                  <VpcIcon className="h-8 w-8 text-muted-foreground" />
+                </SidebarToolButton>
+              ) : null}
+            </Fragment>
           );
         })}
-        {vpcService && (
-          <SidebarToolButton
-            name={vpcService.name}
-            description={`${labels.getServiceDescription(vpcService)} ${labels.dragOrClickToAdd}`}
-            ariaLabel={labels.dragService(vpcService.name)}
-            tool={{
-              type: AWS_SERVICE_NODE_TYPE,
-              serviceId: vpcService.id,
-            }}
-            featured
-            onToolClick={onToolClick}
-            onToolDragStart={onToolDragStart}
-            onToolDragEnd={onToolDragEnd}
-          >
-            <VpcIcon className="h-8 w-8 text-muted-foreground" />
-          </SidebarToolButton>
-        )}
         <SidebarToolButton
           name={labels.text}
           description={`${labels.textDescription} ${labels.dragOrClickToAdd}`}
