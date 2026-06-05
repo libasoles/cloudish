@@ -69,12 +69,12 @@ export default function HierarchicalContainers() {
       <Carousel
         slides={[
           {
-            src: "/docs/screenshots/az-slider/before.png",
-            alt: "VPC seleccionado con slider en 1 AZ",
-          },
-          {
             src: "/docs/screenshots/az-slider/after.png",
             alt: "VPC seleccionado con slider en 2 AZs, AZs visibles en canvas",
+          },
+          {
+            src: "/docs/screenshots/az-slider/before.png",
+            alt: "VPC seleccionado con slider en 1 AZ",
           },
         ]}
         caption="El slider del inspector controla la cantidad de AZs — se actualizan automáticamente en el canvas"
@@ -87,22 +87,34 @@ export default function HierarchicalContainers() {
         </li>
         <li>Haz clic en la subnet para seleccionarla.</li>
         <li>
-          En el inspector, usa el selector <strong>Tipo</strong> para cambiar
-          entre <em>Pública</em> y <em>Privada</em>.
+          En el inspector, haz clic en el selector <strong>Tipo</strong> para
+          abrirlo.
+        </li>
+        <li>
+          Selecciona <em>Pública</em> o <em>Privada</em> de las opciones que
+          aparecen.
         </li>
       </ol>
       <Carousel
         slides={[
           {
+            src: "/docs/screenshots/subnet-type/subnet-selected.png",
+            alt: "Subnet seleccionada con el selector Tipo cerrado",
+          },
+          {
+            src: "/docs/screenshots/subnet-type/dropdown-open.png",
+            alt: "Selector Tipo abierto mostrando opciones Pública y Privada",
+          },
+          {
             src: "/docs/screenshots/subnet-type/public.png",
-            alt: "Subnet seleccionada con tipo Pública (verde)",
+            alt: "Subnet con tipo Pública seleccionado (verde)",
           },
           {
             src: "/docs/screenshots/subnet-type/private.png",
-            alt: "Subnet seleccionada con tipo Privada (azul)",
+            alt: "Subnet con tipo Privada seleccionado (azul)",
           },
         ]}
-        caption="Cambia el tipo de subnet desde el inspector — el color se actualiza automáticamente"
+        caption="Abre el selector Tipo, elige entre Pública o Privada, y el color se actualiza automáticamente"
       />
       <Tip>
         Las subnets públicas se muestran en verde esmeralda; las privadas en
@@ -116,13 +128,6 @@ export default function HierarchicalContainers() {
         Cuando tienes múltiples AZs en un VPC, la sincronización te permite
         replicar automáticamente los nodos de la AZ de referencia en las demás
         AZs — ideal para diseñar arquitecturas multi-AZ simétricas.
-      </p>
-
-      <h3>Sincronización de AZs</h3>
-      <p>
-        Cuando tienes múltiples AZs en un VPC, puedes sincronizar su contenido
-        para replicar automáticamente los nodos de la AZ de referencia en las
-        demás. Esto es ideal para diseñar arquitecturas multi-AZ simétricas.
       </p>
 
       <h4>Habilitar sincronización</h4>

@@ -273,8 +273,40 @@ async function main() {
   await addNodeBySidebarClick(page, 8) // EC2
   await page.waitForTimeout(400)
 
+  // Drag EC2 into the first AZ
+  const ec2NodeSync = page.locator('.react-flow__node').nth(1)
+  const ec2BoxSync = await ec2NodeSync.boundingBox()
+  if (ec2BoxSync) {
+    const ec2CxSync = ec2BoxSync.x + ec2BoxSync.width / 2
+    const ec2CySync = ec2BoxSync.y + ec2BoxSync.height / 2
+    // Drag to approximate position inside first AZ (lower-left area of VPC)
+    await page.mouse.move(ec2CxSync, ec2CySync)
+    await page.waitForTimeout(150)
+    await page.mouse.down()
+    await page.mouse.move(ec2CxSync - 150, ec2CySync + 100, { steps: 10 })
+    await page.waitForTimeout(150)
+    await page.mouse.up()
+    await page.waitForTimeout(300)
+  }
+
   await addNodeBySidebarClick(page, 12) // RDS
-  await page.waitForTimeout(600)
+  await page.waitForTimeout(400)
+
+  // Drag RDS into the first AZ (next to EC2)
+  const rdsNodeSync = page.locator('.react-flow__node').nth(2)
+  const rdsBoxSync = await rdsNodeSync.boundingBox()
+  if (rdsBoxSync) {
+    const rdsCxSync = rdsBoxSync.x + rdsBoxSync.width / 2
+    const rdsCySync = rdsBoxSync.y + rdsBoxSync.height / 2
+    // Drag to approximate position inside first AZ (next to EC2)
+    await page.mouse.move(rdsCxSync, rdsCySync)
+    await page.waitForTimeout(150)
+    await page.mouse.down()
+    await page.mouse.move(rdsCxSync - 150, rdsCySync + 150, { steps: 10 })
+    await page.waitForTimeout(150)
+    await page.mouse.up()
+    await page.waitForTimeout(300)
+  }
 
   await page.mouse.click(100, 400)
   await page.waitForTimeout(200)

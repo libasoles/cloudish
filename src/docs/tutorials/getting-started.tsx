@@ -78,10 +78,6 @@ export default function GettingStarted() {
       <Carousel
         slides={[
           {
-            src: "/docs/screenshots/connect-nodes/start.png",
-            alt: "EC2 y RDS separados en el lienzo",
-          },
-          {
             src: "/docs/screenshots/connect-nodes/handle.png",
             alt: "Hover sobre EC2, handle visible en la derecha",
           },
