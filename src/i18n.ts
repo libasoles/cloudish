@@ -67,7 +67,7 @@ export const UI_TEXT = {
     position: "Position",
     clickNodeDetails: "Click a node or edge to see its details.",
     user: "User",
-    searchPlaceholder: "Search AWS services...",
+    searchPlaceholder: "Search services, clients, languages...",
     clearSearch: "Clear search",
     searchCategoryInfrastructure: "Infrastructure",
     availabilityZone: "AZ",
@@ -208,7 +208,7 @@ export const UI_TEXT = {
     position: "Posición",
     clickNodeDetails: "Selecciona un nodo o conexión para ver sus detalles.",
     user: "Usuario",
-    searchPlaceholder: "Buscar servicios de AWS...",
+    searchPlaceholder: "Buscar servicios, clientes, lenguajes...",
     clearSearch: "Limpiar búsqueda",
     searchCategoryInfrastructure: "Infraestructura",
     availabilityZone: "AZ",
@@ -310,6 +310,8 @@ const CATEGORY_LABELS: Record<Locale, Record<AwsCategory, string>> = {
     "Developer Tools": "Developer Tools",
     Management: "Management",
     Messaging: "Messaging",
+    Clients: "Clients",
+    Languages: "Languages",
   },
   es: {
     Compute: "Cómputo",
@@ -322,6 +324,8 @@ const CATEGORY_LABELS: Record<Locale, Record<AwsCategory, string>> = {
     "Developer Tools": "Herramientas de desarrollo",
     Management: "Administración",
     Messaging: "Mensajería",
+    Clients: "Clientes",
+    Languages: "Lenguajes",
   },
 };
 
@@ -458,6 +462,14 @@ const EN_SERVICE_DESCRIPTIONS: Record<string, string> = {
   ses: "Scalable service for sending and receiving email.",
   pinpoint: "Manages multichannel communications and targeted user campaigns.",
   appsync: "Creates managed GraphQL APIs with real-time and offline data.",
+  "mobile-client":
+    "Mobile client consuming applications, APIs, or backend services.",
+  "web-client":
+    "Web client running in a browser to consume applications, APIs, or backend services.",
+  "python-language": "Runtime or component implemented with Python.",
+  "java-language": "Runtime or component implemented with Java.",
+  "csharp-language": "Runtime or component implemented with C# and .NET.",
+  "node-language": "Runtime or component implemented with Node.js.",
 };
 
 const ES_FIELD_KEY_TRANSLATIONS: FieldTranslations = {

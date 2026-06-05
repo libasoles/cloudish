@@ -55,6 +55,8 @@ export default {
           "developer-tools": "#687078",
           management: "#546E7A",
           messaging: "#E7157B",
+          clients: "#2563EB",
+          languages: "#16A34A",
         },
       },
       borderRadius: {

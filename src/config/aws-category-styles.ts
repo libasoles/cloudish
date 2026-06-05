@@ -11,4 +11,6 @@ export const AWS_CATEGORY_STYLES: Record<AwsCategory, { iconFallbackBg: string }
   "Developer Tools": { iconFallbackBg: "bg-aws-developer-tools" },
   Management: { iconFallbackBg: "bg-aws-management" },
   Messaging: { iconFallbackBg: "bg-aws-messaging" },
+  Clients: { iconFallbackBg: "bg-aws-clients" },
+  Languages: { iconFallbackBg: "bg-aws-languages" },
 };
