@@ -215,6 +215,13 @@ async function clearCanvasSelection(page: Page) {
   await page.waitForTimeout(250)
 }
 
+function getNodeClickPoint(bbox: { x: number; y: number; width: number; height: number }) {
+  return {
+    x: bbox.x + bbox.width * 0.72,
+    y: bbox.y + bbox.height * 0.72,
+  }
+}
+
 async function main() {
   fs.mkdirSync(SCREENSHOTS_DIR, { recursive: true })
 
@@ -572,43 +579,36 @@ async function main() {
   await clearCanvasSelection(page)
   await page.waitForTimeout(300)
 
-  // Before: show unselected nodes with click indicator on first node
+  // Before: first node selected, with click indicator on the next node to add.
   const shiftClickNodes = page.locator('.react-flow__node')
-  const n0Box = await shiftClickNodes.nth(0).boundingBox()
-  if (n0Box) {
-    const n0X = n0Box.x + n0Box.width / 2
-    const n0Y = n0Box.y + n0Box.height / 2
-    await addClickIndicator(page, n0X, n0Y)
-    await addMouseCursor(page, n0X - 8, n0Y - 8)
+  await shiftClickNodes.nth(0).click({ force: true })
+  await page.waitForTimeout(300)
+
+  const n1Box = await shiftClickNodes.nth(1).boundingBox()
+  if (n1Box) {
+    const { x: n1X, y: n1Y } = getNodeClickPoint(n1Box)
+    await addClickIndicator(page, n1X, n1Y)
+    await addMouseCursor(page, n1X - 8, n1Y - 8)
     await page.waitForTimeout(300)
     await shot(page, 'shift-click', 'before.png')
     await removeClickIndicator(page)
     await removeMouseCursor(page)
   }
 
-  // Select first node
-  await shiftClickNodes.nth(0).click({ force: true })
-  await page.waitForTimeout(300)
-
-  // Shift+click on second node with indicator
-  const n1Box = await shiftClickNodes.nth(1).boundingBox()
+  // Shift+click to add second node to selection.
   if (n1Box) {
-    const n1X = n1Box.x + n1Box.width / 2
-    const n1Y = n1Box.y + n1Box.height / 2
+    const { x: n1X, y: n1Y } = getNodeClickPoint(n1Box)
     await addClickIndicator(page, n1X, n1Y)
     await addMouseCursor(page, n1X - 8, n1Y - 8)
     await page.waitForTimeout(300)
   }
-
-  // Shift+click to add to selection
   await shiftClickNodes.nth(1).click({ modifiers: ['Shift'], force: true })
   await page.waitForTimeout(300)
 
   // Shift+click on third node
   const n2Box = await shiftClickNodes.nth(2).boundingBox()
   if (n2Box) {
-    const n2X = n2Box.x + n2Box.width / 2
-    const n2Y = n2Box.y + n2Box.height / 2
+    const { x: n2X, y: n2Y } = getNodeClickPoint(n2Box)
     await removeClickIndicator(page)
     await removeMouseCursor(page)
     await addClickIndicator(page, n2X, n2Y)
@@ -725,8 +725,7 @@ async function main() {
     // Before: existing selection plus unselected target node.
     const n2Box = await selNodes.nth(2).boundingBox()
     if (n2Box) {
-      const n2X = n2Box.x + n2Box.width / 2
-      const n2Y = n2Box.y + n2Box.height / 2
+      const { x: n2X, y: n2Y } = getNodeClickPoint(n2Box)
       await addClickIndicator(page, n2X, n2Y)
       await addMouseCursor(page, n2X - 8, n2Y - 8)
       await page.waitForTimeout(300)
@@ -737,8 +736,7 @@ async function main() {
 
     // Add target node to the existing selection.
     if (n2Box) {
-      const n2X = n2Box.x + n2Box.width / 2
-      const n2Y = n2Box.y + n2Box.height / 2
+      const { x: n2X, y: n2Y } = getNodeClickPoint(n2Box)
       await addClickIndicator(page, n2X, n2Y)
       await addMouseCursor(page, n2X - 8, n2Y - 8)
       await page.waitForTimeout(300)
@@ -826,6 +824,8 @@ async function main() {
     })
     await page.waitForTimeout(250)
   }
+  await page.waitForTimeout(300)
+  await shot(page, 'multiple-edges', 'selected-before.png')
 
   const sourceBox = await lambdaNodes.nth(1).boundingBox()
   const targetBox = await multiEdgeRdsNode.boundingBox()
@@ -842,6 +842,7 @@ async function main() {
     await addClickIndicator(page, sourceX, sourceY)
     await addMouseCursor(page, sourceX - 8, sourceY - 8)
     await page.waitForTimeout(300)
+    await shot(page, 'multiple-edges', 'handle.png')
 
     await page.mouse.down()
     await page.mouse.move(targetX, targetY, { steps: 35 })

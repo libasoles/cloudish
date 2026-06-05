@@ -1,22 +1,5 @@
 import { Carousel } from "../Carousel";
 
-function Figure({
-  src,
-  alt,
-  caption,
-}: {
-  src: string;
-  alt: string;
-  caption?: string;
-}) {
-  return (
-    <figure>
-      <img src={src} alt={alt} loading="lazy" />
-      {caption && <figcaption>{caption}</figcaption>}
-    </figure>
-  );
-}
-
 export default function Selection() {
   return (
     <>
@@ -40,14 +23,14 @@ export default function Selection() {
         slides={[
           {
             src: "/docs/screenshots/shift-click/before.png",
-            alt: "Nodos sin seleccionar con indicador de dónde hacer clic",
+            alt: "Un nodo seleccionado y otro nodo sin seleccionar con indicador de dónde hacer Shift+clic",
           },
           {
             src: "/docs/screenshots/shift-click/after.png",
             alt: "Múltiples nodos seleccionados con Shift+clic",
           },
         ]}
-        caption="Haz clic en el primer nodo, luego Shift+clic en otros para acumular la selección"
+        caption="Primero selecciona un nodo; luego usa Shift+clic sobre otros nodos para acumular la selección"
       />
 
       <h3>Shift + arrastre (caja de selección)</h3>
@@ -181,9 +164,21 @@ export default function Selection() {
           el nodo destino.
         </li>
       </ol>
-      <Figure
-        src="/docs/screenshots/multiple-edges/selected-to-rds.png"
-        alt="Tres nodos Lambda alineados verticalmente conectados a un nodo RDS"
+      <Carousel
+        slides={[
+          {
+            src: "/docs/screenshots/multiple-edges/selected-before.png",
+            alt: "Tres nodos Lambda seleccionados junto a un nodo RDS todavía sin conexiones",
+          },
+          {
+            src: "/docs/screenshots/multiple-edges/handle.png",
+            alt: "Indicador de clic sobre el asa lateral de un nodo Lambda seleccionado",
+          },
+          {
+            src: "/docs/screenshots/multiple-edges/selected-to-rds.png",
+            alt: "Tres nodos Lambda seleccionados conectados a un nodo RDS",
+          },
+        ]}
         caption="Con tres nodos seleccionados, arrastra desde un asa hacia RDS para crear las tres conexiones en una sola acción"
       />
       <p style={{ marginTop: "1rem", fontSize: "0.9em", opacity: 0.8 }}>
