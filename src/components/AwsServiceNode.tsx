@@ -72,6 +72,7 @@ export default function AwsServiceNode({
 
   const isCircular =
     data.serviceId === "internet-gateway" ||
+    data.serviceId === "nat-gateway" ||
     data.serviceId === "vpn-gateway";
 
   if (isCircular) {
