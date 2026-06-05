@@ -226,7 +226,7 @@ export default function ServiceSearch({ onToolClick }: ServiceSearchProps) {
   return (
     <Panel position="top-center">
       <div className="relative mt-2" ref={containerRef}>
-        <div className="flex w-72 items-center gap-2 rounded-lg border border-input bg-card px-3 py-2 text-card-foreground shadow-md">
+        <div className="flex w-72 items-center gap-2 rounded-lg border border-input bg-card px-3 py-2 text-card-foreground shadow-md transition focus-within:border-ring focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background">
           <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
           <input
             ref={inputRef}
