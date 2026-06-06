@@ -74,9 +74,9 @@ const egress = { style: { stroke: "#94a3b8", strokeDasharray: "6 4" } };
 const dataFlow = { style: { stroke: "#a78bfa", strokeWidth: 2 } };
 const observability = { style: { stroke: "#6b7280", strokeDasharray: "4 4" } };
 
-export const defaultArchitectureName = "Multi-AZ 3-Tier Web Architecture";
+export const multiAzThreeTierArchitectureName = "Multi-AZ 3-Tier Web Architecture";
 
-export const defaultArchitectureNodes = [
+export const multiAzThreeTierArchitectureNodes = [
   container("region", "region", "AWS Region: us-east-1", { x: 260, y: 80 }, { width: 1700, height: 900 }),
   container("vpc", "vpc", "VPC - 10.0.0.0/16", { x: 40, y: 50 }, { width: 1620, height: 820 }, "region"),
   container("az-a", "az", "AZ-A (us-east-1a)", { x: 40, y: 170 }, { width: 730, height: 620 }, "vpc"),
@@ -189,7 +189,7 @@ export const defaultArchitectureNodes = [
   service("rds-standby", "RDS Standby", "aws-amazon-rds", "Database", "rds", { x: 390, y: 205 }, "priv-subnet-b"),
 ];
 
-export const defaultArchitectureEdges = [
+export const multiAzThreeTierArchitectureEdges = [
   edge("e-web-r53", "web-client", "route53-node", "bottom", "top", {
     label: "DNS lookup",
     style: { stroke: "#94a3b8", strokeDasharray: "4 4" },
@@ -240,4 +240,4 @@ export const defaultArchitectureEdges = [
   }),
 ];
 
-export const defaultArchitectureViewport = { x: 0, y: 0, zoom: 0.55 };
+export const multiAzThreeTierArchitectureViewport = { x: 0, y: 0, zoom: 0.55 };

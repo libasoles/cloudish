@@ -2,10 +2,10 @@ import { cert, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import {
-  defaultArchitectureEdges,
-  defaultArchitectureNodes,
-  defaultArchitectureViewport,
-} from "../src/data/default-architecture.ts";
+  multiAzThreeTierArchitectureEdges,
+  multiAzThreeTierArchitectureNodes,
+  multiAzThreeTierArchitectureViewport,
+} from "../src/data/multi-az-three-tier-architecture.ts";
 
 const DEFAULT_USER_EMAIL = "gperez78@gmail.com";
 
@@ -94,9 +94,9 @@ if (!snapshot.exists) {
 await docRef.set(
   {
     ...(args.name ? { name: args.name } : {}),
-    nodes: defaultArchitectureNodes,
-    edges: defaultArchitectureEdges,
-    viewport: defaultArchitectureViewport,
+    nodes: multiAzThreeTierArchitectureNodes,
+    edges: multiAzThreeTierArchitectureEdges,
+    viewport: multiAzThreeTierArchitectureViewport,
     updatedAt: FieldValue.serverTimestamp(),
   },
   { merge: true },
@@ -104,6 +104,6 @@ await docRef.set(
 
 console.log(`Updated architecture: ${args.architectureId}`);
 console.log(`User UID: ${uid}`);
-console.log(`Nodes: ${defaultArchitectureNodes.length}`);
-console.log(`Edges: ${defaultArchitectureEdges.length}`);
+console.log(`Nodes: ${multiAzThreeTierArchitectureNodes.length}`);
+console.log(`Edges: ${multiAzThreeTierArchitectureEdges.length}`);
 console.log(`Link: https://cloudish-feb6a.web.app/?p=${args.architectureId}`);
