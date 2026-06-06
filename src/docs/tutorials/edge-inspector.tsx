@@ -1,3 +1,5 @@
+import { Carousel } from "../Carousel";
+
 function Tip({ children }: { children: React.ReactNode }) {
   return <div className="tip">{children}</div>;
 }
@@ -5,7 +7,7 @@ function Tip({ children }: { children: React.ReactNode }) {
 function Figure({ src, alt, caption }: { src: string; alt: string; caption?: string }) {
   return (
     <figure className="figure">
-      <img src={src} alt={alt} style={{ maxWidth: '100%', height: 'auto' }} />
+      <img src={src} alt={alt} loading="lazy" />
       {caption && <figcaption>{caption}</figcaption>}
     </figure>
   );
@@ -25,6 +27,19 @@ export default function EdgeInspector() {
         El panel derecho mostrará las opciones de esa conexión: etiqueta,
         dirección de flechas y estilo de línea.
       </p>
+      <Carousel
+        slides={[
+          {
+            src: "/docs/screenshots/edge-inspector/click-edge.png",
+            alt: "Cursor haciendo clic sobre una conexión entre EC2 y RDS",
+          },
+          {
+            src: "/docs/screenshots/edge-inspector/inspector-open.png",
+            alt: "Inspector abierto después de seleccionar una conexión",
+          },
+        ]}
+        caption="Haz clic sobre una conexión para abrir sus opciones en el inspector"
+      />
 
       {/* ── 2. Estilo de línea ───────────────────────────────── */}
       <h2 id="estilo-de-linea">Estilo de línea</h2>
@@ -42,7 +57,7 @@ export default function EdgeInspector() {
         flujos estables o relaciones directas entre servicios.
       </p>
       <Figure
-        src="/docs-images/edge-inspector/01-inspector-solid.png"
+        src="/docs/screenshots/edge-inspector/line-solid.png"
         alt="Inspector mostrando estilo de línea Sólida"
         caption="Estilo Sólida: línea continua (defecto)"
       />
@@ -54,7 +69,7 @@ export default function EdgeInspector() {
         ejemplo, una ruta de fallback o un enlace de solo lectura.
       </p>
       <Figure
-        src="/docs-images/edge-inspector/02-inspector-dashed.png"
+        src="/docs/screenshots/edge-inspector/line-dashed.png"
         alt="Inspector mostrando estilo de línea Punteada"
         caption="Estilo Punteada: línea discontinua"
       />
@@ -67,7 +82,7 @@ export default function EdgeInspector() {
         arquitectura.
       </p>
       <Figure
-        src="/docs-images/edge-inspector/03-inspector-animated.png"
+        src="/docs/screenshots/edge-inspector/line-animated.png"
         alt="Inspector mostrando estilo de línea Animada"
         caption="Estilo Animada: línea con flujo continuo"
       />

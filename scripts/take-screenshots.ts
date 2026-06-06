@@ -18,6 +18,7 @@
  * - multiple-edges/
  * - api-gateway/
  * - vpn-gateway/
+ * - edge-inspector/
  */
 
 import { chromium, type Locator, type Page } from 'playwright'
@@ -35,6 +36,14 @@ async function shot(page: Page, subdir: string, name: string) {
   fs.mkdirSync(dir, { recursive: true })
   const dest = path.join(dir, name)
   await page.screenshot({ path: dest, fullPage: false })
+  console.log(`  ✓ ${subdir}/${name}`)
+}
+
+async function shotLocator(locator: Locator, subdir: string, name: string) {
+  const dir = path.join(SCREENSHOTS_DIR, subdir)
+  fs.mkdirSync(dir, { recursive: true })
+  const dest = path.join(dir, name)
+  await locator.screenshot({ path: dest })
   console.log(`  ✓ ${subdir}/${name}`)
 }
 
@@ -318,6 +327,122 @@ async function clearCanvasSelection(page: Page) {
   await page.waitForTimeout(250)
 }
 
+async function createSimpleEc2ToRdsEdge(page: Page) {
+  await loadApp(page)
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(300)
+
+  await addNodeBySidebarClick(page, 8) // EC2
+  await page.waitForTimeout(400)
+  const nodes = page.locator('.react-flow__node')
+  await positionNodeLocatorAt(page, nodes.nth(0), 720, 480)
+
+  await page.mouse.click(960, 220)
+  await page.waitForTimeout(200)
+
+  await addNodeBySidebarClick(page, 12) // RDS
+  await page.waitForTimeout(400)
+  await positionNodeLocatorAt(page, nodes.nth(1), 1180, 480)
+
+  await page.mouse.click(960, 220)
+  await page.waitForTimeout(200)
+
+  const ec2Node = nodes.nth(0)
+  const rdsNode = nodes.nth(1)
+  const ec2Box = await ec2Node.boundingBox()
+  const rdsBox = await rdsNode.boundingBox()
+  if (!ec2Box || !rdsBox) {
+    throw new Error('Could not position EC2 and RDS nodes for edge inspector screenshots')
+  }
+
+  const sourceX = ec2Box.x + ec2Box.width
+  const sourceY = ec2Box.y + ec2Box.height / 2
+  const targetX = rdsBox.x
+  const targetY = rdsBox.y + rdsBox.height / 2
+
+  await page.mouse.move(ec2Box.x + ec2Box.width / 2, ec2Box.y + ec2Box.height / 2)
+  await page.waitForTimeout(300)
+  await page.mouse.move(sourceX, sourceY)
+  await page.waitForTimeout(300)
+  await page.mouse.down()
+  await page.mouse.move(targetX, targetY, { steps: 30 })
+  await page.waitForTimeout(200)
+  await page.mouse.up()
+  await page.waitForTimeout(800)
+
+  await page.waitForFunction(
+    () => document.querySelectorAll('.react-flow__edge-path').length > 0,
+    undefined,
+    { timeout: 5000 },
+  )
+}
+
+async function selectFirstEdge(page: Page) {
+  const edgePath = page.locator('.react-flow__edge-path').first()
+  const edgeBox = await edgePath.boundingBox({ timeout: 5000 })
+  if (!edgeBox) {
+    throw new Error('Could not find edge path for edge inspector screenshots')
+  }
+
+  const clickX = edgeBox.x + edgeBox.width / 2
+  const clickY = edgeBox.y + edgeBox.height / 2
+  await addClickIndicator(page, clickX, clickY)
+  await addMouseCursor(page, clickX - 8, clickY - 8)
+  await page.waitForTimeout(250)
+  await shot(page, 'edge-inspector', 'click-edge.png')
+  await removeClickIndicator(page)
+  await removeMouseCursor(page)
+
+  await page.mouse.click(clickX, clickY)
+  await page.waitForTimeout(600)
+  await page.getByText('Estilo de línea').waitFor({ state: 'visible', timeout: 5000 })
+  await shot(page, 'edge-inspector', 'inspector-open.png')
+}
+
+function getLineStyleSection(page: Page) {
+  return page
+    .getByText('Estilo de línea', { exact: true })
+    .locator('xpath=ancestor::div[contains(@class, "grid")][1]')
+}
+
+async function captureEdgeInspectorScreenshots(page: Page) {
+  await createSimpleEc2ToRdsEdge(page)
+  await selectFirstEdge(page)
+
+  const lineStyleSection = getLineStyleSection(page)
+  await lineStyleSection.waitFor({ state: 'visible', timeout: 5000 })
+  await shotLocator(lineStyleSection, 'edge-inspector', 'line-solid.png')
+
+  await page.getByRole('button', { name: 'Línea punteada' }).click()
+  await page.waitForTimeout(300)
+  await shotLocator(lineStyleSection, 'edge-inspector', 'line-dashed.png')
+
+  await page.getByRole('button', { name: 'Activar animación' }).click()
+  await page.waitForTimeout(300)
+  await shotLocator(lineStyleSection, 'edge-inspector', 'line-animated.png')
+}
+
+async function validateTutorialImages(page: Page, tutorialUrl: string) {
+  await page.goto(tutorialUrl, { waitUntil: 'networkidle', timeout: 30000 })
+  await page.waitForTimeout(2000)
+  await page.evaluate(() => {
+    window.scrollTo(0, document.body.scrollHeight)
+  })
+  await page.waitForTimeout(1000)
+
+  return page.evaluate(() => {
+    const images = document.querySelectorAll('img')
+    return Array.from(images)
+      .filter(img => img.naturalWidth === 0 || img.complete === false || img.src.includes('undefined'))
+      .map(img => ({
+        src: img.src,
+        alt: img.alt,
+        naturalWidth: img.naturalWidth,
+        complete: img.complete,
+      }))
+  })
+}
+
 function getNodeClickPoint(bbox: { x: number; y: number; width: number; height: number }) {
   return {
     x: bbox.x + bbox.width * 0.72,
@@ -340,6 +465,31 @@ async function main() {
   const page = await context.newPage()
 
   page.on('dialog', d => d.dismiss())
+
+  if (process.env.SCREENSHOT_ONLY === 'edge-inspector') {
+    console.log('Capturing edge-inspector screenshots...\n')
+    await captureEdgeInspectorScreenshots(page)
+
+    const tutorialPage = await context.newPage()
+    const brokenImages = await validateTutorialImages(
+      tutorialPage,
+      `${BASE_URL}/docs/edge-inspector`,
+    )
+    await tutorialPage.close()
+    await browser.close()
+
+    if (brokenImages.length > 0) {
+      console.error('\n❌ edge-inspector has broken image references:')
+      brokenImages.forEach(img => {
+        console.error(`  - ${img.src}`)
+        console.error(`    alt: "${img.alt}" | width: ${img.naturalWidth} | complete: ${img.complete}`)
+      })
+      process.exit(1)
+    }
+
+    console.log('\n✅ edge-inspector screenshots saved and validated successfully')
+    return
+  }
 
   console.log('Starting screenshot capture...\n')
   await loadApp(page)
@@ -1238,8 +1388,12 @@ async function main() {
   // Shot 3: Customer Gateway icon on Mobile's handle
   await shot(page, 'vpn-gateway', 'customer-gateway.png')
 
+  // ── edge-inspector: click edge + line style options ────────────────
+  console.log('15/16 Edge inspector...')
+  await captureEdgeInspectorScreenshots(page)
+
   // ── Validate all images are working ────────────────────────────────
-  console.log('\n15/15 Validating all screenshot references...')
+  console.log('\n16/16 Validating all screenshot references...')
 
   // Wait for file system to sync before validation
   await page.waitForTimeout(2000)
@@ -1249,6 +1403,7 @@ async function main() {
     `${BASE_URL}/docs/hierarchical-containers`,
     `${BASE_URL}/docs/selection`,
     `${BASE_URL}/docs/special-nodes`,
+    `${BASE_URL}/docs/edge-inspector`,
   ]
 
   let allImagesValid = true
@@ -1257,30 +1412,7 @@ async function main() {
     const tutorialPage = await context.newPage()
     try {
       await tutorialPage.goto(tutorialUrl, { waitUntil: 'networkidle', timeout: 30000 })
-      // Wait for lazy-loaded images to appear and load
-      await tutorialPage.waitForTimeout(2000)
-
-      // Force trigger lazy loading by scrolling
-      await tutorialPage.evaluate(() => {
-        window.scrollTo(0, document.body.scrollHeight)
-      })
-      await tutorialPage.waitForTimeout(1000)
-
-      // Check for broken images
-      const brokenImages = await tutorialPage.evaluate(() => {
-        const images = document.querySelectorAll('img')
-        return Array.from(images)
-          .filter(img => {
-            // Check if image failed to load or has 0 dimensions
-            return img.naturalWidth === 0 || img.complete === false || img.src.includes('undefined')
-          })
-          .map(img => ({
-            src: img.src,
-            alt: img.alt,
-            naturalWidth: img.naturalWidth,
-            complete: img.complete,
-          }))
-      })
+      const brokenImages = await validateTutorialImages(tutorialPage, tutorialUrl)
 
       if (brokenImages.length > 0) {
         allImagesValid = false
@@ -1309,7 +1441,7 @@ async function main() {
   console.log('\n✅ All screenshots saved and validated successfully:')
   console.log('  sidebar/, search/, connect-nodes/, region-vpc/, az-slider/, subnet-type/')
   console.log('  az-sync/, shift-click/, shift-drag/, add-to-selection/, alignment/, multiple-edges/')
-  console.log('  api-gateway/, vpn-gateway/')
+  console.log('  api-gateway/, vpn-gateway/, edge-inspector/')
 }
 
 main().catch((err) => {
