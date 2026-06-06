@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Download, FileCode2, FileText } from "lucide-react";
+import { Download, FileCode2, FileImage, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -24,6 +24,7 @@ type ExportMenuLabels = {
   exportTooltip: string;
   exportTerraform: string;
   exportCloudFormation: string;
+  exportImage: string;
   exportDisclaimerTitle: string;
   exportDisclaimerDescription: string;
   exportDisclaimerAction: string;
@@ -33,12 +34,14 @@ type ExportMenuLabels = {
 type ExportMenuProps = {
   labels: ExportMenuLabels;
   onExport: (format: ExportFormat) => void;
+  onExportImage: () => void;
   disabled?: boolean;
 };
 
 export default function ExportMenu({
   labels,
   onExport,
+  onExportImage,
   disabled,
 }: ExportMenuProps) {
   const [popoverOpen, setPopoverOpen] = useState(false);
@@ -83,6 +86,18 @@ export default function ExportMenu({
           </PopoverTrigger>
         </HoverOnlyTooltip>
         <PopoverContent side="left" align="start" className="w-64 p-1">
+          <button
+            className="flex w-full items-center gap-2 rounded px-3 py-2 text-sm hover:bg-accent transition-colors"
+            onClick={() => {
+              setPopoverOpen(false);
+              onExportImage();
+            }}
+          >
+            <FileImage className="size-4 shrink-0 text-blue-400" />
+            {labels.exportImage}
+          </button>
+
+          <div className="my-1 border-t border-border" />
           <button
             className="flex w-full items-center gap-2 rounded px-3 py-2 text-sm hover:bg-accent transition-colors"
             onClick={() => handleFormatClick("terraform")}

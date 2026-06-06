@@ -523,6 +523,11 @@ export default function Canvas() {
     [nodes],
   );
 
+  const handleExportImage = useCallback(async () => {
+    const { exportFlowAsImage } = await import("@/lib/export/image");
+    await exportFlowAsImage(nodes, projectName ?? "architecture");
+  }, [nodes, projectName]);
+
   const handleSave = useCallback(async () => {
     const currentViewport = reactFlowInstance?.getViewport() ?? viewport;
     const result = await saveArchitectureMutation.mutateAsync({
@@ -1787,12 +1792,14 @@ export default function Canvas() {
               exportTooltip: t.exportTooltip,
               exportTerraform: t.exportTerraform,
               exportCloudFormation: t.exportCloudFormation,
+              exportImage: t.exportImage,
               exportDisclaimerTitle: t.exportDisclaimerTitle,
               exportDisclaimerDescription: t.exportDisclaimerDescription,
               exportDisclaimerAction: t.exportDisclaimerAction,
               exportDisclaimerCancel: t.exportDisclaimerCancel,
             }}
             onExport={handleExport}
+            onExportImage={handleExportImage}
           />
           {user && currentArchitectureId && (
             <DeleteArchitectureButton

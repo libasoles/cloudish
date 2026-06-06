@@ -10,7 +10,8 @@
       "Bash(pkill -f \"vite --port 5174\")",
       "Bash(grep -E \"\\(firebase|config|\\\\.tsx?$\\)\")",
       "Bash(npx husky *)",
-      "Bash(npx eslint *)"
+      "Bash(npx eslint *)",
+      "WebFetch(domain:aws.amazon.com)"
     ]
   }
 }
