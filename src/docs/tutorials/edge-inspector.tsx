@@ -2,6 +2,15 @@ function Tip({ children }: { children: React.ReactNode }) {
   return <div className="tip">{children}</div>;
 }
 
+function Figure({ src, alt, caption }: { src: string; alt: string; caption?: string }) {
+  return (
+    <figure className="figure">
+      <img src={src} alt={alt} style={{ maxWidth: '100%', height: 'auto' }} />
+      {caption && <figcaption>{caption}</figcaption>}
+    </figure>
+  );
+}
+
 export default function EdgeInspector() {
   return (
     <>
@@ -22,7 +31,8 @@ export default function EdgeInspector() {
       <p>
         La sección <strong>Estilo de línea</strong> del inspector ofrece tres
         modos de visualización para cada conexión. Solo uno puede estar activo a
-        la vez.
+        la vez. Los botones se encuentran en el panel derecho cuando el edge está
+        seleccionado.
       </p>
 
       <h3>Sólida</h3>
@@ -31,6 +41,11 @@ export default function EdgeInspector() {
         estilo por defecto de todas las conexiones nuevas. Úsalo para representar
         flujos estables o relaciones directas entre servicios.
       </p>
+      <Figure
+        src="/docs-images/edge-inspector/01-inspector-solid.png"
+        alt="Inspector mostrando estilo de línea Sólida"
+        caption="Estilo Sólida: línea continua (defecto)"
+      />
 
       <h3>Punteada</h3>
       <p>
@@ -38,6 +53,11 @@ export default function EdgeInspector() {
         conexiones opcionales, flujos secundarios o dependencias débiles —por
         ejemplo, una ruta de fallback o un enlace de solo lectura.
       </p>
+      <Figure
+        src="/docs-images/edge-inspector/02-inspector-dashed.png"
+        alt="Inspector mostrando estilo de línea Punteada"
+        caption="Estilo Punteada: línea discontinua"
+      />
 
       <h3>Animada</h3>
       <p>
@@ -46,6 +66,11 @@ export default function EdgeInspector() {
         de datos, peticiones en tiempo real, o tráfico principal de la
         arquitectura.
       </p>
+      <Figure
+        src="/docs-images/edge-inspector/03-inspector-animated.png"
+        alt="Inspector mostrando estilo de línea Animada"
+        caption="Estilo Animada: línea con flujo continuo"
+      />
       <Tip>
         Al activar la animación, el estilo punteado se desactiva automáticamente
         — y viceversa. Los tres modos son excluyentes entre sí.

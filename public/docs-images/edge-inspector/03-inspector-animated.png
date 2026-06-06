@@ -1,0 +1,9 @@
+<svg width="360" height="900" xmlns="http://www.w3.org/2000/svg">
+        <rect width="360" height="900" fill="#1a1a1a"/>
+        <text x="180" y="100" font-size="16" fill="#fff" text-anchor="middle">
+          03-inspector-animated
+        </text>
+        <text x="180" y="200" font-size="12" fill="#999" text-anchor="middle">
+          Inspector Panel Screenshot
+        </text>
+      </svg>
