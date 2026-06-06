@@ -1,6 +1,6 @@
 import { getNodesBounds, getViewportForBounds } from "@xyflow/react";
 import { toPng } from "html-to-image";
-import type { AppNode } from "@/types/flow";
+import type { AppNode, AppEdge } from "@/types/flow";
 
 const PADDING_X = 80;
 const PADDING_Y = 60;
@@ -119,8 +119,19 @@ function composeWithFrame(
   });
 }
 
+/** Builds a set of "nodeId__handleId" keys for every endpoint that has an edge. */
+function buildConnectedHandles(edges: AppEdge[]): Set<string> {
+  const connected = new Set<string>();
+  for (const edge of edges) {
+    connected.add(`${edge.source}__${edge.sourceHandle ?? ""}`);
+    connected.add(`${edge.target}__${edge.targetHandle ?? ""}`);
+  }
+  return connected;
+}
+
 export async function exportFlowAsImage(
   nodes: AppNode[],
+  edges: AppEdge[],
   projectName: string,
 ): Promise<void> {
   const viewport = document.querySelector<HTMLElement>(".react-flow__viewport");
@@ -146,16 +157,64 @@ export async function exportFlowAsImage(
     paddingRatio,
   );
 
-  const rawDataUrl = await toPng(viewport, {
-    backgroundColor: BG,
-    width: contentW,
-    height: contentH,
-    style: {
-      width: `${contentW}px`,
-      height: `${contentH}px`,
-      transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.zoom})`,
-    },
-  });
+  const connectedHandles = buildConnectedHandles(edges);
+
+  // Inject CSS to hide all selection visuals (bounding box, ring, halo)
+  const exportStyle = document.createElement("style");
+  exportStyle.textContent = `
+    .react-flow__node-selectionGroup {
+      display: none !important;
+    }
+    .react-flow__node.selected {
+      outline: none !important;
+      outline-width: 0 !important;
+      outline-offset: 0 !important;
+    }
+    .react-flow__node.selected > div {
+      border-color: rgb(229 231 235) !important;
+      --tw-ring-shadow: none !important;
+      --tw-ring-offset-shadow: none !important;
+      --tw-shadow: none !important;
+      --tw-shadow-colored: none !important;
+      box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1) !important;
+    }
+  `;
+  document.head.appendChild(exportStyle);
+
+  let rawDataUrl: string;
+  try {
+    rawDataUrl = await toPng(viewport, {
+      backgroundColor: BG,
+      width: contentW,
+      height: contentH,
+      style: {
+        width: `${contentW}px`,
+        height: `${contentH}px`,
+        transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.zoom})`,
+      },
+      filter: (node) => {
+        const el = node as Element;
+        const cls = el.classList;
+        if (!cls) return true;
+        // Always exclude: selection overlay, resize controls
+        if (
+          cls.contains("react-flow__nodesselection") ||
+          cls.contains("react-flow__resize-control")
+        )
+          return false;
+        // Handles: only keep those with an active connection
+        if (cls.contains("react-flow__handle")) {
+          const handleId = el.getAttribute("data-handleid") ?? "";
+          const nodeId =
+            el.closest(".react-flow__node")?.getAttribute("data-id") ?? "";
+          return connectedHandles.has(`${nodeId}__${handleId}`);
+        }
+        return true;
+      },
+    });
+  } finally {
+    document.head.removeChild(exportStyle);
+  }
 
   const composedDataUrl = await composeWithFrame(
     rawDataUrl,
