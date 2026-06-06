@@ -4,9 +4,19 @@ function Tip({ children }: { children: React.ReactNode }) {
   return <div className="tip">{children}</div>;
 }
 
-function Figure({ src, alt, caption }: { src: string; alt: string; caption?: string }) {
+function Figure({
+  src,
+  alt,
+  caption,
+  className,
+}: {
+  src: string;
+  alt: string;
+  caption?: string;
+  className?: string;
+}) {
   return (
-    <figure className="figure">
+    <figure className={className ? `figure ${className}` : "figure"}>
       <img src={src} alt={alt} loading="lazy" />
       {caption && <figcaption>{caption}</figcaption>}
     </figure>
@@ -60,6 +70,7 @@ export default function EdgeInspector() {
         src="/docs/screenshots/edge-inspector/line-solid.png"
         alt="Inspector mostrando estilo de línea Sólida"
         caption="Estilo Sólida: línea continua (defecto)"
+        className="figure-intrinsic"
       />
 
       <h3>Punteada</h3>
@@ -72,6 +83,7 @@ export default function EdgeInspector() {
         src="/docs/screenshots/edge-inspector/line-dashed.png"
         alt="Inspector mostrando estilo de línea Punteada"
         caption="Estilo Punteada: línea discontinua"
+        className="figure-intrinsic"
       />
 
       <h3>Animada</h3>
@@ -85,6 +97,7 @@ export default function EdgeInspector() {
         src="/docs/screenshots/edge-inspector/line-animated.png"
         alt="Inspector mostrando estilo de línea Animada"
         caption="Estilo Animada: línea con flujo continuo"
+        className="figure-intrinsic"
       />
       <Tip>
         Al activar la animación, el estilo punteado se desactiva automáticamente
