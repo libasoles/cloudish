@@ -187,12 +187,14 @@ All agents must work in a dedicated git worktree to avoid conflicts with other A
   ```
 
 - All file edits, installs, and commits happen inside the worktree directory, not in the main working tree.
-- When the task is complete, open a PR from the feature branch, complete the PR workflow below, and remove the worktree afterwards:
+- When the task is complete, open a PR from the feature branch, complete the PR workflow below, **merge to main**, and **immediately remove the worktree and local branch**:
 
   ```bash
   git worktree remove ../cloudish-<feature-slug>
   git branch -d feat/<feature-slug>
   ```
+
+  This cleanup must happen right after the PR merges — do not leave stale worktrees checked out. A worktree is only meant to persist while the PR is in-flight; once merged, it serves no purpose and wastes disk space.
 
 - If another agent's worktree already exists for the same feature, coordinate with the human before creating a new one — do not overwrite in-progress work.
 
