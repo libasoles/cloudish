@@ -198,6 +198,16 @@ All agents must work in a dedicated git worktree to avoid conflicts with other A
 
 - If another agent's worktree already exists for the same feature, coordinate with the human before creating a new one — do not overwrite in-progress work.
 
+## Temporary File Cleanup
+
+After completing a task, all temporary files created during development must be deleted before considering the work finished:
+
+- **Automation scripts** (`.mjs`, `.sh`, one-off Node scripts used for testing or debugging) created during the task should be deleted once they've served their purpose.
+- **Screenshot/export artifacts** (`.png`, `.html`, `.json` snapshots created for debugging) should not be committed to the repository.
+- **Test/debug outputs** (logs, data dumps, temporary exports) should be cleaned up.
+
+This keeps the repository clean and prevents accumulation of stale development artifacts. A completed PR should only contain intentional, meaningful changes — not the scaffolding used to build it.
+
 ## Pull Requests
 
 Creating a pull request is mandatory for every completed task, even when the change is small or the agent is allowed to approve it without human review.
