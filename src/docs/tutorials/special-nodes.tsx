@@ -96,7 +96,8 @@ export default function SpecialNodes() {
       <h2 id="vpn-gateway-conexion">VPN Gateway y Customer Gateway</h2>
       <p>
         El nodo <strong>VPN Gateway</strong> representa la puerta de enlace de una
-        VPN IPsec entre tu VPC y una red on-premises. Tiene un comportamiento
+        VPN IPsec entre tu VPC y un cliente externo. En el diagrama se ubica sobre
+        el borde de la VPC para marcar el punto de entrada. Tiene un comportamiento
         visual especial: cuando conectas cualquier nodo hacia él, el handle de
         origen se transforma en un ícono de <strong>Customer Gateway</strong>,
         indicando que ese extremo es el dispositivo de red en el lado del cliente.
@@ -110,11 +111,11 @@ export default function SpecialNodes() {
       <ol>
         <li>
           Agrega un nodo <strong>VPN Gateway</strong> al lienzo desde el buscador
-          o el panel lateral.
+          o el panel lateral, y colócalo centrado sobre el borde izquierdo de la VPC.
         </li>
         <li>
-          Agrega el nodo que representa el extremo on-premises — por ejemplo un
-          nodo genérico o un router.
+          Agrega el nodo que representa el extremo externo — por ejemplo{" "}
+          <strong>Mobile</strong> — fuera de la VPC.
         </li>
         <li>
           Arrastra desde el handle del nodo on-premises hasta el nodo VPN Gateway.
@@ -128,15 +129,15 @@ export default function SpecialNodes() {
         slides={[
           {
             src: "/docs/screenshots/vpn-gateway/before-connect.png",
-            alt: "VPN Gateway y nodo on-premises en el lienzo sin conectar",
+            alt: "Mobile fuera de una VPC con VPN Gateway centrado en el borde izquierdo, API Gateway y dos Lambdas dentro",
           },
           {
             src: "/docs/screenshots/vpn-gateway/connecting.png",
-            alt: "Edge en progreso desde el nodo on-premises hacia VPN Gateway",
+            alt: "Edge en progreso desde Mobile hacia el VPN Gateway ubicado en el borde de la VPC",
           },
           {
             src: "/docs/screenshots/vpn-gateway/customer-gateway.png",
-            alt: "Handle del nodo on-premises transformado en ícono de Customer Gateway con etiqueta VPN",
+            alt: "Handle de Mobile transformado en ícono de Customer Gateway con etiqueta VPN hacia la VPC",
           },
         ]}
         caption="Al conectar hacia VPN Gateway el handle origen se convierte en Customer Gateway"

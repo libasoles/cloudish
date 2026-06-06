@@ -52,6 +52,18 @@ async function addNodeBySearch(page: Page, query: string): Promise<void> {
   await page.waitForTimeout(800)
 }
 
+async function addNodeBySidebarClick(page: Page, index: number): Promise<void> {
+  const buttons = page.locator('aside button[draggable="true"]')
+  const previousNodeCount = await page.locator('.react-flow__node').count()
+  await buttons.nth(index).click()
+  await page.waitForFunction(
+    (expectedCount) => document.querySelectorAll('.react-flow__node').length > expectedCount,
+    previousNodeCount,
+    { timeout: 5000 },
+  )
+  await page.waitForTimeout(400)
+}
+
 async function positionNode(page: Page, locator: ReturnType<Page['locator']>, targetX: number, targetY: number) {
   const box = await locator.boundingBox()
   if (!box) return
@@ -64,6 +76,90 @@ async function positionNode(page: Page, locator: ReturnType<Page['locator']>, ta
   await page.waitForTimeout(150)
   await page.mouse.up()
   await page.waitForTimeout(400)
+}
+
+async function resizeContainerNode(
+  page: Page,
+  locator: ReturnType<Page['locator']>,
+  targetWidth: number,
+  targetHeight: number,
+) {
+  await locator.click({ force: true })
+  await page.waitForTimeout(300)
+
+  const box = await locator.boundingBox()
+  if (!box) {
+    throw new Error('Container was not visible for resize')
+  }
+
+  const bottomRightHandle = locator
+    .locator('.react-flow__resize-control.handle.bottom.right')
+    .first()
+  const handleBox = await bottomRightHandle.boundingBox({ timeout: 5000 })
+  if (!handleBox) {
+    throw new Error('Bottom-right resize handle was not visible')
+  }
+
+  await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2)
+  await page.waitForTimeout(100)
+  await page.mouse.down()
+  await page.mouse.move(
+    handleBox.x + handleBox.width / 2 + targetWidth - box.width,
+    handleBox.y + handleBox.height / 2 + targetHeight - box.height,
+    { steps: 18 },
+  )
+  await page.waitForTimeout(150)
+  await page.mouse.up()
+  await page.waitForTimeout(600)
+}
+
+async function assertNodesInsideContainer(
+  container: ReturnType<Page['locator']>,
+  innerNodes: Array<{ locator: ReturnType<Page['locator']>; name: string }>,
+) {
+  const containerBox = await container.boundingBox()
+  if (!containerBox) {
+    throw new Error('Container was not visible for inside-container validation')
+  }
+
+  const margin = 8
+  for (const { locator, name } of innerNodes) {
+    const nodeBox = await locator.boundingBox()
+    if (!nodeBox) {
+      throw new Error(`${name} was not visible for inside-container validation`)
+    }
+
+    const isInside =
+      nodeBox.x >= containerBox.x + margin &&
+      nodeBox.y >= containerBox.y + margin &&
+      nodeBox.x + nodeBox.width <= containerBox.x + containerBox.width - margin &&
+      nodeBox.y + nodeBox.height <= containerBox.y + containerBox.height - margin
+
+    if (!isInside) {
+      throw new Error(`${name} is not fully inside the VPC container`)
+    }
+  }
+}
+
+async function connectHandleToHandle(
+  page: Page,
+  sourceHandle: ReturnType<Page['locator']>,
+  targetHandle: ReturnType<Page['locator']>,
+) {
+  const sourceBox = await sourceHandle.boundingBox({ timeout: 5000 })
+  const targetBox = await targetHandle.boundingBox({ timeout: 5000 })
+
+  if (!sourceBox || !targetBox) {
+    throw new Error('Could not find handles to connect nodes')
+  }
+
+  await page.mouse.move(sourceBox.x + sourceBox.width / 2, sourceBox.y + sourceBox.height / 2)
+  await page.waitForTimeout(200)
+  await page.mouse.down()
+  await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2, { steps: 20 })
+  await page.waitForTimeout(200)
+  await page.mouse.up()
+  await page.waitForTimeout(700)
 }
 
 async function addMouseCursor(page: Page, x: number, y: number) {
@@ -191,12 +287,94 @@ async function main() {
   await addNodeBySearch(page, 'VPN Gateway')
   const vpnNode = page.locator('.react-flow__node').filter({ hasText: /vpn gateway/i }).first()
   await vpnNode.waitFor({ state: 'visible', timeout: 8000 })
-  await positionNode(page, vpnNode, 1200, 400)
+  await addNodeBySidebarClick(page, 3)
+  const vpcNode = page.locator('.react-flow__node').filter({ hasText: /^VPC$/i }).first()
+  await vpcNode.waitFor({ state: 'visible', timeout: 8000 })
+  await positionNode(page, vpcNode, 930, 520)
+  await resizeContainerNode(page, vpcNode, 820, 500)
 
-  await addNodeBySearch(page, 'EC2')
-  const ec2Node = page.locator('.react-flow__node').filter({ hasText: /^EC2$/i }).first()
-  await ec2Node.waitFor({ state: 'visible', timeout: 8000 })
-  await positionNode(page, ec2Node, 680, 400)
+  const vpcBox = await vpcNode.boundingBox()
+  if (!vpcBox) {
+    throw new Error('VPC node was not visible for VPN Gateway screenshots')
+  }
+
+  const vpcLeft = vpcBox.x
+  const vpcCenterY = vpcBox.y + vpcBox.height / 2
+  await positionNode(page, vpnNode, vpcLeft - 42, vpcCenterY)
+
+  await addNodeBySearch(page, 'API Gateway')
+  const vpnApiNode = page.locator('.react-flow__node').filter({ hasText: /api gateway/i }).first()
+  await vpnApiNode.waitFor({ state: 'visible', timeout: 8000 })
+  await positionNode(page, vpnApiNode, vpcBox.x + 300, vpcBox.y + 250)
+
+  await vpnApiNode.click({ force: true })
+  await page.waitForTimeout(500)
+  const vpnPathInputs = page.locator('input[placeholder="/path"]')
+  await vpnPathInputs.first().waitFor({ state: 'visible', timeout: 5000 })
+  await vpnPathInputs.nth(0).fill('/profile')
+  await vpnPathInputs.nth(0).dispatchEvent('input')
+  await page.waitForTimeout(200)
+  await vpnPathInputs.nth(1).fill('/orders')
+  await vpnPathInputs.nth(1).dispatchEvent('input')
+  await page.waitForTimeout(200)
+
+  await page.mouse.click(360, 180)
+  await page.waitForTimeout(300)
+
+  await addNodeBySearch(page, 'Lambda')
+  const vpnLambda1 = page.locator('.react-flow__node').filter({ hasText: /lambda/i }).first()
+  await vpnLambda1.waitFor({ state: 'visible', timeout: 8000 })
+  await positionNode(page, vpnLambda1, vpcBox.x + 555, vpcBox.y + 190)
+
+  await addNodeBySearch(page, 'Lambda')
+  const vpnLambdas = page.locator('.react-flow__node').filter({ hasText: /lambda/i })
+  await vpnLambdas.nth(1).waitFor({ state: 'visible', timeout: 8000 })
+  await positionNode(page, vpnLambdas.nth(1), vpcBox.x + 555, vpcBox.y + 330)
+
+  await page.mouse.click(360, 180)
+  await page.waitForTimeout(300)
+
+  const vpnRouteHandles = page.locator('.react-flow__handle[data-handleid^="route-"]')
+  const vpnRh1Box = await vpnRouteHandles.nth(0).boundingBox({ timeout: 5000 }).catch(() => null)
+  const vpnL1Box = await vpnLambda1.boundingBox()
+  if (vpnRh1Box && vpnL1Box) {
+    await page.mouse.move(vpnRh1Box.x + vpnRh1Box.width / 2, vpnRh1Box.y + vpnRh1Box.height / 2)
+    await page.waitForTimeout(200)
+    await page.mouse.down()
+    await page.mouse.move(vpnL1Box.x, vpnL1Box.y + vpnL1Box.height / 2, { steps: 20 })
+    await page.waitForTimeout(200)
+    await page.mouse.up()
+    await page.waitForTimeout(600)
+  }
+
+  const vpnRh2Box = await vpnRouteHandles.nth(1).boundingBox({ timeout: 5000 }).catch(() => null)
+  const vpnL2Box = await vpnLambdas.nth(1).boundingBox()
+  if (vpnRh2Box && vpnL2Box) {
+    await page.mouse.move(vpnRh2Box.x + vpnRh2Box.width / 2, vpnRh2Box.y + vpnRh2Box.height / 2)
+    await page.waitForTimeout(200)
+    await page.mouse.down()
+    await page.mouse.move(vpnL2Box.x, vpnL2Box.y + vpnL2Box.height / 2, { steps: 20 })
+    await page.waitForTimeout(200)
+    await page.mouse.up()
+    await page.waitForTimeout(600)
+  }
+
+  await connectHandleToHandle(
+    page,
+    vpnNode.locator('.react-flow__handle').nth(1),
+    vpnApiNode.locator('.react-flow__handle').first(),
+  )
+
+  await assertNodesInsideContainer(vpcNode, [
+    { locator: vpnApiNode, name: 'API Gateway' },
+    { locator: vpnLambda1, name: 'Lambda 1' },
+    { locator: vpnLambdas.nth(1), name: 'Lambda 2' },
+  ])
+
+  await addNodeBySearch(page, 'Mobile')
+  const mobileNode = page.locator('.react-flow__node').filter({ hasText: /^Mobile$/i }).first()
+  await mobileNode.waitFor({ state: 'visible', timeout: 8000 })
+  await positionNode(page, mobileNode, vpcBox.x - 285, vpcCenterY)
 
   await page.mouse.click(960, 180)
   await page.waitForTimeout(400)
@@ -205,16 +383,18 @@ async function main() {
   // Shot 1: both nodes disconnected
   await shot(page, 'vpn-gateway', 'before-connect.png')
 
-  const ec2Box = await ec2Node.boundingBox()
+  const mobileBox = await mobileNode.boundingBox()
   const vpnBox = await vpnNode.boundingBox()
+  const mobileRightHandleBox = await mobileNode.locator('.react-flow__handle').nth(1).boundingBox({ timeout: 5000 }).catch(() => null)
+  const vpnLeftHandleBox = await vpnNode.locator('.react-flow__handle').first().boundingBox({ timeout: 5000 }).catch(() => null)
 
-  if (ec2Box && vpnBox) {
-    const srcX = ec2Box.x + ec2Box.width
-    const srcY = ec2Box.y + ec2Box.height / 2
-    const tgtX = vpnBox.x + vpnBox.width / 2
-    const tgtY = vpnBox.y + vpnBox.height / 2
+  if (mobileBox && vpnBox && mobileRightHandleBox && vpnLeftHandleBox) {
+    const srcX = mobileRightHandleBox.x + mobileRightHandleBox.width / 2
+    const srcY = mobileRightHandleBox.y + mobileRightHandleBox.height / 2
+    const tgtX = vpnLeftHandleBox.x + vpnLeftHandleBox.width / 2
+    const tgtY = vpnLeftHandleBox.y + vpnLeftHandleBox.height / 2
 
-    await page.mouse.move(ec2Box.x + ec2Box.width / 2, srcY)
+    await page.mouse.move(mobileBox.x + mobileBox.width / 2, srcY)
     await page.waitForTimeout(300)
     await page.mouse.move(srcX, srcY)
     await page.waitForTimeout(300)
@@ -241,7 +421,7 @@ async function main() {
   await page.waitForTimeout(400)
   await page.mouse.move(960, 180)
 
-  // Shot 3: Customer Gateway icon on EC2's handle
+  // Shot 3: Customer Gateway icon on Mobile's handle
   await shot(page, 'vpn-gateway', 'customer-gateway.png')
 
   // ── Validate ──────────────────────────────────────────────────────────

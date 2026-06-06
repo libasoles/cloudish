@@ -361,11 +361,14 @@ Cada tutorial tiene **2-3 secciones principales** (`<h2>`), cada una con:
 
 **Por qué**: la jerarquía visual (nodo dentro del contenedor) es el punto central del tutorial — si el nodo aparece fuera del contenedor, el usuario no entiende qué se está enseñando.
 
+**Gateways de borde**: los nodos circulares <strong>Internet Gateway</strong>, <strong>VPN Gateway</strong> y <strong>NAT Gateway</strong> se colocan sobre el borde del contenedor al que pertenecen, no completamente dentro ni completamente fuera. La captura debe mostrar el gateway montado en el borde (por ejemplo, un VPN Gateway centrado verticalmente en el borde izquierdo de una VPC) para comunicar que es el punto de entrada/salida de red.
+
 **En el script de screenshots** (`scripts/take-screenshots.ts`):
 
 - Después de agregar un nodo, **arrastrarlo explícitamente dentro del contenedor destino** usando `page.mouse.move()` y `page.mouse.down/up()`
 - Esperar a que el nodo se registre dentro del contenedor (pueden haber animaciones de sincronización)
 - Capturar la imagen **solo cuando el nodo esté claramente dentro del contenedor** (borders del contenedor envuelven al nodo)
+- Para Internet Gateway, VPN Gateway y NAT Gateway, arrastrar el centro del nodo al borde del contenedor deseado y verificar que quede visualmente apoyado sobre ese borde, centrado respecto del flujo que representa.
 
 **Ejemplo:** Para la sección "Sincronización de AZs", agregar EC2 → arrastrarlo dentro de AZ 1 → capturar → esto muestra la estructura jerárquica correctamente.
 
