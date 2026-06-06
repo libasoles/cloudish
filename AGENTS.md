@@ -195,3 +195,12 @@ All agents must work in a dedicated git worktree to avoid conflicts with other A
   ```
 
 - If another agent's worktree already exists for the same feature, coordinate with the human before creating a new one — do not overwrite in-progress work.
+
+## Pull Requests
+
+Creating a pull request is mandatory for every completed task, even when the change is small or the agent is allowed to approve it without human review.
+
+- Every PR must include a clear description of what changed, why it changed, and how it was verified.
+- Add relevant PR comments for future reference when implementation details, tradeoffs, follow-up work, or verification notes are useful to preserve.
+- Include screenshots for UI, documentation, tutorial, or visual changes. Use before/after screenshots when they help future reviewers understand the change.
+- Agents may create and approve their own PRs without waiting for review, but the PR record must still exist before the task is considered complete.
