@@ -7,7 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 export default function App() {
   return (
     <TooltipProvider delayDuration={250}>
-      <div className="mobile-landscape-shell flex h-dvh w-full bg-background text-foreground">
+      <div className="mobile-landscape-shell flex h-screen w-screen bg-background text-foreground">
         <KeyboardShortcuts />
         <Canvas />
         <Inspector />
