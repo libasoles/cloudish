@@ -24,6 +24,7 @@ import { ContainerInspectorRouter } from "@/components/inspector/ContainerInspec
 import { EdgeInspectorPanel } from "@/components/inspector/EdgeInspectorPanel";
 import { PlainTextInspectorPanel } from "@/components/inspector/PlainTextInspectorPanel";
 import { AwsServiceInspectorPanel } from "@/components/inspector/AwsServiceInspectorPanel";
+import { ApiGatewayInspectorPanel } from "@/components/inspector/ApiGatewayInspectorPanel";
 import { NoOptionsInspectorPanel } from "@/components/inspector/NoOptionsInspectorPanel";
 import { SavedProjectsList } from "@/components/inspector/SavedProjectsList";
 const AuthDialog = lazy(() => import("@/components/AuthDialog"));
@@ -111,6 +112,8 @@ export default function Inspector() {
               node={selectedNode}
               containerType={selectedContainerType}
             />
+          ) : selectedAwsNode && selectedAwsNode.data.serviceId === "api-gateway" ? (
+            <ApiGatewayInspectorPanel node={selectedAwsNode} key={selectedAwsNode.id} />
           ) : selectedAwsNode ? (
             <AwsServiceInspectorPanel node={selectedAwsNode} />
           ) : selectedNode ? (

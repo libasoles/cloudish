@@ -40,6 +40,22 @@ export type FlowPosition = {
 
 export type FlowViewport = Viewport;
 
+export type HttpMethod =
+  | "GET"
+  | "POST"
+  | "PUT"
+  | "DELETE"
+  | "PATCH"
+  | "HEAD"
+  | "OPTIONS"
+  | "ANY";
+
+export type ApiGatewayRoute = {
+  id: string;
+  method: HttpMethod;
+  path: string;
+};
+
 export type AzSyncRole = "source" | "mirror";
 
 export type AzSyncNodeData = {

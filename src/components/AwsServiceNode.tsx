@@ -8,6 +8,7 @@ import { updateSyncedNodeGroup } from "@/lib/az-sync";
 import { getCustomerGatewayHandleIds } from "@/lib/vpn-gateway-edges";
 import { useFlowStore } from "@/store/flowStore";
 import { UI_TEXT, getBrowserLocale } from "@/i18n";
+import type { ApiGatewayRoute } from "@/types/flow";
 
 const VPN_HANDLE_BASE: React.CSSProperties = {
   display: "flex",
@@ -30,6 +31,7 @@ export type AwsServiceNodeData = {
   description?: string;
   fields?: Record<string, string | boolean | number>;
   pulseKey?: string;
+  routes?: ApiGatewayRoute[];
 };
 
 export type AwsServiceNodeType = Node<AwsServiceNodeData, "awsService">;
@@ -144,6 +146,85 @@ export default function AwsServiceNode({
           className="text-white"
           onCommit={renameNode}
         />
+      </div>
+    );
+  }
+
+  if (data.serviceId === "api-gateway") {
+    const visibleRoutes = (data.routes ?? []).filter((r) => r.path.trim() !== "");
+    return (
+      <div
+        className={cn(
+          "flex flex-col bg-white rounded-xl border-2 shadow-sm min-w-36",
+          data.pulseKey && "node-click-pulse",
+          selected
+            ? "border-blue-500 shadow-md ring-2 ring-primary ring-offset-4 ring-offset-background"
+            : "border-gray-200",
+        )}
+      >
+        <Handle
+          type="source"
+          position={Position.Left}
+          id="left"
+          className={vpnHandleClassName("left")}
+          style={vpnHandleStyle("left")}
+        />
+        <Handle
+          type="source"
+          position={Position.Right}
+          id="right"
+          className={vpnHandleClassName("right")}
+          style={{ top: 28, ...vpnHandleStyle("right") }}
+        />
+        <Handle
+          type="source"
+          position={Position.Top}
+          id="top"
+          className={vpnHandleClassName("top", "handle-vertical")}
+          style={vpnHandleStyle("top")}
+        />
+        <Handle
+          type="source"
+          position={Position.Bottom}
+          id="bottom"
+          className={vpnHandleClassName("bottom", "handle-vertical")}
+          style={vpnHandleStyle("bottom")}
+        />
+        <div className="flex flex-col items-center gap-1 px-3 py-2">
+          <AwsServiceIcon
+            slug={data.slug}
+            category={data.category}
+            name={data.name}
+            size={40}
+          />
+          <EditableNodeLabel
+            value={data.name}
+            editLabel={t.editNodeName}
+            onCommit={renameNode}
+          />
+        </div>
+        {visibleRoutes.length > 0 && (
+          <div className="border-t border-gray-100 divide-y divide-gray-100">
+            {visibleRoutes.map((route) => (
+              <div
+                key={route.id}
+                className="relative flex items-center gap-1.5 px-3 py-1.5"
+              >
+                <span className="text-xs font-semibold text-violet-600">
+                  {route.method}
+                </span>
+                <span className="text-xs text-gray-600 font-mono truncate">
+                  {route.path}
+                </span>
+                <Handle
+                  type="source"
+                  position={Position.Right}
+                  id={`route-${route.id}`}
+                />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     );
   }

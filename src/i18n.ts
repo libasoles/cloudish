@@ -162,6 +162,10 @@ export const UI_TEXT = {
     savedProjectsEmpty: "No saved architectures yet.",
     savedProjectsError: "Could not load projects.",
     loadProject: "Load",
+    apiGatewayRoutes: "Routes",
+    apiGatewayAddRoute: "Add route",
+    apiGatewayRemoveRoute: "Remove route",
+    apiGatewayRoutePathPlaceholder: "/path",
   },
   es: {
     dragAndDrop: APP_TITLE,
@@ -315,6 +319,10 @@ export const UI_TEXT = {
     savedProjectsEmpty: "Aún no tienes arquitecturas guardadas.",
     savedProjectsError: "No se pudieron cargar los proyectos.",
     loadProject: "Cargar",
+    apiGatewayRoutes: "Rutas",
+    apiGatewayAddRoute: "Agregar ruta",
+    apiGatewayRemoveRoute: "Eliminar ruta",
+    apiGatewayRoutePathPlaceholder: "/path",
   },
 } as const;
 
