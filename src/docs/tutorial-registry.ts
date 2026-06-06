@@ -21,6 +21,7 @@ export const TUTORIAL_LAZY_MAP: Record<string, LazyComponent> = {
   'selection': lazy(() => import('./tutorials/selection')),
   'keyboard-shortcuts': lazy(() => import('./tutorials/keyboard-shortcuts')),
   'edge-inspector': lazy(() => import('./tutorials/edge-inspector')),
+  'special-nodes': lazy(() => import('./tutorials/special-nodes')),
 }
 
 export const TUTORIALS: TutorialMeta[] = [
@@ -70,6 +71,15 @@ export const TUTORIALS: TutorialMeta[] = [
     sections: [
       { id: 'abrir-inspector-conexion', title: 'Abrir el inspector de una conexión' },
       { id: 'estilo-de-linea', title: 'Estilo de línea' },
+    ],
+  },
+  {
+    id: 'special-nodes',
+    title: 'Nodos especiales',
+    description: 'API Gateway con rutas HTTP por handle y VPN Gateway con Customer Gateway.',
+    sections: [
+      { id: 'api-gateway-rutas', title: 'API Gateway: rutas HTTP' },
+      { id: 'vpn-gateway-conexion', title: 'VPN Gateway y Customer Gateway' },
     ],
   },
 ]

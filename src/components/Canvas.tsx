@@ -525,8 +525,8 @@ export default function Canvas() {
 
   const handleExportImage = useCallback(async () => {
     const { exportFlowAsImage } = await import("@/lib/export/image");
-    await exportFlowAsImage(nodes, projectName ?? "architecture");
-  }, [nodes, projectName]);
+    await exportFlowAsImage(nodes, edges, projectName ?? "architecture");
+  }, [nodes, edges, projectName]);
 
   const handleSave = useCallback(async () => {
     const currentViewport = reactFlowInstance?.getViewport() ?? viewport;

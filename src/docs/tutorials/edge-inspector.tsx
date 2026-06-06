@@ -1,5 +1,16 @@
+import { Carousel } from "../Carousel";
+
 function Tip({ children }: { children: React.ReactNode }) {
   return <div className="tip">{children}</div>;
+}
+
+function Figure({ src, alt, caption }: { src: string; alt: string; caption?: string }) {
+  return (
+    <figure className="figure">
+      <img src={src} alt={alt} loading="lazy" />
+      {caption && <figcaption>{caption}</figcaption>}
+    </figure>
+  );
 }
 
 export default function EdgeInspector() {
@@ -16,13 +27,27 @@ export default function EdgeInspector() {
         El panel derecho mostrará las opciones de esa conexión: etiqueta,
         dirección de flechas y estilo de línea.
       </p>
+      <Carousel
+        slides={[
+          {
+            src: "/docs/screenshots/edge-inspector/click-edge.png",
+            alt: "Cursor haciendo clic sobre una conexión entre EC2 y RDS",
+          },
+          {
+            src: "/docs/screenshots/edge-inspector/inspector-open.png",
+            alt: "Inspector abierto después de seleccionar una conexión",
+          },
+        ]}
+        caption="Haz clic sobre una conexión para abrir sus opciones en el inspector"
+      />
 
       {/* ── 2. Estilo de línea ───────────────────────────────── */}
       <h2 id="estilo-de-linea">Estilo de línea</h2>
       <p>
         La sección <strong>Estilo de línea</strong> del inspector ofrece tres
         modos de visualización para cada conexión. Solo uno puede estar activo a
-        la vez.
+        la vez. Los botones se encuentran en el panel derecho cuando el edge está
+        seleccionado.
       </p>
 
       <h3>Sólida</h3>
@@ -31,6 +56,11 @@ export default function EdgeInspector() {
         estilo por defecto de todas las conexiones nuevas. Úsalo para representar
         flujos estables o relaciones directas entre servicios.
       </p>
+      <Figure
+        src="/docs/screenshots/edge-inspector/line-solid.png"
+        alt="Inspector mostrando estilo de línea Sólida"
+        caption="Estilo Sólida: línea continua (defecto)"
+      />
 
       <h3>Punteada</h3>
       <p>
@@ -38,6 +68,11 @@ export default function EdgeInspector() {
         conexiones opcionales, flujos secundarios o dependencias débiles —por
         ejemplo, una ruta de fallback o un enlace de solo lectura.
       </p>
+      <Figure
+        src="/docs/screenshots/edge-inspector/line-dashed.png"
+        alt="Inspector mostrando estilo de línea Punteada"
+        caption="Estilo Punteada: línea discontinua"
+      />
 
       <h3>Animada</h3>
       <p>
@@ -46,6 +81,11 @@ export default function EdgeInspector() {
         de datos, peticiones en tiempo real, o tráfico principal de la
         arquitectura.
       </p>
+      <Figure
+        src="/docs/screenshots/edge-inspector/line-animated.png"
+        alt="Inspector mostrando estilo de línea Animada"
+        caption="Estilo Animada: línea con flujo continuo"
+      />
       <Tip>
         Al activar la animación, el estilo punteado se desactiva automáticamente
         — y viceversa. Los tres modos son excluyentes entre sí.

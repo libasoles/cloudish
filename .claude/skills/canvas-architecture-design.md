@@ -15,6 +15,14 @@ Use this skill whenever the user asks to model, draw, or update an AWS architect
 
 ---
 
+## FORBIDDEN: Self-loops
+
+**NEVER create an edge where `source === target`** (connecting a node to itself). This is architecturally invalid and creates confusing visualizations.
+
+When creating test diagrams or automating node creation, **always verify that source and target are different nodes** before connecting them. If you are automating and accidentally create a self-loop, immediately delete it.
+
+---
+
 ## Self-update instructions
 
 After each interaction that teaches something new about this tool or AWS design:
@@ -156,20 +164,55 @@ To add a new circular service:
 When both horizontal and vertical offsets exist, pick the **dominant direction** (larger delta).
 `NetworkContainerNode` has no explicit handles — omit `targetHandle` for container targets.
 
-### 3. No overlap
+### 3. Resizable containers must fully bound their children
+
+**CRITICAL:** Network containers (VPC, AZ, subnet, ASG) are resizable via `NodeResizeControl`. You must always resize and reposition them so they **completely enclose all child nodes** with appropriate margins.
+
+**Common mistake:** A container's bounding box extends only partway down or across its children, leaving child nodes partially outside. This breaks the visual hierarchy and confuses the architecture.
+
+**How to fix:**
+
+1. Calculate the rightmost and bottommost position of all children: `max_x = max(child.position.x + child_width) + margin_right`
+2. Set the container's `style.width` to fit all children horizontally with padding (typically 20–30 px per side)
+3. Set the container's `style.height` to fit all children vertically with padding
+4. Reposition the container (`position.x`, `position.y`) if needed so children stay within bounds (recall: child positions are relative to parent)
+
+**Example — what NOT to do:**
+
+```
+VPC (too narrow, doesn't wrap API Gateway + Lambda children)
+├─ API Gateway (partially outside right edge)
+├─ Lambda (mostly outside right edge)
+```
+
+**Always validate before committing:**
+
+- For each container child: `child.position.x + child_width ≤ container.style.width - right_margin`
+- For each container child: `child.position.y + child_height ≤ container.style.height - bottom_margin`
+
+### 4. No overlap
+
 - Leave ≥ 40 px vertical gap between stacked nodes (e.g. IGW → ALB → AZ).
 - Account for circular nodes being **~90 px tall**, not 56 px.
 - Container label chips extend ~12 px **above** the container border — factor this into spacing.
 
-### 4. Fill available space — no dead zones
+### 5. Fill available space — no dead zones
+
 - Derive heights top-down: `container_height = sum_of_children + margins`.
 - If a VPC header holds IGW + ALB above AZs, allocate only the space those nodes occupy (+ 40 px margins), then start the AZs immediately after.
 - Containers should look "full" — avoid large blank strips at the bottom.
 
-### 5. Position support services for short edges
+### 6. Position support services for short edges
+
 - **S3**: below the region, x-aligned with the EC2 nodes that write to it → EC2→S3 edge goes straight down.
 - **CloudWatch**: below the region, x-centered between the AZs it monitors.
 - **Route 53 / internet clients**: to the left of the region, y-centered with IGW/ALB they connect to.
+
+### 7. Place network gateways on container borders
+
+- **Internet Gateway**, **VPN Gateway**, and **NAT Gateway** are border nodes: place their center on the edge of the container they belong to, not fully inside and not fully outside.
+- Use the border that matches the traffic direction. For external ingress from the left, put the gateway on the left VPC edge and center it vertically against the flow.
+- For a VPN example, place the VPN Gateway centered on the VPC's left border, put the external client (for example Mobile) outside the VPC to the left, connect the VPN Gateway to the internal entry service, and keep internal services such as API Gateway and Lambdas visually inside the VPC.
 
 ---
 

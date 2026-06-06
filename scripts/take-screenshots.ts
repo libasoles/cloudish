@@ -16,6 +16,9 @@
  * - add-to-selection/
  * - alignment/
  * - multiple-edges/
+ * - api-gateway/
+ * - vpn-gateway/
+ * - edge-inspector/
  */
 
 import { chromium, type Locator, type Page } from 'playwright'
@@ -36,10 +39,35 @@ async function shot(page: Page, subdir: string, name: string) {
   console.log(`  ✓ ${subdir}/${name}`)
 }
 
+async function shotLocator(locator: Locator, subdir: string, name: string) {
+  const dir = path.join(SCREENSHOTS_DIR, subdir)
+  fs.mkdirSync(dir, { recursive: true })
+  const dest = path.join(dir, name)
+  await locator.screenshot({ path: dest })
+  console.log(`  ✓ ${subdir}/${name}`)
+}
+
 async function loadApp(page: Page) {
   await page.goto(BASE_URL, { waitUntil: 'networkidle', timeout: 30000 })
   await page.waitForSelector('.react-flow__pane', { timeout: 20000 })
   await page.waitForTimeout(1200)
+}
+
+async function addNodeBySearch(page: Page, query: string): Promise<void> {
+  await page.click('.react-flow__pane')
+  await page.waitForTimeout(300)
+  await page.keyboard.press('Meta+k')
+  await page.waitForTimeout(500)
+
+  const searchInput = page.locator('input[placeholder*="uscar"]').first()
+  await searchInput.waitFor({ state: 'visible', timeout: 6000 })
+  await searchInput.fill(query)
+  await page.waitForTimeout(700)
+
+  const firstResult = page.locator('ul.absolute li').first()
+  await firstResult.waitFor({ state: 'visible', timeout: 5000 })
+  await firstResult.click()
+  await page.waitForTimeout(800)
 }
 
 async function addNodeBySidebarClick(page: Page, index = 0) {
@@ -209,10 +237,210 @@ async function positionNodeLocatorAt(page: Page, node: Locator, targetX: number,
   await page.waitForTimeout(500)
 }
 
+async function resizeContainerNodeLocator(
+  page: Page,
+  node: Locator,
+  targetWidth: number,
+  targetHeight: number,
+) {
+  await node.click({ force: true })
+  await page.waitForTimeout(300)
+
+  const bbox = await node.boundingBox()
+  if (!bbox) {
+    throw new Error('Container was not visible for resize')
+  }
+
+  const bottomRightHandle = node
+    .locator('.react-flow__resize-control.handle.bottom.right')
+    .first()
+  const handleBox = await bottomRightHandle.boundingBox({ timeout: 5000 })
+  if (!handleBox) {
+    throw new Error('Bottom-right resize handle was not visible')
+  }
+
+  await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2)
+  await page.waitForTimeout(100)
+  await page.mouse.down()
+  await page.mouse.move(
+    handleBox.x + handleBox.width / 2 + targetWidth - bbox.width,
+    handleBox.y + handleBox.height / 2 + targetHeight - bbox.height,
+    { steps: 18 },
+  )
+  await page.waitForTimeout(150)
+  await page.mouse.up()
+  await page.waitForTimeout(600)
+}
+
+async function assertNodesInsideContainer(
+  container: Locator,
+  innerNodes: Array<{ locator: Locator; name: string }>,
+) {
+  const containerBox = await container.boundingBox()
+  if (!containerBox) {
+    throw new Error('Container was not visible for inside-container validation')
+  }
+
+  const margin = 8
+  for (const { locator, name } of innerNodes) {
+    const nodeBox = await locator.boundingBox()
+    if (!nodeBox) {
+      throw new Error(`${name} was not visible for inside-container validation`)
+    }
+
+    const isInside =
+      nodeBox.x >= containerBox.x + margin &&
+      nodeBox.y >= containerBox.y + margin &&
+      nodeBox.x + nodeBox.width <= containerBox.x + containerBox.width - margin &&
+      nodeBox.y + nodeBox.height <= containerBox.y + containerBox.height - margin
+
+    if (!isInside) {
+      throw new Error(`${name} is not fully inside the VPC container`)
+    }
+  }
+}
+
+async function connectHandleToHandle(
+  page: Page,
+  sourceHandle: Locator,
+  targetHandle: Locator,
+) {
+  const sourceBox = await sourceHandle.boundingBox({ timeout: 5000 })
+  const targetBox = await targetHandle.boundingBox({ timeout: 5000 })
+
+  if (!sourceBox || !targetBox) {
+    throw new Error('Could not find handles to connect nodes')
+  }
+
+  await page.mouse.move(sourceBox.x + sourceBox.width / 2, sourceBox.y + sourceBox.height / 2)
+  await page.waitForTimeout(200)
+  await page.mouse.down()
+  await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2, { steps: 20 })
+  await page.waitForTimeout(200)
+  await page.mouse.up()
+  await page.waitForTimeout(700)
+}
+
 async function clearCanvasSelection(page: Page) {
   await page.keyboard.press('Escape')
   await page.mouse.click(420, 920)
   await page.waitForTimeout(250)
+}
+
+async function createSimpleEc2ToRdsEdge(page: Page) {
+  await loadApp(page)
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(300)
+
+  await addNodeBySidebarClick(page, 8) // EC2
+  await page.waitForTimeout(400)
+  const nodes = page.locator('.react-flow__node')
+  await positionNodeLocatorAt(page, nodes.nth(0), 720, 480)
+
+  await page.mouse.click(960, 220)
+  await page.waitForTimeout(200)
+
+  await addNodeBySidebarClick(page, 12) // RDS
+  await page.waitForTimeout(400)
+  await positionNodeLocatorAt(page, nodes.nth(1), 1180, 480)
+
+  await page.mouse.click(960, 220)
+  await page.waitForTimeout(200)
+
+  const ec2Node = nodes.nth(0)
+  const rdsNode = nodes.nth(1)
+  const ec2Box = await ec2Node.boundingBox()
+  const rdsBox = await rdsNode.boundingBox()
+  if (!ec2Box || !rdsBox) {
+    throw new Error('Could not position EC2 and RDS nodes for edge inspector screenshots')
+  }
+
+  const sourceX = ec2Box.x + ec2Box.width
+  const sourceY = ec2Box.y + ec2Box.height / 2
+  const targetX = rdsBox.x
+  const targetY = rdsBox.y + rdsBox.height / 2
+
+  await page.mouse.move(ec2Box.x + ec2Box.width / 2, ec2Box.y + ec2Box.height / 2)
+  await page.waitForTimeout(300)
+  await page.mouse.move(sourceX, sourceY)
+  await page.waitForTimeout(300)
+  await page.mouse.down()
+  await page.mouse.move(targetX, targetY, { steps: 30 })
+  await page.waitForTimeout(200)
+  await page.mouse.up()
+  await page.waitForTimeout(800)
+
+  await page.waitForFunction(
+    () => document.querySelectorAll('.react-flow__edge-path').length > 0,
+    undefined,
+    { timeout: 5000 },
+  )
+}
+
+async function selectFirstEdge(page: Page) {
+  const edgePath = page.locator('.react-flow__edge-path').first()
+  const edgeBox = await edgePath.boundingBox({ timeout: 5000 })
+  if (!edgeBox) {
+    throw new Error('Could not find edge path for edge inspector screenshots')
+  }
+
+  const clickX = edgeBox.x + edgeBox.width / 2
+  const clickY = edgeBox.y + edgeBox.height / 2
+  await addClickIndicator(page, clickX, clickY)
+  await addMouseCursor(page, clickX - 8, clickY - 8)
+  await page.waitForTimeout(250)
+  await shot(page, 'edge-inspector', 'click-edge.png')
+  await removeClickIndicator(page)
+  await removeMouseCursor(page)
+
+  await page.mouse.click(clickX, clickY)
+  await page.waitForTimeout(600)
+  await page.getByText('Estilo de línea').waitFor({ state: 'visible', timeout: 5000 })
+  await shot(page, 'edge-inspector', 'inspector-open.png')
+}
+
+function getLineStyleSection(page: Page) {
+  return page
+    .getByText('Estilo de línea', { exact: true })
+    .locator('xpath=ancestor::div[contains(@class, "grid")][1]')
+}
+
+async function captureEdgeInspectorScreenshots(page: Page) {
+  await createSimpleEc2ToRdsEdge(page)
+  await selectFirstEdge(page)
+
+  const lineStyleSection = getLineStyleSection(page)
+  await lineStyleSection.waitFor({ state: 'visible', timeout: 5000 })
+  await shotLocator(lineStyleSection, 'edge-inspector', 'line-solid.png')
+
+  await page.getByRole('button', { name: 'Línea punteada' }).click()
+  await page.waitForTimeout(300)
+  await shotLocator(lineStyleSection, 'edge-inspector', 'line-dashed.png')
+
+  await page.getByRole('button', { name: 'Activar animación' }).click()
+  await page.waitForTimeout(300)
+  await shotLocator(lineStyleSection, 'edge-inspector', 'line-animated.png')
+}
+
+async function validateTutorialImages(page: Page, tutorialUrl: string) {
+  await page.goto(tutorialUrl, { waitUntil: 'networkidle', timeout: 30000 })
+  await page.waitForTimeout(2000)
+  await page.evaluate(() => {
+    window.scrollTo(0, document.body.scrollHeight)
+  })
+  await page.waitForTimeout(1000)
+
+  return page.evaluate(() => {
+    const images = document.querySelectorAll('img')
+    return Array.from(images)
+      .filter(img => img.naturalWidth === 0 || img.complete === false || img.src.includes('undefined'))
+      .map(img => ({
+        src: img.src,
+        alt: img.alt,
+        naturalWidth: img.naturalWidth,
+        complete: img.complete,
+      }))
+  })
 }
 
 function getNodeClickPoint(bbox: { x: number; y: number; width: number; height: number }) {
@@ -237,6 +465,31 @@ async function main() {
   const page = await context.newPage()
 
   page.on('dialog', d => d.dismiss())
+
+  if (process.env.SCREENSHOT_ONLY === 'edge-inspector') {
+    console.log('Capturing edge-inspector screenshots...\n')
+    await captureEdgeInspectorScreenshots(page)
+
+    const tutorialPage = await context.newPage()
+    const brokenImages = await validateTutorialImages(
+      tutorialPage,
+      `${BASE_URL}/docs/edge-inspector`,
+    )
+    await tutorialPage.close()
+    await browser.close()
+
+    if (brokenImages.length > 0) {
+      console.error('\n❌ edge-inspector has broken image references:')
+      brokenImages.forEach(img => {
+        console.error(`  - ${img.src}`)
+        console.error(`    alt: "${img.alt}" | width: ${img.naturalWidth} | complete: ${img.complete}`)
+      })
+      process.exit(1)
+    }
+
+    console.log('\n✅ edge-inspector screenshots saved and validated successfully')
+    return
+  }
 
   console.log('Starting screenshot capture...\n')
   await loadApp(page)
@@ -487,6 +740,7 @@ async function main() {
 
   // ── az-sync: Sync OFF → ON (2 steps) ───────────────────────────────
   console.log('7/11 AZ sync...')
+  try {
   await loadApp(page)
   await page.keyboard.press('Escape')
   await page.waitForTimeout(300)
@@ -571,6 +825,9 @@ async function main() {
   }
 
   await shot(page, 'az-sync', 'on.png')
+  } catch {
+    console.log('  ⚠ az-sync step failed, skipping')
+  }
 
   // ── shift-click: Multi-select by shift+click ───────────────────────
   console.log('8/11 Shift+click...')
@@ -856,8 +1113,287 @@ async function main() {
   await page.locator('.react-flow__edge').nth(2).waitFor({ state: 'visible', timeout: 5000 })
   await shot(page, 'multiple-edges', 'selected-to-rds.png')
 
+  // ── api-gateway: routes (4 shots) ──────────────────────────────────
+  console.log('13/15 API Gateway routes...')
+  await loadApp(page)
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(500)
+
+  // Click canvas to ensure keyboard focus before shortcut
+  await page.click('.react-flow__pane')
+  await page.waitForTimeout(300)
+
+  // Open search and add API Gateway
+  await page.keyboard.press('Meta+k')
+  await page.waitForTimeout(600)
+  const agSearchInput = page.locator('input[placeholder*="uscar"]').first()
+  await agSearchInput.waitFor({ state: 'visible', timeout: 5000 })
+  await agSearchInput.fill('api')
+  await page.waitForTimeout(700)
+  // Navigate to first result and add it
+  await page.keyboard.press('ArrowDown')
+  await page.waitForTimeout(200)
+  await page.keyboard.press('Enter')
+  await page.waitForTimeout(1000)
+
+  // Find the API Gateway node by text
+  const agNode = page.locator('.react-flow__node').filter({ hasText: /api gateway/i }).first()
+  await agNode.waitFor({ state: 'visible', timeout: 10000 })
+  await positionNodeLocatorAt(page, agNode, 750, 420)
+
+  // Click empty canvas to deselect
+  await page.mouse.click(300, 180)
+  await page.waitForTimeout(300)
+
+  // Click node to open inspector
+  await agNode.click({ force: true })
+  await page.waitForTimeout(800)
+
+  // Shot 1: inspector with empty default routes (GET + POST)
+  await page.mouse.move(1200, 700)
+  await shot(page, 'api-gateway', 'inspector-empty.png')
+
+  // Fill route 1: GET /users
+  const pathInputs = page.locator('input[placeholder="/path"]')
+  await pathInputs.first().waitFor({ state: 'visible', timeout: 5000 })
+  await pathInputs.nth(0).fill('/users')
+  await pathInputs.nth(0).dispatchEvent('input')
+  await page.waitForTimeout(300)
+
+  // Fill route 2: POST /orders (already POST by default)
+  await pathInputs.nth(1).fill('/orders')
+  await pathInputs.nth(1).dispatchEvent('input')
+  await page.waitForTimeout(300)
+
+  // Shot 2: inspector with routes filled
+  await page.mouse.move(1200, 700)
+  await shot(page, 'api-gateway', 'inspector-filled.png')
+
+  // Deselect
+  await page.mouse.click(300, 180)
+  await page.waitForTimeout(400)
+  await page.mouse.move(300, 180)
+
+  // Shot 3: node card showing route rows
+  await shot(page, 'api-gateway', 'node-with-routes.png')
+
+  // Add Lambda 1 via search
+  await page.keyboard.press('Meta+k')
+  await page.waitForTimeout(500)
+  const l1SearchInput = page.locator('input[placeholder*="uscar"]').first()
+  if (await l1SearchInput.count() > 0) {
+    await l1SearchInput.fill('lambda')
+    await page.waitForTimeout(600)
+    await page.keyboard.press('Enter')
+    await page.waitForTimeout(600)
+  }
+  const agLambda1 = page.locator('.react-flow__node').filter({ hasText: /lambda/i }).first()
+  await agLambda1.waitFor({ state: 'visible', timeout: 5000 })
+  await positionNodeLocatorAt(page, agLambda1, 1150, 330)
+
+  // Add Lambda 2 via search
+  await page.keyboard.press('Meta+k')
+  await page.waitForTimeout(500)
+  const l2SearchInput = page.locator('input[placeholder*="uscar"]').first()
+  if (await l2SearchInput.count() > 0) {
+    await l2SearchInput.fill('lambda')
+    await page.waitForTimeout(600)
+    await page.keyboard.press('Enter')
+    await page.waitForTimeout(600)
+  }
+  const agLambdaNodes = page.locator('.react-flow__node').filter({ hasText: /lambda/i })
+  await agLambdaNodes.nth(1).waitFor({ state: 'visible', timeout: 5000 })
+  await positionNodeLocatorAt(page, agLambdaNodes.nth(1), 1150, 540)
+
+  await page.mouse.click(300, 180)
+  await page.waitForTimeout(400)
+
+  // Connect each route handle to a Lambda
+  const routeHandles = page.locator('.react-flow__handle[data-handleid^="route-"]')
+  const l1Box = await agLambda1.boundingBox()
+  const rh1Box = await routeHandles.nth(0).boundingBox({ timeout: 5000 }).catch(() => null)
+  if (rh1Box && l1Box) {
+    await page.mouse.move(rh1Box.x + rh1Box.width / 2, rh1Box.y + rh1Box.height / 2)
+    await page.waitForTimeout(200)
+    await page.mouse.down()
+    await page.mouse.move(l1Box.x, l1Box.y + l1Box.height / 2, { steps: 20 })
+    await page.waitForTimeout(200)
+    await page.mouse.up()
+    await page.waitForTimeout(600)
+  }
+
+  const l2Box = await agLambdaNodes.nth(1).boundingBox()
+  const rh2Box = await routeHandles.nth(1).boundingBox({ timeout: 5000 }).catch(() => null)
+  if (rh2Box && l2Box) {
+    await page.mouse.move(rh2Box.x + rh2Box.width / 2, rh2Box.y + rh2Box.height / 2)
+    await page.waitForTimeout(200)
+    await page.mouse.down()
+    await page.mouse.move(l2Box.x, l2Box.y + l2Box.height / 2, { steps: 20 })
+    await page.waitForTimeout(200)
+    await page.mouse.up()
+    await page.waitForTimeout(600)
+  }
+
+  await page.mouse.click(300, 180)
+  await page.waitForTimeout(400)
+  await page.mouse.move(300, 180)
+
+  // Shot 4: routes connected to Lambda nodes
+  await shot(page, 'api-gateway', 'routes-connected.png')
+
+  // ── vpn-gateway: Customer Gateway (3 shots) ─────────────────────────
+  console.log('14/15 VPN Gateway...')
+  await loadApp(page)
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(500)
+
+  await addNodeBySearch(page, 'VPN Gateway')
+  const vpnGwNode = page.locator('.react-flow__node').filter({ hasText: /vpn gateway/i }).first()
+  await vpnGwNode.waitFor({ state: 'visible', timeout: 8000 })
+
+  await addNodeBySidebarClick(page, 3)
+  const vpnVpcNode = page.locator('.react-flow__node').filter({ hasText: /^VPC$/i }).first()
+  await vpnVpcNode.waitFor({ state: 'visible', timeout: 8000 })
+  await positionNodeLocatorAt(page, vpnVpcNode, 930, 520)
+  await resizeContainerNodeLocator(page, vpnVpcNode, 820, 500)
+
+  const vpnVpcBox = await vpnVpcNode.boundingBox()
+  if (!vpnVpcBox) {
+    throw new Error('VPC node was not visible for VPN Gateway screenshots')
+  }
+
+  const vpnVpcLeft = vpnVpcBox.x
+  const vpnVpcCenterY = vpnVpcBox.y + vpnVpcBox.height / 2
+  await positionNodeLocatorAt(page, vpnGwNode, vpnVpcLeft - 42, vpnVpcCenterY)
+
+  await addNodeBySearch(page, 'API Gateway')
+  const vpnApiNode = page.locator('.react-flow__node').filter({ hasText: /api gateway/i }).first()
+  await vpnApiNode.waitFor({ state: 'visible', timeout: 8000 })
+  await positionNodeLocatorAt(page, vpnApiNode, vpnVpcBox.x + 300, vpnVpcBox.y + 250)
+
+  await vpnApiNode.click({ force: true })
+  await page.waitForTimeout(500)
+  const vpnPathInputs = page.locator('input[placeholder="/path"]')
+  await vpnPathInputs.first().waitFor({ state: 'visible', timeout: 5000 })
+  await vpnPathInputs.nth(0).fill('/profile')
+  await vpnPathInputs.nth(0).dispatchEvent('input')
+  await page.waitForTimeout(200)
+  await vpnPathInputs.nth(1).fill('/orders')
+  await vpnPathInputs.nth(1).dispatchEvent('input')
+  await page.waitForTimeout(200)
+
+  await page.mouse.click(360, 180)
+  await page.waitForTimeout(300)
+
+  await addNodeBySearch(page, 'Lambda')
+  const vpnLambda1 = page.locator('.react-flow__node').filter({ hasText: /lambda/i }).first()
+  await vpnLambda1.waitFor({ state: 'visible', timeout: 8000 })
+  await positionNodeLocatorAt(page, vpnLambda1, vpnVpcBox.x + 555, vpnVpcBox.y + 190)
+
+  await addNodeBySearch(page, 'Lambda')
+  const vpnLambdas = page.locator('.react-flow__node').filter({ hasText: /lambda/i })
+  await vpnLambdas.nth(1).waitFor({ state: 'visible', timeout: 8000 })
+  await positionNodeLocatorAt(page, vpnLambdas.nth(1), vpnVpcBox.x + 555, vpnVpcBox.y + 330)
+
+  await page.mouse.click(360, 180)
+  await page.waitForTimeout(300)
+
+  const vpnRouteHandles = page.locator('.react-flow__handle[data-handleid^="route-"]')
+  const vpnRh1Box = await vpnRouteHandles.nth(0).boundingBox({ timeout: 5000 }).catch(() => null)
+  const vpnL1Box = await vpnLambda1.boundingBox()
+  if (vpnRh1Box && vpnL1Box) {
+    await page.mouse.move(vpnRh1Box.x + vpnRh1Box.width / 2, vpnRh1Box.y + vpnRh1Box.height / 2)
+    await page.waitForTimeout(200)
+    await page.mouse.down()
+    await page.mouse.move(vpnL1Box.x, vpnL1Box.y + vpnL1Box.height / 2, { steps: 20 })
+    await page.waitForTimeout(200)
+    await page.mouse.up()
+    await page.waitForTimeout(600)
+  }
+
+  const vpnRh2Box = await vpnRouteHandles.nth(1).boundingBox({ timeout: 5000 }).catch(() => null)
+  const vpnL2Box = await vpnLambdas.nth(1).boundingBox()
+  if (vpnRh2Box && vpnL2Box) {
+    await page.mouse.move(vpnRh2Box.x + vpnRh2Box.width / 2, vpnRh2Box.y + vpnRh2Box.height / 2)
+    await page.waitForTimeout(200)
+    await page.mouse.down()
+    await page.mouse.move(vpnL2Box.x, vpnL2Box.y + vpnL2Box.height / 2, { steps: 20 })
+    await page.waitForTimeout(200)
+    await page.mouse.up()
+    await page.waitForTimeout(600)
+  }
+
+  await connectHandleToHandle(
+    page,
+    vpnGwNode.locator('.react-flow__handle').nth(1),
+    vpnApiNode.locator('.react-flow__handle').first(),
+  )
+
+  await assertNodesInsideContainer(vpnVpcNode, [
+    { locator: vpnApiNode, name: 'API Gateway' },
+    { locator: vpnLambda1, name: 'Lambda 1' },
+    { locator: vpnLambdas.nth(1), name: 'Lambda 2' },
+  ])
+
+  await addNodeBySearch(page, 'Mobile')
+  const mobileVpnNode = page.locator('.react-flow__node').filter({ hasText: /^Mobile$/i }).first()
+  await mobileVpnNode.waitFor({ state: 'visible', timeout: 8000 })
+  await positionNodeLocatorAt(page, mobileVpnNode, vpnVpcBox.x - 285, vpnVpcCenterY)
+
+  await page.mouse.click(960, 180)
+  await page.waitForTimeout(400)
+  await page.mouse.move(960, 180)
+
+  // Shot 1: both nodes disconnected
+  await shot(page, 'vpn-gateway', 'before-connect.png')
+
+  const mobileVpnBox = await mobileVpnNode.boundingBox()
+  const vpnGwBox = await vpnGwNode.boundingBox()
+  const mobileVpnRightHandleBox = await mobileVpnNode.locator('.react-flow__handle').nth(1).boundingBox({ timeout: 5000 }).catch(() => null)
+  const vpnGwLeftHandleBox = await vpnGwNode.locator('.react-flow__handle').first().boundingBox({ timeout: 5000 }).catch(() => null)
+
+  if (mobileVpnBox && vpnGwBox && mobileVpnRightHandleBox && vpnGwLeftHandleBox) {
+    const srcX = mobileVpnRightHandleBox.x + mobileVpnRightHandleBox.width / 2
+    const srcY = mobileVpnRightHandleBox.y + mobileVpnRightHandleBox.height / 2
+    const tgtX = vpnGwLeftHandleBox.x + vpnGwLeftHandleBox.width / 2
+    const tgtY = vpnGwLeftHandleBox.y + vpnGwLeftHandleBox.height / 2
+
+    // Hover over Mobile to reveal handle
+    await page.mouse.move(mobileVpnBox.x + mobileVpnBox.width / 2, srcY)
+    await page.waitForTimeout(300)
+    await page.mouse.move(srcX, srcY)
+    await page.waitForTimeout(300)
+
+    await page.mouse.down()
+    const nearTarget = getNearTargetPoint(srcX, srcY, tgtX, tgtY)
+    await page.mouse.move(nearTarget.x, nearTarget.y, { steps: 25 })
+    await page.waitForTimeout(300)
+    await addMouseCursor(page, nearTarget.x - 8, nearTarget.y - 8)
+    await page.waitForTimeout(300)
+
+    // Shot 2: edge in progress toward VPN Gateway
+    await shot(page, 'vpn-gateway', 'connecting.png')
+    await removeMouseCursor(page)
+
+    await page.mouse.move(tgtX, tgtY, { steps: 15 })
+    await page.waitForTimeout(300)
+    await page.mouse.up()
+    await page.waitForTimeout(800)
+  }
+
+  await page.mouse.click(960, 180)
+  await page.waitForTimeout(400)
+  await page.mouse.move(960, 180)
+
+  // Shot 3: Customer Gateway icon on Mobile's handle
+  await shot(page, 'vpn-gateway', 'customer-gateway.png')
+
+  // ── edge-inspector: click edge + line style options ────────────────
+  console.log('15/16 Edge inspector...')
+  await captureEdgeInspectorScreenshots(page)
+
   // ── Validate all images are working ────────────────────────────────
-  console.log('\n13/13 Validating all screenshot references...')
+  console.log('\n16/16 Validating all screenshot references...')
 
   // Wait for file system to sync before validation
   await page.waitForTimeout(2000)
@@ -866,6 +1402,8 @@ async function main() {
     `${BASE_URL}/docs/getting-started`,
     `${BASE_URL}/docs/hierarchical-containers`,
     `${BASE_URL}/docs/selection`,
+    `${BASE_URL}/docs/special-nodes`,
+    `${BASE_URL}/docs/edge-inspector`,
   ]
 
   let allImagesValid = true
@@ -874,30 +1412,7 @@ async function main() {
     const tutorialPage = await context.newPage()
     try {
       await tutorialPage.goto(tutorialUrl, { waitUntil: 'networkidle', timeout: 30000 })
-      // Wait for lazy-loaded images to appear and load
-      await tutorialPage.waitForTimeout(2000)
-
-      // Force trigger lazy loading by scrolling
-      await tutorialPage.evaluate(() => {
-        window.scrollTo(0, document.body.scrollHeight)
-      })
-      await tutorialPage.waitForTimeout(1000)
-
-      // Check for broken images
-      const brokenImages = await tutorialPage.evaluate(() => {
-        const images = document.querySelectorAll('img')
-        return Array.from(images)
-          .filter(img => {
-            // Check if image failed to load or has 0 dimensions
-            return img.naturalWidth === 0 || img.complete === false || img.src.includes('undefined')
-          })
-          .map(img => ({
-            src: img.src,
-            alt: img.alt,
-            naturalWidth: img.naturalWidth,
-            complete: img.complete,
-          }))
-      })
+      const brokenImages = await validateTutorialImages(tutorialPage, tutorialUrl)
 
       if (brokenImages.length > 0) {
         allImagesValid = false
@@ -926,6 +1441,7 @@ async function main() {
   console.log('\n✅ All screenshots saved and validated successfully:')
   console.log('  sidebar/, search/, connect-nodes/, region-vpc/, az-slider/, subnet-type/')
   console.log('  az-sync/, shift-click/, shift-drag/, add-to-selection/, alignment/, multiple-edges/')
+  console.log('  api-gateway/, vpn-gateway/, edge-inspector/')
 }
 
 main().catch((err) => {
