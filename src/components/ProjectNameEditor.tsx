@@ -49,7 +49,7 @@ function getTextCaretOffsetFromPoint(
 export function ProjectNameEditor({ value, onChange }: ProjectNameEditorProps) {
   const locale = getBrowserLocale();
   const t = UI_TEXT[locale];
-  const fallbackName = t.defaultArchitectureName;
+  const fallbackName = t.untitledArchitectureName;
   const displayName = value?.trim() || fallbackName;
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(displayName);

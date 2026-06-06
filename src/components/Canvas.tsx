@@ -532,7 +532,7 @@ export default function Canvas() {
     const currentViewport = reactFlowInstance?.getViewport() ?? viewport;
     const result = await saveArchitectureMutation.mutateAsync({
       architectureId: currentArchitectureId,
-      name: projectName?.trim() || t.defaultArchitectureName,
+      name: projectName?.trim() || t.untitledArchitectureName,
       nodes,
       edges,
       viewport: currentViewport,
@@ -550,7 +550,7 @@ export default function Canvas() {
     projectName,
     reactFlowInstance,
     setCurrentArchitectureId,
-    t.defaultArchitectureName,
+    t.untitledArchitectureName,
     viewport,
   ]);
 

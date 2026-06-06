@@ -2,11 +2,11 @@ import { cert, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import {
-  defaultArchitectureEdges,
-  defaultArchitectureName,
-  defaultArchitectureNodes,
-  defaultArchitectureViewport,
-} from "../src/data/default-architecture.ts";
+  multiAzThreeTierArchitectureEdges,
+  multiAzThreeTierArchitectureName,
+  multiAzThreeTierArchitectureNodes,
+  multiAzThreeTierArchitectureViewport,
+} from "../src/data/multi-az-three-tier-architecture.ts";
 
 const DEFAULT_USER_EMAIL = "gperez78@gmail.com";
 
@@ -35,10 +35,10 @@ const collectionRef = db
 const docRef = collectionRef.doc();
 
 await docRef.set({
-  name: defaultArchitectureName,
-  nodes: defaultArchitectureNodes,
-  edges: defaultArchitectureEdges,
-  viewport: defaultArchitectureViewport,
+  name: multiAzThreeTierArchitectureName,
+  nodes: multiAzThreeTierArchitectureNodes,
+  edges: multiAzThreeTierArchitectureEdges,
+  viewport: multiAzThreeTierArchitectureViewport,
   createdAt: FieldValue.serverTimestamp(),
   updatedAt: FieldValue.serverTimestamp(),
 });

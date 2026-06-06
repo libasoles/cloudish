@@ -10,7 +10,7 @@
     "generate:sitemap": "tsx scripts/generate-sitemap.ts",
     "lint": "eslint .",
     "preview": "vite preview",
-    "architecture:seed": "tsx scripts/save-default-diagram.ts",
+    "architecture:create": "tsx scripts/save-new-architecture.ts",
     "architecture:update": "tsx scripts/update-architecture-diagram.ts",
     "screenshots": "npx tsx scripts/take-screenshots.ts",
     "screenshots:special-nodes": "npx tsx scripts/take-special-nodes-screenshots.ts",
