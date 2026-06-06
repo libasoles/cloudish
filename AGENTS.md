@@ -187,7 +187,7 @@ All agents must work in a dedicated git worktree to avoid conflicts with other A
   ```
 
 - All file edits, installs, and commits happen inside the worktree directory, not in the main working tree.
-- When the task is complete, open a PR from the feature branch and let the human merge. Remove the worktree afterwards:
+- When the task is complete, open a PR from the feature branch, complete the PR workflow below, and remove the worktree afterwards:
 
   ```bash
   git worktree remove ../cloudish-<feature-slug>
@@ -203,4 +203,8 @@ Creating a pull request is mandatory for every completed task, even when the cha
 - Every PR must include a clear description of what changed, why it changed, and how it was verified.
 - Add relevant PR comments for future reference when implementation details, tradeoffs, follow-up work, or verification notes are useful to preserve.
 - Include screenshots for UI, documentation, tutorial, or visual changes. Use before/after screenshots when they help future reviewers understand the change.
-- Agents may create and approve their own PRs without waiting for review, but the PR record must still exist before the task is considered complete.
+- PRs should be authored by the authenticated GitHub account used by the agent; do not spoof or impersonate another author.
+- Agents must approve their own PRs when the hosting platform allows it. If GitHub rejects self-approval because the PR author and reviewer are the same account, leave a PR comment recording that the approval was attempted and rejected.
+- Agents must merge their completed PRs into `main` without waiting for human review unless the user explicitly requests otherwise or the PR cannot be merged cleanly.
+- After merging, update the local `main` worktree to the merge commit. If the local `main` worktree has unrelated uncommitted changes, preserve them and report that they remain.
+- A task is not complete until the PR exists, required comments/screenshots are attached, the PR is merged, and local `main` is updated.
