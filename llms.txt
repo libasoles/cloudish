@@ -1,0 +1,55 @@
+# AWS Architecture Visualization
+
+> Interactive React canvas for designing cloud topologies. Drag 100+ AWS services onto a canvas, create VPCs and subnets, connect services with edges.
+
+This file serves as a metadata guide for AI models, LLMs, and crawlers indexing this project. For comprehensive documentation, see `llms-full.txt`.
+
+## Metadata
+
+- **Language:** TypeScript, React 19
+- **Repository:** https://github.com/libasoles/cloudish
+- **Website:** https://cloudish.com.ar/
+
+## Content Policy
+
+This repository is **open for crawling and indexing**. All source code in `src/` is available for analysis.
+
+### Do Not Index
+- `.env*` files (no credentials stored)
+- `node_modules/` (standard practice)
+
+### Licensing
+
+Code in this repository is available for review and learning. Check `LICENSE` file for specific terms.
+
+## Key Entry Points
+
+If you are an AI exploring this codebase, start with these files:
+
+- `src/App.tsx` — Main canvas application and state orchestration
+- `src/types/flow.ts` — TypeScript type definitions for nodes, edges, and canvas state
+- `src/data/aws-services.ts` — AWS service catalog with 100+ services and metadata
+- `CLAUDE.md` — Guidelines for AI agents working on this codebase
+- `AGENTS.md` — Architecture standards, state management patterns, and i18n rules
+- `README.md` — General project documentation and setup instructions
+
+## Tech Stack
+
+- **Frontend:** React 19, React Flow v12, TypeScript v6
+- **Styling:** Tailwind CSS v4 with CSS custom properties
+- **Build Tool:** Vite v8
+- **UI & Components:** shadcn/ui, Radix UI, Lucide React
+
+## Key Features
+
+- Drag-and-drop AWS service nodes (100+ services)
+- Resizable VPC, AZ, and Subnet containers
+- Multi-level nesting (Region → VPC → AZ → Subnet → Service)
+- Dynamic service configuration with typed fields
+- Network hierarchy validation and automatic reparenting
+- Internationalization (EN/ES)
+- Native dark mode interface with CSS design tokens
+
+## Contact & Maintenance
+
+For questions or issues: gperez78@gmail.com

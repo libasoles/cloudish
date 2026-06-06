@@ -11,7 +11,11 @@
       "Bash(grep -E \"\\(firebase|config|\\\\.tsx?$\\)\")",
       "Bash(npx husky *)",
       "Bash(npx eslint *)",
-      "WebFetch(domain:aws.amazon.com)"
+      "WebFetch(domain:aws.amazon.com)",
+      "Read(../cloudish-edge-inspector-docs/src/**)"
+    ],
+    "additionalDirectories": [
+      "../cloudish-edge-inspector-docs/src"
     ]
   }
 }

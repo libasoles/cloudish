@@ -13,7 +13,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-AWS architecture visualization POC built on React Flow. Users drag AWS services onto a canvas and assemble network topologies with VPCs, subnets, and 100+ AWS service nodes. Supports EN/ES i18n.
+AWS architecture visualization tool built on React Flow. Users drag AWS services onto a canvas and assemble network topologies with VPCs, subnets, and 100+ AWS service nodes. Supports EN/ES i18n.
 
 ## File Structure
 

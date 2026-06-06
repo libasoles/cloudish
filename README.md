@@ -18,7 +18,7 @@ AWS Architecture Drafts esta pensado para etapas tempranas de diseño:
 - Armar diagramas livianos para conversar decisiones tecnicas.
 - Generar un punto de partida en Terraform o CloudFormation para revisar y completar.
 
-No reemplaza una herramienta formal de diagramacion, discovery cloud o gestion de infraestructura. Es un POC para pensar arquitecturas con rapidez.
+No reemplaza una herramienta formal de diagramacion, discovery cloud o gestion de infraestructura. Es una herramienta para pensar arquitecturas con rapidez.
 
 ## Features
 
@@ -52,7 +52,7 @@ Clonar el repositorio e instalar dependencias:
 
 ```bash
 git clone <repo-url>
-cd poc-react-flow
+cd cloudish-architecture-drafts
 npm install
 ```
 
@@ -160,9 +160,9 @@ Estos archivos son scaffolds generados desde el canvas. Deben revisarse antes de
 - Radix UI
 - Lucide React
 
-## Estado Del Proyecto
+## Arquitectura Del Proyecto
 
-Es un POC en evolucion. El foco esta en experimentar con la experiencia de diseñar arquitecturas cloud asistidas por agentes de IA, manteniendo el codigo suficientemente modular para seguir iterando:
+El proyecto esta diseñado para experimentar con la experiencia de diseñar arquitecturas cloud asistidas por agentes de IA, manteniendo el codigo suficientemente modular para seguir iterando:
 
 - Componentes en `src/components`
 - Datos estaticos en `src/data`

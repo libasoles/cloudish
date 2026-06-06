@@ -1,0 +1,227 @@
+# AWS Architecture Visualization (Full Documentation)
+
+> Interactive React canvas for designing cloud topologies. Drag 100+ AWS services onto a canvas, create VPCs and subnets, connect services with edges.
+
+This is the comprehensive metadata guide for AI models, LLMs, and crawlers performing deep analysis of this project. For a quick reference, see `llms.txt`.
+
+## Metadata
+
+- **Language:** TypeScript, React 19
+- **Repository:** https://github.com/libasoles/cloudish
+- **Website:** https://cloudish.com.ar/
+- **Build Tool:** Vite v8
+- **Package Manager:** npm
+
+## Content Policy
+
+This repository is **open for crawling and indexing**. All source code in `src/` is available for analysis.
+
+### Do Not Index
+- `.env*` files (no credentials stored)
+- `node_modules/` (standard practice)
+- `.git/` directory
+
+### Licensing
+
+Code in this repository is available for review and learning. Check `LICENSE` file for specific terms.
+
+## Key Entry Points
+
+If you are an AI exploring this codebase, start with these files:
+
+- `src/App.tsx` — Main canvas application and state orchestration
+- `src/types/flow.ts` — TypeScript type definitions for nodes, edges, and canvas state
+- `src/data/aws-services.ts` — AWS service catalog with 100+ services and metadata
+- `src/data/aws-service-fields.ts` — Dynamic field configuration per service
+- `src/components/AwsServiceNode.tsx` — Service node rendering and handles
+- `src/components/NetworkContainerNode.tsx` — VPC/Subnet/AZ/Region container logic
+- `CLAUDE.md` — Guidelines for AI agents working on this codebase
+- `AGENTS.md` — Architecture standards, state management patterns, and i18n rules
+- `README.md` — General project documentation and setup instructions
+
+## Tech Stack
+
+- **Frontend:** React 19, React Flow v12 (`@xyflow/react`), TypeScript v6
+- **Styling:** Tailwind CSS v4 with CSS custom properties for design tokens
+- **Build Tool:** Vite v8
+- **UI Components:** shadcn/ui, Radix UI, Lucide React
+- **State Management:** React Flow built-in hooks (`useNodesState`, `useEdgesState`)
+- **Internationalization:** Custom i18n system (EN/ES) in `src/i18n.ts`
+
+## Key Features
+
+- **Drag-and-drop AWS service nodes** — 100+ AWS services organized by category (Compute, Storage, Database, Networking, Security, Analytics, ML/AI, Developer Tools, Management, Messaging)
+- **Resizable containers** — VPC, AZ, and Subnet containers with spatial reparenting
+- **Multi-level nesting** — Region → VPC → AZ → Subnet → Service hierarchy
+- **Dynamic service configuration** — Typed fields (text, select, boolean, number) per service
+- **Network hierarchy validation** — Automatic reparenting when dragging nodes
+- **Dropzone visual feedback** — Green ring highlight for valid drop targets
+- **Connection management** — React Flow edges with customizable styles and animations
+- **Keyboard shortcuts** — Fast navigation, selection, alignment, and editing
+- **Internationalization (EN/ES)** — Complete bilingual UI
+- **Dark mode interface** — CSS custom properties enable automatic dark mode via `@media (prefers-color-scheme: dark)`
+
+## Documentation & Tutorials
+
+Interactive tutorials are built into the application and accessible via the UI. They cover:
+
+### Getting Started
+- **Adding nodos** — How to add AWS services to the canvas via drag-and-drop or sidebar search
+- **Connecting nodos** — Creating edges between services and managing connections
+
+### Hierarchical Containers
+- **Contenedores jerárquicos** — Understanding Region, VPC, AZ, and Subnet hierarchy
+- **Sincronización de AZs** — How AZ synchronization replicates subnets and services across availability zones
+
+### Selection
+- **Selección múltiple** — Multi-select with Ctrl/Cmd+click or drag-box
+- **Agregar a la selección** — Extending selections incrementally
+- **Alineación** — Alignment tools for organized layouts
+- **Múltiples edges** — Batch connection creation from selected nodes
+
+### Keyboard Shortcuts
+- **Búsqueda y navegación** — Quick search (Cmd+K) and viewport controls
+- **Selección y movimiento** — Selection modes and precise positioning
+- **Edición y eliminación** — Edit, copy, paste, and delete operations
+
+### Edge Inspector
+- **Abrir inspector de conexión** — Selecting and customizing edges
+- **Estilo de línea** — Stroke width, color, animation, and path styling
+
+### Special Nodes
+- **API Gateway rutas HTTP** — Configuring HTTP routes on API Gateway handles
+- **VPN Gateway y Customer Gateway** — Managing VPN connections between gateways
+
+**Tutorial location:** `src/docs/tutorials/` with registry at `src/docs/tutorial-registry.ts`
+
+Tutorials use the `<Carousel>` component (`src/docs/Carousel.tsx`) for step-by-step navigation and illustrations.
+
+## Project Structure
+
+```
+src/
+├── App.tsx                      # Main canvas orchestration, state management, drag-drop
+├── main.tsx                     # React entry point
+├── index.css                    # Tailwind v4 + CSS custom properties (design tokens)
+├── i18n.ts                      # Internationalization (EN/ES locale strings)
+│
+├── components/
+│   ├── AwsServiceNode.tsx       # Service node with icon, label, and connection handles
+│   ├── AwsServiceIcon.tsx       # Icon renderer (CDN with fallback to abbreviation badge)
+│   ├── NetworkContainerNode.tsx # VPC/AZ/Subnet/Region resizable containers
+│   ├── DragDropSidebar.tsx      # Left sidebar with draggable service catalog
+│   ├── ServiceSearch.tsx        # Search panel with keyboard navigation
+│   ├── Canvas.tsx               # ReactFlow canvas wrapper and event handlers
+│   ├── Inspector.tsx            # Property editor for selected nodes/edges
+│   └── ui/                      # shadcn/ui primitives (alert, button, card, input, select, etc.)
+│
+├── data/
+│   ├── aws-services.ts          # 100+ service catalog (id, name, slug, category, description)
+│   ├── aws-service-fields.ts    # Dynamic field definitions per service (text/select/boolean/number)
+│   └── initial-flow.ts          # Initial canvas state (default nodes and edges)
+│
+├── docs/
+│   ├── Carousel.tsx             # Reusable carousel component for tutorials
+│   ├── tutorial-registry.ts     # Tutorial metadata and lazy-loaded components
+│   └── tutorials/               # Individual tutorial modules (getting-started, hierarchical-containers, etc.)
+│
+├── lib/
+│   ├── drag-tools.ts            # Drag-and-drop encoding/decoding helpers
+│   ├── graph-utils.ts           # Graph algorithms (intersection detection, position calculation, hierarchy rules)
+│   └── utils.ts                 # Shared utilities (cn() from clsx + tailwind-merge)
+│
+├── config/
+│   └── aws-category-styles.ts   # Color mapping for AWS service categories
+│
+└── types/
+    └── flow.ts                  # TypeScript interfaces for nodes, edges, and app state
+
+README.md                        # Project overview, installation, and usage
+CLAUDE.md                        # AI agent guidelines
+AGENTS.md                        # Architecture, state patterns, i18n, and worktree rules
+```
+
+## State Management
+
+Pure React Flow state — no Redux or Zustand:
+
+- `useNodesState()` / `useEdgesState()` — Own node and edge arrays with change handlers
+- `addEdge()` — Utility to append new edges on user connections
+- Node config values stored in `node.data.fields` as `Record<string, string | boolean | number>`
+- Parent-child relationships via `node.parentId` (string reference to parent node id)
+
+**Key algorithms in `src/lib/graph-utils.ts`:**
+- `getAbsolutePosition()` — Recursively resolves nested coordinates by walking the parentId chain
+- `findIntersectingContainer()` — Detects valid parent container for reparenting (respects hierarchy rules)
+- `syncNodeSubnet()` — Reparents nodes on drag based on spatial intersection
+
+## TypeScript Types (from `src/types/flow.ts`)
+
+```typescript
+type AppNode = Node | AwsServiceNodeType | NetworkContainerNodeType
+
+type NetworkContainerType = "region" | "vpc" | "az" | "subnet"
+type SubnetType = "Public" | "Private"
+type AwsCategory = "Compute" | "Storage" | "Database" | "Networking" | "Security" | "Analytics" | "ML/AI" | "Developer Tools" | "Management" | "Messaging"
+
+type AwsServiceNodeData = {
+  name: string
+  slug: string
+  category: AwsCategory
+  serviceId?: string
+  description?: string
+  fields?: Record<string, string | boolean | number>
+}
+
+type NetworkContainerNodeData = {
+  containerType: NetworkContainerType
+  label: string
+  subnetType?: SubnetType
+  numberOfVPCs?: number        # Region only
+  numberOfAZs?: number         # VPC only
+  numberOfSubnets?: number     # AZ only
+}
+```
+
+## AWS Domain Model
+
+### Service Categories
+10 AWS service categories with color-coded styling via `src/config/aws-category-styles.ts`:
+- Compute, Storage, Database, Networking, Security, Analytics, ML/AI, Developer Tools, Management, Messaging
+
+### Service Icons
+CDN: `https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/{slug}/default.svg`
+Fallback: Abbreviation badge (first 2 letters of service name)
+
+### Network Topology
+Hierarchy defined in `AGENTS.md` with validation rules:
+```
+Region → VPC → AZ → Subnet → Service nodes
+```
+
+### Container Sizing
+Named constants in `src/lib/graph-utils.ts`:
+- Region: 900w × 600h
+- VPC: 600w × 400h
+- Subnet: 320w × 220h
+- AZ: auto (fills parent)
+
+## Internationalization (i18n)
+
+All user-visible text is in `src/i18n.ts` with full EN/ES coverage.
+
+**Key naming convention:**
+- camelCase keys grouped by feature
+- Examples: `sidebarSearch`, `canvasDropHint`, `inspectorServiceConfig`
+
+## Before Commit Checklist
+
+- Run `npm run lint` before committing
+- Check Tailwind class usage for canonical forms
+- Verify i18n coverage for new UI text
+- Follow worktree isolation rules from `AGENTS.md`
+
+## Contact & Maintenance
+
+For questions or issues: gperez78@gmail.com
+Repository: https://github.com/libasoles/cloudish

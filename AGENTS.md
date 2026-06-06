@@ -2,7 +2,7 @@
 
 ## Architecture
 
-This is a React Flow [React Flow](https://reactflow.dev/) (`@xyflow/react`) POC to design systems using AWS services.
+This is a React Flow [React Flow](https://reactflow.dev/) (`@xyflow/react`) platform to design systems using AWS services.
 
 Prefer atomized React/JavaScript modules over large files:
 
@@ -174,6 +174,16 @@ The span receives hover events even when the button inside is disabled, so the t
 - Run `npm run lint` before committing changes.
 - For tasks that touch Tailwind classes, run a class-level lint check before finishing the task (for example, warnings like `suggestCanonicalClasses`).
 - Apply Tailwind class suggestions when possible only if they are low risk and do not change behavior, layout intent, or responsive/accessibility semantics.
+
+## Claude Code Configuration
+
+When modifying `.claude/settings.json` (permissions, hooks, additional directories):
+
+- **Always use relative paths** instead of absolute paths. Relative paths keep the repository portable and prevent exposing the developer's system directory structure in version control.
+  - ❌ Bad: `/Users/guillermoperez/Projects/playground/nodes/cloudish-edge-inspector-docs/src`
+  - ✅ Good: `../cloudish-edge-inspector-docs/src`
+- Never commit sensitive information like API keys, tokens, or personal credentials in `settings.json`.
+- Document any new permission rules or hooks added to `.claude/settings.json` so future agents understand their purpose.
 
 ## Worktree Isolation
 
