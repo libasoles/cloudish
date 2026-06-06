@@ -15,6 +15,14 @@ Use this skill whenever the user asks to model, draw, or update an AWS architect
 
 ---
 
+## FORBIDDEN: Self-loops
+
+**NEVER create an edge where `source === target`** (connecting a node to itself). This is architecturally invalid and creates confusing visualizations.
+
+When creating test diagrams or automating node creation, **always verify that source and target are different nodes** before connecting them. If you are automating and accidentally create a self-loop, immediately delete it.
+
+---
+
 ## Self-update instructions
 
 After each interaction that teaches something new about this tool or AWS design:
