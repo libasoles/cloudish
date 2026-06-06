@@ -418,6 +418,13 @@ code {
   border: 1px solid hsl(var(--border));
   box-shadow: var(--shadow);
 }
+.docs-content figure.figure-intrinsic {
+  text-align: center;
+}
+.docs-content figure.figure-intrinsic img {
+  width: auto;
+  max-width: 100%;
+}
 .docs-content figcaption {
   font-size: 0.8rem;
   text-align: center;
