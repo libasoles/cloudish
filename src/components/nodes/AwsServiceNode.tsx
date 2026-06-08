@@ -1,6 +1,7 @@
 import { Handle, Position, type NodeProps, type Node } from "@xyflow/react";
 import { cn } from "@/lib/utils";
 import { AwsServiceIcon } from "@/components/AwsServiceIcon";
+import { CircularServiceIcon } from "@/components/CircularServiceIcon";
 import EditableNodeLabel from "@/components/EditableNodeLabel";
 import { CustomerGatewayIcon } from "@/components/icons/CustomerGatewayIcon";
 import type { AwsCategory } from "@/data/aws-services";
@@ -23,6 +24,8 @@ const VPN_HANDLE_TRANSFORM: Record<string, string> = {
   bottom: "translate(-50%, 50%)",
 };
 
+export type NodeShape = "circular";
+
 export type AwsServiceNodeData = {
   name: string;
   slug: string;
@@ -32,6 +35,9 @@ export type AwsServiceNodeData = {
   fields?: Record<string, string | boolean | number>;
   pulseKey?: string;
   routes?: ApiGatewayRoute[];
+  meta?: {
+    shape?: NodeShape;
+  };
 };
 
 export type AwsServiceNodeType = Node<AwsServiceNodeData, "awsService">;
@@ -138,6 +144,52 @@ export default function AwsServiceNode({
             ))}
           </div>
         )}
+      </div>
+    );
+  }
+
+  if (data.meta?.shape === "circular") {
+    return (
+      <div className="flex flex-col items-center gap-1.5 w-14">
+        <Handle
+          type="source"
+          position={Position.Left}
+          id="left"
+          style={{ top: 28 }}
+        />
+        <Handle
+          type="source"
+          position={Position.Right}
+          id="right"
+          style={{ top: 28 }}
+        />
+        <Handle
+          type="source"
+          position={Position.Top}
+          id="top"
+          className="handle-vertical"
+          style={{ left: 28 }}
+        />
+        <Handle
+          type="source"
+          position={Position.Bottom}
+          id="bottom"
+          className="handle-vertical"
+          style={{ left: 28, top: 56 }}
+        />
+        <CircularServiceIcon
+          slug={data.slug}
+          category={data.category}
+          name={data.name}
+          selected={selected}
+          pulseKey={data.pulseKey}
+        />
+        <EditableNodeLabel
+          value={data.name}
+          editLabel={t.editNodeName}
+          className="text-white"
+          onCommit={renameNode}
+        />
       </div>
     );
   }

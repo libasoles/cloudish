@@ -1,6 +1,6 @@
 import { Handle, Position, type NodeProps, type Node } from "@xyflow/react";
 import { cn } from "@/lib/utils";
-import { AwsServiceIcon } from "@/components/AwsServiceIcon";
+import { CircularServiceIcon } from "@/components/CircularServiceIcon";
 import EditableNodeLabel from "@/components/EditableNodeLabel";
 import { CustomerGatewayIcon } from "@/components/icons/CustomerGatewayIcon";
 import { getCustomerGatewayHandleIds } from "@/lib/vpn-gateway-edges";
@@ -97,22 +97,13 @@ export default function GatewayServiceNode({
           <CustomerGatewayIcon className="size-7 text-purple-600 pointer-events-none" />
         )}
       </Handle>
-      <div
-        className={cn(
-          "size-14 rounded-full bg-white border-2 shadow-sm flex items-center justify-center",
-          data.pulseKey && "node-click-pulse",
-          selected
-            ? "border-blue-500 shadow-md ring-2 ring-primary ring-offset-4 ring-offset-background"
-            : "border-gray-200",
-        )}
-      >
-        <AwsServiceIcon
-          slug={data.slug}
-          category={data.category}
-          name={data.name}
-          size={40}
-        />
-      </div>
+      <CircularServiceIcon
+        slug={data.slug}
+        category={data.category}
+        name={data.name}
+        selected={selected}
+        pulseKey={data.pulseKey}
+      />
       <EditableNodeLabel
         value={data.name}
         editLabel={t.editNodeName}
