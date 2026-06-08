@@ -56,6 +56,24 @@ cd cloudish-architecture-drafts
 npm install
 ```
 
+### Worktrees locales
+
+Para crear un worktree aislado con dependencias y variables locales listas:
+
+```bash
+npm run worktree:create -- my-feature
+```
+
+El comando crea el directorio `../cloudish-my-feature`, la branch `feat/my-feature`, copia los archivos locales `.env*` ignorados por git (por ejemplo `.env.local`, excluyendo `.env.example`) y ejecuta `npm install` dentro del nuevo worktree.
+
+Opciones utiles:
+
+```bash
+npm run worktree:create -- my-feature --path ../cloudish-custom --branch feat/custom
+npm run worktree:create -- my-feature --skip-install
+npm run worktree:create -- my-feature --overwrite-env
+```
+
 ### Variables de entorno
 
 Copiar `.env.example` a `.env.local` y completar los valores:
