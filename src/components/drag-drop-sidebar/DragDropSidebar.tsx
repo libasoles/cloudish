@@ -1,5 +1,5 @@
-import { type DragEvent, type ReactNode, useState } from "react";
-import { Type, ChevronDown } from "lucide-react";
+import { type DragEvent, type ReactNode } from "react";
+import { Type } from "lucide-react";
 import { AwsServiceIcon } from "@/components/AwsServiceIcon";
 import { HoverOnlyTooltip } from "@/components/HoverOnlyTooltip";
 import { draggableAwsServices } from "@/data/drag-tool-catalog";
@@ -164,12 +164,6 @@ export default function DragDropSidebar({
   onToolDragStart,
   onToolDragEnd,
 }: DragDropSidebarProps) {
-  const [showAllServices, setShowAllServices] = useState(false);
-  const visibleServices = showAllServices
-    ? draggableAwsServices
-    : draggableAwsServices.slice(0, 5);
-  const hasMoreServices = draggableAwsServices.length > 5;
-
   return (
     <aside className="flex h-full w-24 shrink-0 flex-col border-r border-border bg-background">
       <div className="border-b border-border px-2 py-3 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -210,7 +204,7 @@ export default function DragDropSidebar({
         >
           <Type className="h-8 w-8 text-muted-foreground" />
         </SidebarToolButton>
-        {visibleServices.map((service) => (
+        {draggableAwsServices.map((service) => (
           <SidebarToolButton
             key={service.id}
             name={service.name}
@@ -233,20 +227,6 @@ export default function DragDropSidebar({
             />
           </SidebarToolButton>
         ))}
-        {hasMoreServices && (
-          <button
-            onClick={() => setShowAllServices(!showAllServices)}
-            className="flex w-full items-center justify-center gap-1 rounded-md border border-border py-2 text-xs font-medium text-muted-foreground transition hover:bg-accent hover:text-foreground"
-          >
-            {showAllServices ? "Ver menos" : "Ver más"}
-            <ChevronDown
-              className="h-4 w-4 transition-transform"
-              style={{
-                transform: showAllServices ? "rotate(180deg)" : "rotate(0deg)",
-              }}
-            />
-          </button>
-        )}
         {CLIENTS.filter((item) => !item.searchOnly).map((item) =>
           renderInfrastructureTool(item, {
             labels,
