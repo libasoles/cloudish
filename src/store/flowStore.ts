@@ -14,6 +14,7 @@ import {
 import {
   getNetworkContainerType,
   isNetworkContainerNode,
+  redistributeGatewayAffectedVpcLayouts,
   resizeContainerNode,
 } from "@/lib/graph-utils";
 import { duplicateSelectedGraph } from "@/lib/node-duplication";
@@ -163,28 +164,36 @@ export const useFlowStore = create<FlowStore>()((set) => ({
         changes,
         applyNodeChanges(changes, s.nodes),
       );
+      const gatewayAdjustedNodes = redistributeGatewayAffectedVpcLayouts(nextNodes);
       const removedNodeIds = changes.flatMap((change) =>
         change.type === "remove" ? [change.id] : [],
       );
 
       const selectionCleared =
         changes.some((c) => c.type === "select" && !c.selected) &&
-        !nextNodes.some((n) => n.selected);
+        !gatewayAdjustedNodes.some((n) => n.selected);
 
       if (!removedNodeIds.length) {
         return {
-          nodes: nextNodes,
-          ...getNodeDerivatives(nextNodes),
+          nodes: gatewayAdjustedNodes,
+          ...getNodeDerivatives(gatewayAdjustedNodes),
           history,
           isDirty: s.isDirty || hasMeaningfulChanges,
           ...(selectionCleared ? { selectionBoxActive: false } : {}),
         };
       }
 
-      const next = removeSyncedNodes(removedNodeIds, s.nodes, nextNodes, s.edges);
+      const next = removeSyncedNodes(
+        removedNodeIds,
+        s.nodes,
+        gatewayAdjustedNodes,
+        s.edges,
+      );
+      const nodes = redistributeGatewayAffectedVpcLayouts(next.nodes);
       return {
         ...next,
-        ...getNodeDerivatives(next.nodes),
+        nodes,
+        ...getNodeDerivatives(nodes),
         history,
         isDirty: true,
         ...(selectionCleared ? { selectionBoxActive: false } : {}),

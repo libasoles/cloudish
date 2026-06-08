@@ -24,12 +24,27 @@ export const AZ_HEIGHT = 360;
 export const ASG_WIDTH = 480;
 export const ASG_HEIGHT = 312;
 export const ASG_STYLE = { width: ASG_WIDTH, height: ASG_HEIGHT } as const;
+export const GATEWAY_EDGE_CLEARANCE = 16;
 
 export const REGION_STYLE = { width: REGION_WIDTH, height: REGION_HEIGHT } as const;
 export const VPC_STYLE = { width: VPC_WIDTH, height: VPC_HEIGHT } as const;
 export const AZ_STYLE = { width: AZ_WIDTH, height: AZ_HEIGHT } as const;
 export const SUBNET_STYLE = { width: SUBNET_WIDTH, height: SUBNET_HEIGHT } as const;
 export const CONTAINER_STYLE = SUBNET_STYLE;
+
+export type ContainerInsets = {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+};
+
+const EMPTY_CONTAINER_INSETS: ContainerInsets = {
+  top: 0,
+  right: 0,
+  bottom: 0,
+  left: 0,
+};
 
 export function isNetworkContainerNode(node: AppNode) {
   return node.type === "networkContainer";
@@ -128,6 +143,70 @@ export function isRectIntersecting(a: Rect, b: Rect) {
   );
 }
 
+function isRectContained(inner: Rect, outer: Rect) {
+  return (
+    inner.x >= outer.x &&
+    inner.x + inner.width <= outer.x + outer.width &&
+    inner.y >= outer.y &&
+    inner.y + inner.height <= outer.y + outer.height
+  );
+}
+
+function isGatewayServiceNode(node: AppNode) {
+  return node.type === "gatewayService";
+}
+
+export function getVpcGatewayLayoutInsets(
+  vpcId: string,
+  nodes: AppNode[],
+): ContainerInsets {
+  const nodesById = new Map(nodes.map((node) => [node.id, node]));
+  const vpc = nodesById.get(vpcId);
+  if (!vpc || !isVpcNode(vpc)) {
+    return EMPTY_CONTAINER_INSETS;
+  }
+
+  const vpcRect = getNodeRect(vpc, nodesById);
+  const vpcRight = vpcRect.x + vpcRect.width;
+  const vpcBottom = vpcRect.y + vpcRect.height;
+
+  return nodes.reduce<ContainerInsets>((insets, node) => {
+    if (!isGatewayServiceNode(node)) {
+      return insets;
+    }
+
+    const gatewayRect = getNodeRect(node, nodesById);
+    if (
+      !isRectIntersecting(gatewayRect, vpcRect) ||
+      isRectContained(gatewayRect, vpcRect)
+    ) {
+      return insets;
+    }
+
+    const gatewayRight = gatewayRect.x + gatewayRect.width;
+    const gatewayBottom = gatewayRect.y + gatewayRect.height;
+
+    return {
+      top:
+        gatewayRect.y < vpcRect.y && gatewayBottom > vpcRect.y
+          ? Math.max(insets.top, gatewayBottom - vpcRect.y + GATEWAY_EDGE_CLEARANCE)
+          : insets.top,
+      right:
+        gatewayRect.x < vpcRight && gatewayRight > vpcRight
+          ? Math.max(insets.right, vpcRight - gatewayRect.x + GATEWAY_EDGE_CLEARANCE)
+          : insets.right,
+      bottom:
+        gatewayRect.y < vpcBottom && gatewayBottom > vpcBottom
+          ? Math.max(insets.bottom, vpcBottom - gatewayRect.y + GATEWAY_EDGE_CLEARANCE)
+          : insets.bottom,
+      left:
+        gatewayRect.x < vpcRect.x && gatewayRight > vpcRect.x
+          ? Math.max(insets.left, gatewayRight - vpcRect.x + GATEWAY_EDGE_CLEARANCE)
+          : insets.left,
+    };
+  }, EMPTY_CONTAINER_INSETS);
+}
+
 export function findIntersectingContainer(
   nodeRect: Rect,
   nodes: AppNode[],
@@ -200,9 +279,17 @@ export function buildAzNodes(
   parentW: number,
   parentH: number,
   count: number,
+  insets: ContainerInsets = EMPTY_CONTAINER_INSETS,
 ) {
-  const azH = parentH - REGION_HEADER_H - AZ_PAD;
-  const azW = Math.floor((parentW - AZ_PAD * (count + 1)) / count);
+  const leftPad = Math.max(AZ_PAD, insets.left);
+  const rightPad = Math.max(AZ_PAD, insets.right);
+  const topPad = Math.max(REGION_HEADER_H, insets.top);
+  const bottomPad = Math.max(AZ_PAD, insets.bottom);
+  const azH = Math.max(1, parentH - topPad - bottomPad);
+  const azW = Math.max(
+    1,
+    Math.floor((parentW - leftPad - rightPad - AZ_PAD * (count - 1)) / count),
+  );
 
   return Array.from({ length: count }, (_, i) => ({
     id: `az-${parentId}-${i + 1}`,
@@ -210,7 +297,7 @@ export function buildAzNodes(
     parentId,
     draggable: false,
     selectable: true,
-    position: { x: AZ_PAD + i * (azW + AZ_PAD), y: REGION_HEADER_H },
+    position: { x: leftPad + i * (azW + AZ_PAD), y: topPad },
     data: {
       containerType: "az" as const,
       label: `AZ ${i + 1}`,
@@ -225,6 +312,7 @@ export function redistributeAzNodes(
   parentW: number,
   parentH: number,
   nodes: AppNode[],
+  insets = getVpcGatewayLayoutInsets(parentId, nodes),
 ): AppNode[] {
   const azChildren = nodes.filter(
     (n) => n.parentId === parentId && isAzNode(n),
@@ -232,8 +320,15 @@ export function redistributeAzNodes(
   if (!azChildren.length) return nodes;
 
   const count = azChildren.length;
-  const azH = parentH - REGION_HEADER_H - AZ_PAD;
-  const azW = Math.floor((parentW - AZ_PAD * (count + 1)) / count);
+  const leftPad = Math.max(AZ_PAD, insets.left);
+  const rightPad = Math.max(AZ_PAD, insets.right);
+  const topPad = Math.max(REGION_HEADER_H, insets.top);
+  const bottomPad = Math.max(AZ_PAD, insets.bottom);
+  const azH = Math.max(1, parentH - topPad - bottomPad);
+  const azW = Math.max(
+    1,
+    Math.floor((parentW - leftPad - rightPad - AZ_PAD * (count - 1)) / count),
+  );
 
   return nodes.map((n) => {
     const azIndex = azChildren.findIndex((az) => az.id === n.id);
@@ -243,7 +338,7 @@ export function redistributeAzNodes(
       ...n,
       width: azW,
       height: azH,
-      position: { x: AZ_PAD + azIndex * (azW + AZ_PAD), y: REGION_HEADER_H },
+      position: { x: leftPad + azIndex * (azW + AZ_PAD), y: topPad },
       style: { ...n.style, width: azW, height: azH },
     };
   });
@@ -423,6 +518,39 @@ export function redistributeVpcNodes(
       style: { ...n.style, width: vpcW, height: vpcH },
     };
   });
+}
+
+export function redistributeVpcInnerLayout(vpcId: string, nodes: AppNode[]) {
+  const vpc = nodes.find((node) => node.id === vpcId);
+  if (!vpc || !isVpcNode(vpc)) return nodes;
+
+  const { width, height } = getNodeSize(vpc);
+  let result = redistributeAzNodes(vpcId, width, height, nodes);
+  result = redistributeSubnetNodes(vpcId, width, height, result);
+
+  const azChildren = result.filter(
+    (node) => node.parentId === vpcId && isAzNode(node),
+  );
+
+  for (const az of azChildren) {
+    const currentAz = result.find((node) => node.id === az.id);
+    if (!currentAz) continue;
+    const { width: azW, height: azH } = getNodeSize(currentAz);
+    result = resizeContainerNode(currentAz.id, azW, azH, result);
+  }
+
+  return result;
+}
+
+export function redistributeGatewayAffectedVpcLayouts(nodes: AppNode[]) {
+  let result = nodes;
+  const vpcNodes = result.filter(isVpcNode);
+
+  for (const vpc of vpcNodes) {
+    result = redistributeVpcInnerLayout(vpc.id, result);
+  }
+
+  return result;
 }
 
 export function redistributeNestedContainerNodes(nodes: AppNode[]): AppNode[] {

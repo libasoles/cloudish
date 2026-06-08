@@ -10,6 +10,8 @@ import {
   getAbsolutePosition,
   getNodeSize,
   getNetworkContainerType,
+  getVpcGatewayLayoutInsets,
+  type ContainerInsets,
 } from "@/lib/graph-utils";
 
 type ManagedChildCountField = "numberOfVPCs" | "numberOfAZs" | "numberOfSubnets";
@@ -23,6 +25,7 @@ type ManagedChildConfig = {
     parentH: number,
     count: number,
     labelFn?: (subnetType: string, index: number) => string,
+    insets?: ContainerInsets,
   ) => AppNode[];
 };
 
@@ -35,7 +38,8 @@ const MANAGED_CHILD_CONFIGS = {
   vpc: {
     countField: "numberOfAZs",
     isChildNode: isAzNode,
-    buildChildren: (id, w, h, count) => buildAzNodes(id, w, h, count),
+    buildChildren: (id, w, h, count, _labelFn, insets) =>
+      buildAzNodes(id, w, h, count, insets),
   },
   az: {
     countField: "numberOfSubnets",
@@ -130,6 +134,9 @@ export function setManagedChildCount(
     parentH,
     count,
     subnetLabelFn,
+    isVpcNode(updatedParent)
+      ? getVpcGatewayLayoutInsets(parent.id, withUpdatedParent)
+      : undefined,
   );
   return {
     nodes: orderNodesForSubflows([...withUpdatedParent, ...newChildren]),

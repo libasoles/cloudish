@@ -78,6 +78,7 @@ import {
   redistributeSubnetNodes,
   redistributeVpcNodes,
   redistributeChildContainers,
+  redistributeGatewayAffectedVpcLayouts,
   getNetworkContainerType,
   REGION_STYLE,
   REGION_WIDTH,
@@ -966,11 +967,13 @@ export default function Canvas() {
             if (parentRegion) {
               const { width: rw, height: rh } = getNodeSize(parentRegion);
               return {
-                nodes: redistributeVpcNodes(parentRegion.id, rw, rh, allNodes),
+                nodes: redistributeGatewayAffectedVpcLayouts(
+                  redistributeVpcNodes(parentRegion.id, rw, rh, allNodes),
+                ),
                 edges,
               };
             }
-            return { nodes: allNodes, edges };
+            return { nodes: redistributeGatewayAffectedVpcLayouts(allNodes), edges };
           });
           return;
         }
@@ -997,11 +1000,13 @@ export default function Canvas() {
             data: { ...getAwsServiceNodeData(service), ...pulseData },
           };
 
+          const nextNodes = addNodeWithAzSync(
+            newNode,
+            nodes.map((n) => ({ ...n, selected: false })),
+          );
+
           return {
-            nodes: addNodeWithAzSync(
-              newNode,
-              nodes.map((n) => ({ ...n, selected: false })),
-            ),
+            nodes: redistributeGatewayAffectedVpcLayouts(nextNodes),
             edges,
           };
         });
@@ -1613,13 +1618,15 @@ export default function Canvas() {
           }
         }
 
-        return draggedNodes.reduce(
+        const syncedNodes = draggedNodes.reduce(
           (currentNodes, draggedNode) =>
             isNetworkContainerNode(draggedNode)
               ? currentNodes
               : syncNodeGroupPosition(draggedNode.id, currentNodes),
           result,
         );
+
+        return redistributeGatewayAffectedVpcLayouts(syncedNodes);
       });
     },
     [setNodes],
