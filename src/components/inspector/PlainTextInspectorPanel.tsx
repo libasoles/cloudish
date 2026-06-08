@@ -13,7 +13,7 @@ import { getNodeSize } from "@/lib/graph-utils";
 import { UI_TEXT, getBrowserLocale } from "@/i18n";
 import { useFlowStore } from "@/store/flowStore";
 import type { AppNode } from "@/types/flow";
-import type { PlainTextNodeData } from "@/components/PlainTextNode";
+import type { PlainTextNodeData } from "@/components/nodes/PlainTextNode";
 
 type PlainTextInspectorPanelProps = {
   node: AppNode;

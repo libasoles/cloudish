@@ -13,7 +13,7 @@ import { getLocalizedField, UI_TEXT, getBrowserLocale } from "@/i18n";
 import { getFieldValue, getServiceId, type FieldValue } from "@/lib/node-utils";
 import { updateSyncedNodeGroup } from "@/lib/az-sync";
 import { useFlowStore } from "@/store/flowStore";
-import type { AwsServiceNodeData, AwsServiceNodeType } from "@/components/AwsServiceNode";
+import type { AwsServiceNodeData, AwsServiceNodeType } from "@/components/nodes/AwsServiceNode";
 
 type AwsServiceInspectorPanelProps = {
   node: AwsServiceNodeType;

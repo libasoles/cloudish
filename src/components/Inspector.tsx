@@ -12,8 +12,8 @@ import { HoverOnlyTooltip } from "@/components/HoverOnlyTooltip";
 import {
   type AwsServiceNodeType,
   type AwsServiceNodeData,
-} from "@/components/AwsServiceNode";
-import { type PlainTextNodeData } from "@/components/PlainTextNode";
+} from "@/components/nodes/AwsServiceNode";
+import { type PlainTextNodeData } from "@/components/nodes/PlainTextNode";
 import { UI_TEXT, getBrowserLocale } from "@/i18n";
 import { useFlowStore } from "@/store/flowStore";
 import { useAuth } from "@/hooks/useAuth";
@@ -58,7 +58,7 @@ export default function Inspector() {
     : null;
 
   const selectedAwsNode =
-    selectedNode?.type === "awsService"
+    selectedNode?.type === "awsService" || selectedNode?.type === "circularService"
       ? (selectedNode as AwsServiceNodeType)
       : null;
   const selectedPlainTextNode =
@@ -71,7 +71,7 @@ export default function Inspector() {
     : "";
 
   let selectedLabel = "";
-  if (selectedNode?.type === "awsService") {
+  if (selectedNode?.type === "awsService" || selectedNode?.type === "circularService") {
     selectedLabel = (selectedNode.data as AwsServiceNodeData).name;
   } else if (selectedNode?.type === "plainText") {
     selectedLabel = selectedPlainTextData?.text.trim() || t.text;
