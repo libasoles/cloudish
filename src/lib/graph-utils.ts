@@ -163,6 +163,30 @@ function isVpcEdgeGateway(gatewayRect: Rect, vpcRect: Rect) {
   );
 }
 
+// Calculates how much the VPC should grow outward to visually embrace its
+// gateway children. Uses relative positions so the result is stable across
+// repeated calls — moving the VPC never changes a gateway's relative position.
+function getVpcGatewayOuterInsets(
+  vpcId: string,
+  vpcW: number,
+  vpcH: number,
+  nodes: AppNode[],
+): ContainerInsets {
+  return nodes.reduce<ContainerInsets>((insets, node) => {
+    if (node.parentId !== vpcId || !isGatewayServiceNode(node)) return insets;
+
+    const { width: gW, height: gH } = getNodeSize(node);
+    const { x, y } = node.position;
+
+    return {
+      left:  x < 0             ? Math.max(insets.left,  -x + GATEWAY_EDGE_CLEARANCE)               : insets.left,
+      right: x + gW > vpcW     ? Math.max(insets.right,  x + gW - vpcW + GATEWAY_EDGE_CLEARANCE)   : insets.right,
+      top:   y < 0             ? Math.max(insets.top,   -y + GATEWAY_EDGE_CLEARANCE)                : insets.top,
+      bottom: y + gH > vpcH   ? Math.max(insets.bottom, y + gH - vpcH + GATEWAY_EDGE_CLEARANCE)   : insets.bottom,
+    };
+  }, EMPTY_CONTAINER_INSETS);
+}
+
 export function getVpcGatewayLayoutInsets(
   vpcId: string,
   nodes: AppNode[],
@@ -514,12 +538,23 @@ export function redistributeVpcNodes(
     const vpcIndex = vpcChildren.findIndex((v) => v.id === n.id);
     if (vpcIndex === -1) return n;
 
+    // Grow the VPC outward to visually embrace any edge gateway children.
+    // Detection uses relative positions → stable across repeated calls.
+    const outer = getVpcGatewayOuterInsets(n.id, vpcW, vpcH, nodes);
+
     return {
       ...n,
-      width: vpcW,
-      height: vpcH,
-      position: { x: VPC_PAD + vpcIndex * (vpcW + VPC_PAD), y: REGION_HEADER_H },
-      style: { ...n.style, width: vpcW, height: vpcH },
+      width: vpcW + outer.left + outer.right,
+      height: vpcH + outer.top + outer.bottom,
+      position: {
+        x: VPC_PAD + vpcIndex * (vpcW + VPC_PAD) - outer.left,
+        y: REGION_HEADER_H - outer.top,
+      },
+      style: {
+        ...n.style,
+        width: vpcW + outer.left + outer.right,
+        height: vpcH + outer.top + outer.bottom,
+      },
     };
   });
 }
@@ -548,8 +583,20 @@ export function redistributeVpcInnerLayout(vpcId: string, nodes: AppNode[]) {
 
 export function redistributeGatewayAffectedVpcLayouts(nodes: AppNode[]) {
   let result = nodes;
-  const vpcNodes = result.filter(isVpcNode);
 
+  // First, grow VPC nodes outward to embrace edge gateways.
+  // redistributeVpcNodes uses relative positions for detection, so this is
+  // stable — repeated calls with unchanged gateway positions produce the same layout.
+  const regionNodes = result.filter(isRegionNode);
+  for (const region of regionNodes) {
+    const currentRegion = result.find((n) => n.id === region.id);
+    if (!currentRegion) continue;
+    const { width, height } = getNodeSize(currentRegion);
+    result = redistributeVpcNodes(currentRegion.id, width, height, result);
+  }
+
+  // Then, push VPC children (AZs) inward to avoid overlapping gateways.
+  const vpcNodes = result.filter(isVpcNode);
   for (const vpc of vpcNodes) {
     result = redistributeVpcInnerLayout(vpc.id, result);
   }
