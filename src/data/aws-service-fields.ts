@@ -570,6 +570,12 @@ export const AWS_SERVICE_FIELDS: Record<string, ServiceField[]> = {
     booleanField("defaultRouteTableAssociation", "Default Route Table Association", true),
   ],
 
+  "customer-gateway": [
+    textField("customerGatewayName", "Customer Gateway Name", "my-customer-gateway"),
+    textField("ipAddress", "IP Address", "203.0.113.10"),
+    numberField("bgpAsn", "BGP ASN", 65000),
+  ],
+
   "app-mesh": [
     textField("meshName", "Mesh Name", "my-mesh"),
     selectField("protocol", "Protocol", [

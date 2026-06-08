@@ -544,6 +544,25 @@ const NETWORKING: Record<string, ServiceResourceMap> = {
     cfProps: () => ({}),
   },
 
+  "customer-gateway": {
+    terraform: "aws_customer_gateway",
+    cloudformation: "AWS::EC2::CustomerGateway",
+    tfProps: (f) => ({
+      bgp_asn: num(f.bgpAsn, 65000),
+      ip_address: str(f.ipAddress, "203.0.113.10"),
+      type: "ipsec.1",
+      tags: { Name: str(f.customerGatewayName, "my-customer-gateway") },
+    }),
+    cfProps: (f) => ({
+      BgpAsn: num(f.bgpAsn, 65000),
+      IpAddress: str(f.ipAddress, "203.0.113.10"),
+      Type: "ipsec.1",
+      Tags: [{ Key: "Name", Value: str(f.customerGatewayName, "my-customer-gateway") }],
+    }),
+    tfLocation: "none",
+    cfLocation: "none",
+  },
+
   elb: {
     terraform: "aws_lb",
     cloudformation: "AWS::ElasticLoadBalancingV2::LoadBalancer",

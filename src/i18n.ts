@@ -407,6 +407,8 @@ const EN_SERVICE_DESCRIPTIONS: Record<string, string> = {
     "Enables communication between instances in a VPC and the internet.",
   "vpn-gateway":
     "Gateway that connects the VPC to on-premises networks via IPsec VPN.",
+  "customer-gateway":
+    "Represents the customer-side gateway used to connect an on-premises network to AWS through VPN.",
   cloudfront: "Global CDN that delivers content and APIs with low latency.",
   route53: "Scalable DNS service with domain registration and traffic routing.",
   "api-gateway":
@@ -523,6 +525,7 @@ const ES_FIELD_KEY_TRANSLATIONS: FieldTranslations = {
   autoscalingEnabled: { label: "Autoescalado" },
   backupPlanName: { label: "Nombre del plan de backup" },
   backupRetentionDays: { label: "Retención de backup (días)" },
+  bgpAsn: { label: "ASN BGP" },
   billingMode: {
     label: "Modo de facturación",
     options: { PAY_PER_REQUEST: "Bajo demanda", PROVISIONED: "Provisionado" },
@@ -550,6 +553,7 @@ const ES_FIELD_KEY_TRANSLATIONS: FieldTranslations = {
   cpu: { label: "Unidades de CPU" },
   crossAccountSharing: { label: "Compartir entre cuentas" },
   crossRegionCopy: { label: "Copia cross-region" },
+  customerGatewayName: { label: "Nombre del Customer Gateway" },
   dashboardName: { label: "Nombre del dashboard" },
   databaseName: { label: "Nombre de base de datos" },
   dataCatalogName: { label: "Nombre del catálogo de datos" },
@@ -601,6 +605,7 @@ const ES_FIELD_KEY_TRANSLATIONS: FieldTranslations = {
   hostedUiEnabled: { label: "Hosted UI habilitada" },
   identityName: { label: "Nombre de identidad" },
   indexName: { label: "Nombre del índice" },
+  ipAddress: { label: "Dirección IP" },
   instanceClass: { label: "Clase de instancia" },
   instanceCount: { label: "Cantidad de instancias" },
   instanceName: { label: "Nombre de instancia" },
