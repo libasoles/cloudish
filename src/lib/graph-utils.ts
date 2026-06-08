@@ -501,7 +501,6 @@ export function redistributeVpcNodes(
   regionH: number,
   nodes: AppNode[],
 ): AppNode[] {
-  const nodesById = new Map(nodes.map((node) => [node.id, node]));
   const vpcChildren = nodes.filter(
     (n) => n.parentId === regionId && isVpcNode(n),
   );
@@ -510,86 +509,17 @@ export function redistributeVpcNodes(
   const count = vpcChildren.length;
   const vpcH = regionH - REGION_HEADER_H - VPC_PAD;
   const vpcW = Math.floor((regionW - VPC_PAD * (count + 1)) / count);
-  const vpcLayoutById = new Map(
-    vpcChildren.map((vpc, vpcIndex) => {
-      const insets = getVpcGatewayLayoutInsets(vpc.id, nodes);
-      const leftInset = Math.max(0, insets.left);
-      const rightInset = Math.max(0, insets.right);
-      const topInset = Math.max(0, insets.top);
-      const bottomInset = Math.max(0, insets.bottom);
 
-      return [
-        vpc.id,
-        {
-          width: Math.max(1, vpcW - leftInset - rightInset),
-          height: Math.max(1, vpcH - topInset - bottomInset),
-          position: {
-            x: VPC_PAD + vpcIndex * (vpcW + VPC_PAD) + leftInset,
-            y: REGION_HEADER_H + topInset,
-          },
-        },
-      ];
-    }),
-  );
-  const edgeGatewayAbsolutePositions = new Map<string, FlowPosition>();
-
-  for (const node of nodes) {
-    if (!isGatewayServiceNode(node) || !node.parentId) continue;
-
-    const parent = nodesById.get(node.parentId);
-    if (!parent || !isVpcNode(parent) || parent.parentId !== regionId) {
-      continue;
-    }
-
-    const gatewayRect = getNodeRect(node, nodesById);
-    const vpcRect = getNodeRect(parent, nodesById);
-    if (!isVpcEdgeGateway(gatewayRect, vpcRect)) {
-      continue;
-    }
-
-    edgeGatewayAbsolutePositions.set(
-      node.id,
-      getAbsolutePosition(node, nodesById),
-    );
-  }
-
-  const withVpcLayout = nodes.map((n) => {
-    const layout = vpcLayoutById.get(n.id);
-    if (!layout) return n;
+  return nodes.map((n) => {
+    const vpcIndex = vpcChildren.findIndex((v) => v.id === n.id);
+    if (vpcIndex === -1) return n;
 
     return {
       ...n,
-      width: layout.width,
-      height: layout.height,
-      position: layout.position,
-      style: { ...n.style, width: layout.width, height: layout.height },
-    };
-  });
-
-  if (!edgeGatewayAbsolutePositions.size) {
-    return withVpcLayout;
-  }
-
-  const updatedNodesById = new Map(withVpcLayout.map((node) => [node.id, node]));
-
-  return withVpcLayout.map((node) => {
-    const absolutePosition = edgeGatewayAbsolutePositions.get(node.id);
-    if (!absolutePosition || !node.parentId) {
-      return node;
-    }
-
-    const parent = updatedNodesById.get(node.parentId);
-    if (!parent) {
-      return node;
-    }
-
-    const parentPosition = getAbsolutePosition(parent, updatedNodesById);
-    return {
-      ...node,
-      position: {
-        x: absolutePosition.x - parentPosition.x,
-        y: absolutePosition.y - parentPosition.y,
-      },
+      width: vpcW,
+      height: vpcH,
+      position: { x: VPC_PAD + vpcIndex * (vpcW + VPC_PAD), y: REGION_HEADER_H },
+      style: { ...n.style, width: vpcW, height: vpcH },
     };
   });
 }
@@ -618,15 +548,6 @@ export function redistributeVpcInnerLayout(vpcId: string, nodes: AppNode[]) {
 
 export function redistributeGatewayAffectedVpcLayouts(nodes: AppNode[]) {
   let result = nodes;
-  const regionNodes = result.filter(isRegionNode);
-
-  for (const region of regionNodes) {
-    const currentRegion = result.find((node) => node.id === region.id);
-    if (!currentRegion) continue;
-    const { width, height } = getNodeSize(currentRegion);
-    result = redistributeVpcNodes(currentRegion.id, width, height, result);
-  }
-
   const vpcNodes = result.filter(isVpcNode);
 
   for (const vpc of vpcNodes) {
