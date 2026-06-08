@@ -103,7 +103,16 @@ import {
   addNodeWithAzSync,
   syncNodeGroupPosition,
 } from "@/lib/az-sync";
-import { getAwsServiceNodeData, getServiceNodeType } from "@/lib/node-utils";
+import { getAwsServiceNodeData, getServiceNodeType, getNodePlacementScope } from "@/lib/node-utils";
+import {
+  findAllowedAncestorForScope,
+  computeBandPlacement,
+  resolveBandSide,
+  redistributeScopeAffectedLayouts,
+  isBandNode,
+  getBandNodePosition,
+  expelGlobalNodePosition,
+} from "@/lib/placement";
 import { EDGE_STYLE } from "@/lib/edge-tools";
 import { resolveVpnGatewayEdgeLabel } from "@/lib/vpn-gateway-edges";
 import type { ExportFormat } from "@/lib/export/types";
@@ -985,11 +994,61 @@ export default function Canvas() {
         };
 
         commitGraphChange(({ nodes, edges }) => {
-          const parentedPosition = getParentedPosition(
-            nodePosition,
-            { width: DEFAULT_NODE_WIDTH, height: DEFAULT_NODE_HEIGHT },
-            nodes,
-          );
+          const nodeRect = { ...nodePosition, width: DEFAULT_NODE_WIDTH, height: DEFAULT_NODE_HEIGHT };
+          const serviceData = getAwsServiceNodeData(service);
+          const scope = service.placementScope ?? serviceData.placementScope ?? "subnet";
+
+          let parentedPosition: ReturnType<typeof getParentedPosition>;
+          let extraData: Record<string, unknown> = {};
+
+          if (scope === "subnet") {
+            parentedPosition = getParentedPosition(nodePosition, { width: DEFAULT_NODE_WIDTH, height: DEFAULT_NODE_HEIGHT }, nodes);
+          } else {
+            const nodesById = new Map(nodes.map((n) => [n.id, n]));
+            const allowedAncestor = findAllowedAncestorForScope(nodeRect, scope, nodes);
+
+            if (!allowedAncestor) {
+              // global scope or no valid ancestor — place at canvas top-level, expelled from any region
+              const safePos = expelGlobalNodePosition(
+                nodePosition, DEFAULT_NODE_WIDTH, DEFAULT_NODE_HEIGHT, nodes,
+              );
+              parentedPosition = { position: safePos };
+            } else {
+              // Check if drop landed deeper than allowed (the deepest intersecting container
+              // might be a subnet while allowed is the region)
+              const deepestContainer = getParentedPosition(nodePosition, { width: DEFAULT_NODE_WIDTH, height: DEFAULT_NODE_HEIGHT }, nodes);
+              const deepestContainerId = deepestContainer.parentId;
+              const isExpelled = deepestContainerId && deepestContainerId !== allowedAncestor.id;
+
+              if (isExpelled) {
+                // Place in the band of the allowed ancestor
+                const dropAbsCenter = {
+                  x: nodePosition.x + DEFAULT_NODE_WIDTH / 2,
+                  y: nodePosition.y + DEFAULT_NODE_HEIGHT / 2,
+                };
+                const nodesById2 = nodesById;
+                const ancRect = {
+                  ...getAbsolutePosition(allowedAncestor, nodesById2),
+                  width: (allowedAncestor.style as { width?: number })?.width ?? allowedAncestor.width ?? 720,
+                  height: (allowedAncestor.style as { height?: number })?.height ?? allowedAncestor.height ?? 480,
+                };
+                const side = resolveBandSide(dropAbsCenter, ancRect, scope, service.id);
+                const bandPos = computeBandPlacement(allowedAncestor, side, nodes);
+                parentedPosition = bandPos;
+                extraData = { bandSide: side };
+              } else {
+                // Drop is already within the allowed ancestor or directly on canvas — normal placement
+                const ancPos = getAbsolutePosition(allowedAncestor, nodesById);
+                parentedPosition = {
+                  parentId: allowedAncestor.id,
+                  position: {
+                    x: nodePosition.x - ancPos.x,
+                    y: nodePosition.y - ancPos.y,
+                  },
+                };
+              }
+            }
+          }
 
           const newNode: AppNode = {
             id: nodeId,
@@ -997,7 +1056,7 @@ export default function Canvas() {
             zIndex: 10,
             selected: true,
             ...parentedPosition,
-            data: { ...getAwsServiceNodeData(service), ...pulseData },
+            data: { ...serviceData, ...extraData, ...pulseData },
           };
 
           const nextNodes = addNodeWithAzSync(
@@ -1006,7 +1065,7 @@ export default function Canvas() {
           );
 
           return {
-            nodes: redistributeGatewayAffectedVpcLayouts(nextNodes),
+            nodes: redistributeScopeAffectedLayouts(redistributeGatewayAffectedVpcLayouts(nextNodes)),
             edges,
           };
         });
@@ -1521,6 +1580,82 @@ export default function Canvas() {
           forcedContainer?: AppNode,
         ) {
           const nodeRect = getNodeRect(node, nodesById);
+
+          // For service nodes with a placement scope, enforce placement rules on drag.
+          if (!isNetworkContainerNode(node) && node.type === "awsService") {
+            const awsNode = node as import("@/components/nodes/AwsServiceNode").AwsServiceNodeType;
+            const scope = getNodePlacementScope(awsNode);
+
+            if (scope !== "subnet") {
+              const allowedAncestor = findAllowedAncestorForScope(nodeRect, scope, nodes);
+
+              if (scope === "global" || !allowedAncestor) {
+                // Expel to canvas top-level, moving outside any region bounds
+                const safePos = expelGlobalNodePosition(
+                  { x: nodeRect.x, y: nodeRect.y },
+                  nodeRect.width,
+                  nodeRect.height,
+                  nodes,
+                );
+                const posChanged = safePos.x !== nodeRect.x || safePos.y !== nodeRect.y;
+                if (node.parentId || posChanged) {
+                  updates.set(node.id, {
+                    ...node,
+                    parentId: undefined,
+                    data: { ...node.data, bandSide: undefined },
+                    position: safePos,
+                  });
+                }
+                return;
+              }
+
+              // Determine if it's being dropped deeper than allowed
+              const deepestContainer = findIntersectingContainer(nodeRect, containerNodes, nodesById, node);
+              const isExpelled = deepestContainer && deepestContainer.id !== allowedAncestor.id;
+
+              if (isExpelled) {
+                const dropAbsCenter = {
+                  x: nodeRect.x + nodeRect.width / 2,
+                  y: nodeRect.y + nodeRect.height / 2,
+                };
+                const ancRect = {
+                  ...getAbsolutePosition(allowedAncestor, nodesById),
+                  width: (allowedAncestor.style as { width?: number })?.width ?? allowedAncestor.width ?? 720,
+                  height: (allowedAncestor.style as { height?: number })?.height ?? allowedAncestor.height ?? 480,
+                };
+                const side = resolveBandSide(dropAbsCenter, ancRect, scope, awsNode.data.serviceId);
+                const existingOnSide = nodes.filter(
+                  (n) => n.parentId === allowedAncestor.id && isBandNode(n) &&
+                    (n.data as { bandSide?: string }).bandSide === side && n.id !== node.id,
+                ).length;
+                const { width: cW, height: cH } = {
+                  width: (allowedAncestor.style as { width?: number })?.width ?? allowedAncestor.width ?? 720,
+                  height: (allowedAncestor.style as { height?: number })?.height ?? allowedAncestor.height ?? 480,
+                };
+                const pos = getBandNodePosition(side, existingOnSide, cW, cH);
+                updates.set(node.id, {
+                  ...node,
+                  parentId: allowedAncestor.id,
+                  data: { ...node.data, bandSide: side },
+                  position: pos,
+                });
+                return;
+              }
+
+              // Drop is within the allowed ancestor — normal parent assignment
+              if (node.parentId !== allowedAncestor.id) {
+                const ancPos = getAbsolutePosition(allowedAncestor, nodesById);
+                updates.set(node.id, {
+                  ...node,
+                  parentId: allowedAncestor.id,
+                  data: { ...node.data, bandSide: undefined },
+                  position: { x: nodeRect.x - ancPos.x, y: nodeRect.y - ancPos.y },
+                });
+              }
+              return;
+            }
+          }
+
           const containerNode =
             forcedContainer ??
             findIntersectingContainer(
@@ -1626,7 +1761,7 @@ export default function Canvas() {
           result,
         );
 
-        return redistributeGatewayAffectedVpcLayouts(syncedNodes);
+        return redistributeScopeAffectedLayouts(redistributeGatewayAffectedVpcLayouts(syncedNodes));
       });
     },
     [setNodes],
