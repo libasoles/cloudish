@@ -58,7 +58,7 @@ export default function Inspector() {
     : null;
 
   const selectedAwsNode =
-    selectedNode?.type === "awsService" || selectedNode?.type === "circularService"
+    selectedNode?.type === "awsService" || selectedNode?.type === "gatewayService"
       ? (selectedNode as AwsServiceNodeType)
       : null;
   const selectedPlainTextNode =
@@ -71,7 +71,7 @@ export default function Inspector() {
     : "";
 
   let selectedLabel = "";
-  if (selectedNode?.type === "awsService" || selectedNode?.type === "circularService") {
+  if (selectedNode?.type === "awsService" || selectedNode?.type === "gatewayService") {
     selectedLabel = (selectedNode.data as AwsServiceNodeData).name;
   } else if (selectedNode?.type === "plainText") {
     selectedLabel = selectedPlainTextData?.text.trim() || t.text;

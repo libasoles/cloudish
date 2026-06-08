@@ -1,17 +1,17 @@
 import type { Edge, Node, Viewport } from "@xyflow/react";
 import type { AwsServiceNodeType } from "@/components/nodes/AwsServiceNode";
-import type { CircularServiceNodeType } from "@/components/nodes/CircularServiceNode";
-import type { NetworkContainerNodeType } from "@/components/nodes/NetworkContainerNode";
+import type { GatewayServiceNodeType } from "@/components/nodes/GatewayServiceNode";
+import type { NetworkContainerNodeType } from "@/components/nodes/network-containers/NetworkContainerNode";
 import type { PlainTextNodeType } from "@/components/nodes/PlainTextNode";
-import type { ExternalNodeType } from "@/components/nodes/ExternalNode";
+import type { MiscellaneousNodeType } from "@/components/nodes/MiscellaneousNode";
 
 export type AppNode =
   | Node
   | AwsServiceNodeType
-  | CircularServiceNodeType
+  | GatewayServiceNodeType
   | NetworkContainerNodeType
   | PlainTextNodeType
-  | ExternalNodeType;
+  | MiscellaneousNodeType;
 export type AppEdge = Edge;
 
 export type SubnetType = "Public" | "Private";

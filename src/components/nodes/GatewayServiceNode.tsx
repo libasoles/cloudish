@@ -1,19 +1,15 @@
 import { Handle, Position, type NodeProps, type Node } from "@xyflow/react";
-import { User, Cloud, Monitor, Smartphone } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AwsServiceIcon } from "@/components/AwsServiceIcon";
 import EditableNodeLabel from "@/components/EditableNodeLabel";
 import { CustomerGatewayIcon } from "@/components/icons/CustomerGatewayIcon";
 import { getCustomerGatewayHandleIds } from "@/lib/vpn-gateway-edges";
 import { useFlowStore } from "@/store/flowStore";
 import { UI_TEXT, getBrowserLocale } from "@/i18n";
 import { useNodeCommit } from "@/hooks/useNodeCommit";
+import type { AwsServiceNodeData } from "@/components/nodes/AwsServiceNode";
 
-const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
-  user: User,
-  internet: Cloud,
-  web: Monitor,
-  mobile: Smartphone,
-};
+export type GatewayServiceNodeType = Node<AwsServiceNodeData, "gatewayService">;
 
 const VPN_HANDLE_BASE: React.CSSProperties = {
   display: "flex",
@@ -28,28 +24,17 @@ const VPN_HANDLE_TRANSFORM: Record<string, string> = {
   bottom: "translate(-50%, 50%)",
 };
 
-export type ExternalNodeData = {
-  label: string;
-  fields?: Record<string, string | boolean | number>;
-  pulseKey?: string;
-};
-
-export type ExternalNodeType = Node<ExternalNodeData, "user" | "internet" | "web" | "mobile">;
-
-export default function ExternalNode({
+export default function GatewayServiceNode({
   id,
-  type,
   data,
   selected,
-}: NodeProps<ExternalNodeType>) {
+}: NodeProps<GatewayServiceNodeType>) {
   const edges = useFlowStore((s) => s.edges);
   const nodes = useFlowStore((s) => s.nodes);
   const t = UI_TEXT[getBrowserLocale()];
   const commitNodeUpdate = useNodeCommit(id);
 
-  const label = String(data.fields?.label ?? data.label);
   const vpnHandleIds = getCustomerGatewayHandleIds(id, edges, nodes);
-  const IconComponent = ICON_MAP[type ?? "user"] ?? User;
 
   function vpnHandleStyle(handleId: string): React.CSSProperties | undefined {
     return vpnHandleIds.has(handleId)
@@ -62,33 +47,18 @@ export default function ExternalNode({
     return cn(className, "customer-gateway-handle");
   }
 
-  function renameNode(newLabel: string) {
-    commitNodeUpdate((node) => ({
-      ...node,
-      data: {
-        ...node.data,
-        label: newLabel,
-        fields: { ...(node.data as ExternalNodeData).fields, label: newLabel },
-      },
-    }));
+  function renameNode(name: string) {
+    commitNodeUpdate((node) => ({ ...node, data: { ...node.data, name } }));
   }
 
   return (
-    <div
-      className={cn(
-        "flex flex-col items-center gap-1 px-3 py-2 bg-white rounded-xl border-2 shadow-sm min-w-20",
-        data.pulseKey && "node-click-pulse",
-        selected
-          ? "border-blue-500 shadow-md ring-2 ring-primary ring-offset-4 ring-offset-background"
-          : "border-gray-200",
-      )}
-    >
+    <div className="flex flex-col items-center gap-1.5 w-14">
       <Handle
         type="source"
         position={Position.Left}
         id="left"
         className={vpnHandleClassName("left")}
-        style={vpnHandleStyle("left")}
+        style={{ top: 28, ...vpnHandleStyle("left") }}
       >
         {vpnHandleIds.has("left") && (
           <CustomerGatewayIcon className="size-7 text-purple-600 pointer-events-none" />
@@ -99,7 +69,7 @@ export default function ExternalNode({
         position={Position.Right}
         id="right"
         className={vpnHandleClassName("right")}
-        style={vpnHandleStyle("right")}
+        style={{ top: 28, ...vpnHandleStyle("right") }}
       >
         {vpnHandleIds.has("right") && (
           <CustomerGatewayIcon className="size-7 text-purple-600 pointer-events-none" />
@@ -110,7 +80,7 @@ export default function ExternalNode({
         position={Position.Top}
         id="top"
         className={vpnHandleClassName("top", "handle-vertical")}
-        style={vpnHandleStyle("top")}
+        style={{ left: 28, ...vpnHandleStyle("top") }}
       >
         {vpnHandleIds.has("top") && (
           <CustomerGatewayIcon className="size-7 text-purple-600 pointer-events-none" />
@@ -121,16 +91,32 @@ export default function ExternalNode({
         position={Position.Bottom}
         id="bottom"
         className={vpnHandleClassName("bottom", "handle-vertical")}
-        style={vpnHandleStyle("bottom")}
+        style={{ left: 28, top: 56, ...vpnHandleStyle("bottom") }}
       >
         {vpnHandleIds.has("bottom") && (
           <CustomerGatewayIcon className="size-7 text-purple-600 pointer-events-none" />
         )}
       </Handle>
-      <IconComponent className="size-10 text-gray-500" />
+      <div
+        className={cn(
+          "size-14 rounded-full bg-white border-2 shadow-sm flex items-center justify-center",
+          data.pulseKey && "node-click-pulse",
+          selected
+            ? "border-blue-500 shadow-md ring-2 ring-primary ring-offset-4 ring-offset-background"
+            : "border-gray-200",
+        )}
+      >
+        <AwsServiceIcon
+          slug={data.slug}
+          category={data.category}
+          name={data.name}
+          size={40}
+        />
+      </div>
       <EditableNodeLabel
-        value={label}
+        value={data.name}
         editLabel={t.editNodeName}
+        className="text-white"
         onCommit={renameNode}
       />
     </div>
