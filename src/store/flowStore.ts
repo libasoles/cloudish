@@ -11,7 +11,11 @@ import {
   removeSyncedNodes,
   toggleAzSyncState,
 } from "@/lib/az-sync";
-import { getNetworkContainerType, resizeContainerNode } from "@/lib/graph-utils";
+import {
+  getNetworkContainerType,
+  isNetworkContainerNode,
+  resizeContainerNode,
+} from "@/lib/graph-utils";
 import { duplicateSelectedGraph } from "@/lib/node-duplication";
 import type {
   AppNode,
@@ -32,6 +36,8 @@ type FlowStore = {
   viewport: FlowViewport | null;
   viewportRestoreKey: number;
   nodes: AppNode[];
+  nodesById: Map<string, AppNode>;
+  containerNodes: AppNode[];
   edges: AppEdge[];
   history: HistoryEntry[];
   isDirty: boolean;
@@ -97,6 +103,13 @@ function resizeChangedContainers(
   }, nodes);
 }
 
+function getNodeDerivatives(nodes: AppNode[]) {
+  return {
+    nodesById: new Map(nodes.map((node) => [node.id, node])),
+    containerNodes: nodes.filter(isNetworkContainerNode),
+  };
+}
+
 // Module-level flag to deduplicate snapshots when React Flow fires both
 // onNodesChange and onEdgesChange for the same delete operation.
 let _removeSnapshotPending = false;
@@ -111,6 +124,7 @@ export const useFlowStore = create<FlowStore>()((set) => ({
   viewport: null,
   viewportRestoreKey: 0,
   nodes: initialNodes,
+  ...getNodeDerivatives(initialNodes),
   edges: initialEdges,
   history: [],
   isDirty: false,
@@ -119,10 +133,14 @@ export const useFlowStore = create<FlowStore>()((set) => ({
   setSelectionBoxActive: (v) => set({ selectionBoxActive: v }),
 
   setNodes: (updater) =>
-    set((s) => ({
-      nodes: typeof updater === "function" ? updater(s.nodes) : updater,
-      isDirty: true,
-    })),
+    set((s) => {
+      const nodes = typeof updater === "function" ? updater(s.nodes) : updater;
+      return {
+        nodes,
+        ...getNodeDerivatives(nodes),
+        isDirty: true,
+      };
+    }),
 
   onNodesChange: (changes) =>
     set((s) => {
@@ -156,14 +174,17 @@ export const useFlowStore = create<FlowStore>()((set) => ({
       if (!removedNodeIds.length) {
         return {
           nodes: nextNodes,
+          ...getNodeDerivatives(nextNodes),
           history,
           isDirty: s.isDirty || hasMeaningfulChanges,
           ...(selectionCleared ? { selectionBoxActive: false } : {}),
         };
       }
 
+      const next = removeSyncedNodes(removedNodeIds, s.nodes, nextNodes, s.edges);
       return {
-        ...removeSyncedNodes(removedNodeIds, s.nodes, nextNodes, s.edges),
+        ...next,
+        ...getNodeDerivatives(next.nodes),
         history,
         isDirty: true,
         ...(selectionCleared ? { selectionBoxActive: false } : {}),
@@ -204,7 +225,13 @@ export const useFlowStore = create<FlowStore>()((set) => ({
       if (next.nodes === s.nodes && next.edges === s.edges) return {};
       const entry: HistoryEntry = { before: { nodes: s.nodes, edges: s.edges } };
       const history = [...s.history, entry].slice(-MAX_HISTORY);
-      return { nodes: next.nodes, edges: next.edges, history, isDirty: true };
+      return {
+        nodes: next.nodes,
+        ...getNodeDerivatives(next.nodes),
+        edges: next.edges,
+        history,
+        isDirty: true,
+      };
     }),
 
   undo: () =>
@@ -212,7 +239,13 @@ export const useFlowStore = create<FlowStore>()((set) => ({
       const last = s.history.at(-1);
       if (!last) return {};
       const nodes = last.before.nodes.map((n) => ({ ...n, selected: false }));
-      return { nodes, edges: last.before.edges, history: s.history.slice(0, -1), isDirty: true };
+      return {
+        nodes,
+        ...getNodeDerivatives(nodes),
+        edges: last.before.edges,
+        history: s.history.slice(0, -1),
+        isDirty: true,
+      };
     }),
 
   resetCanvas: () =>
@@ -222,6 +255,7 @@ export const useFlowStore = create<FlowStore>()((set) => ({
       viewport: null,
       viewportRestoreKey: s.viewportRestoreKey + 1,
       nodes: [],
+      ...getNodeDerivatives([]),
       edges: [],
       history: [],
       isDirty: false,
@@ -234,6 +268,7 @@ export const useFlowStore = create<FlowStore>()((set) => ({
       viewport: metadata?.viewport ?? null,
       viewportRestoreKey: s.viewportRestoreKey + 1,
       nodes,
+      ...getNodeDerivatives(nodes),
       edges,
       history: [],
       isDirty: false,
@@ -261,7 +296,13 @@ export const useFlowStore = create<FlowStore>()((set) => ({
 
       const entry: HistoryEntry = { before: { nodes: s.nodes, edges: s.edges } };
       const history = [...s.history, entry].slice(-MAX_HISTORY);
-      return { nodes: next.nodes, edges: next.edges, history, isDirty: true };
+      return {
+        nodes: next.nodes,
+        ...getNodeDerivatives(next.nodes),
+        edges: next.edges,
+        history,
+        isDirty: true,
+      };
     }),
 
   markSaved: () => set({ isDirty: false }),
@@ -292,5 +333,12 @@ export const useFlowStore = create<FlowStore>()((set) => ({
   setEditingEdgeId: (id) => set({ editingEdgeId: id }),
 
   toggleAzSync: (azId, synced) =>
-    set((s) => ({ ...toggleAzSyncState(azId, synced, s.nodes, s.edges), isDirty: true })),
+    set((s) => {
+      const next = toggleAzSyncState(azId, synced, s.nodes, s.edges);
+      return {
+        ...next,
+        ...getNodeDerivatives(next.nodes),
+        isDirty: true,
+      };
+    }),
 }));

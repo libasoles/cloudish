@@ -771,8 +771,7 @@ export default function Canvas() {
         x: event.clientX,
         y: event.clientY,
       });
-      const { nodes: currentNodes } = useFlowStore.getState();
-      const nodesById = new Map(currentNodes.map((node) => [node.id, node]));
+      const { nodes: currentNodes, nodesById } = useFlowStore.getState();
 
       if (
         droppedTool.type === AWS_SERVICE_NODE_TYPE &&
@@ -1522,9 +1521,10 @@ export default function Canvas() {
         return;
       }
 
-      const { nodes: currentNodes } = useFlowStore.getState();
-      const nodesById = new Map(currentNodes.map((n) => [n.id, n]));
-      const containerNodes = currentNodes.filter(isNetworkContainerNode);
+      const {
+        nodesById,
+        containerNodes,
+      } = useFlowStore.getState();
 
       const nodeRect = getNodeRect(node, nodesById);
       const target = findIntersectingContainer(
