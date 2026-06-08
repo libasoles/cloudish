@@ -53,6 +53,7 @@ function setDragPayload(
 type SidebarToolButtonProps = {
   name: string;
   description: string;
+  dragOrClickText: string;
   ariaLabel: string;
   tool: DragTool;
   variant?: "container" | "default";
@@ -72,6 +73,7 @@ const SIDEBAR_TOOL_BUTTON_CLASSES = {
 function SidebarToolButton({
   name,
   description,
+  dragOrClickText,
   ariaLabel,
   tool,
   variant = "default",
@@ -92,6 +94,9 @@ function SidebarToolButton({
           </span>
           <span className="mt-1 block text-xs leading-snug text-muted-foreground">
             {description}
+          </span>
+          <span className="mt-2 block text-xs leading-snug text-muted-foreground/60">
+            {dragOrClickText}
           </span>
         </>
       }
@@ -138,7 +143,8 @@ function renderInfrastructureTool(
     <SidebarToolButton
       key={item.id}
       name={infraLabel.name}
-      description={`${infraLabel.description} ${labels.dragOrClickToAdd}`}
+      description={infraLabel.description}
+      dragOrClickText={labels.dragOrClickToAdd}
       ariaLabel={`Drag ${infraLabel.name}`}
       tool={item.tool}
       variant={variant}
@@ -164,6 +170,16 @@ export default function DragDropSidebar({
         {labels.dragAndDrop}
       </div>
       <div className="flex-1 space-y-2 overflow-y-auto p-2">
+        {CUSTOM.filter((item) => !item.searchOnly).map((item) =>
+          renderInfrastructureTool(item, {
+            labels,
+            infraLabels,
+            iconClassName: "size-10 text-muted-foreground",
+            onToolClick,
+            onToolDragStart,
+            onToolDragEnd,
+          }),
+        )}
         {CONTAINERS.filter((item) => !item.searchOnly).map((item) =>
           renderInfrastructureTool(item, {
             labels,
@@ -175,29 +191,11 @@ export default function DragDropSidebar({
             onToolDragEnd,
           }),
         )}
-        {CLIENTS.filter((item) => !item.searchOnly).map((item) =>
-          renderInfrastructureTool(item, {
-            labels,
-            infraLabels,
-            iconClassName: "size-10 text-muted-foreground",
-            onToolClick,
-            onToolDragStart,
-            onToolDragEnd,
-          }),
-        )}
-        {CUSTOM.filter((item) => !item.searchOnly).map((item) =>
-          renderInfrastructureTool(item, {
-            labels,
-            infraLabels,
-            iconClassName: "size-10 text-muted-foreground",
-            onToolClick,
-            onToolDragStart,
-            onToolDragEnd,
-          }),
-        )}
+
         <SidebarToolButton
           name={labels.text}
-          description={`${labels.textDescription} ${labels.dragOrClickToAdd}`}
+          description={labels.textDescription}
+          dragOrClickText={labels.dragOrClickToAdd}
           ariaLabel={labels.dragText}
           tool={{ type: "text" }}
           onToolClick={onToolClick}
@@ -210,7 +208,8 @@ export default function DragDropSidebar({
           <SidebarToolButton
             key={service.id}
             name={service.name}
-            description={`${labels.getServiceDescription(service)} ${labels.dragOrClickToAdd}`}
+            description={labels.getServiceDescription(service)}
+            dragOrClickText={labels.dragOrClickToAdd}
             ariaLabel={labels.dragService(service.name)}
             tool={{
               type: AWS_SERVICE_NODE_TYPE,
@@ -228,6 +227,16 @@ export default function DragDropSidebar({
             />
           </SidebarToolButton>
         ))}
+        {CLIENTS.filter((item) => !item.searchOnly).map((item) =>
+          renderInfrastructureTool(item, {
+            labels,
+            infraLabels,
+            iconClassName: "size-10 text-muted-foreground",
+            onToolClick,
+            onToolDragStart,
+            onToolDragEnd,
+          }),
+        )}
       </div>
     </aside>
   );

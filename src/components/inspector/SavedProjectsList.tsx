@@ -1,8 +1,11 @@
-import { FolderOpen, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { FolderOpen, Loader2, ChevronDown } from "lucide-react";
 import { UI_TEXT, getBrowserLocale } from "@/i18n";
 import { useFlowStore } from "@/store/flowStore";
 import { useArchitectures } from "@/hooks/useArchitectures";
 import { setUrlArchitectureId } from "@/lib/url-utils";
+
+const PAGE_SIZE = 5;
 
 type Props = {
   onSelect?: () => void;
@@ -12,6 +15,7 @@ export function SavedProjectsList({ onSelect }: Props = {}) {
   const locale = getBrowserLocale();
   const t = UI_TEXT[locale] as (typeof UI_TEXT)["en"];
   const { loadArchitecture } = useFlowStore();
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const { data: projects, isLoading, isError } = useArchitectures();
 
@@ -39,12 +43,15 @@ export function SavedProjectsList({ onSelect }: Props = {}) {
     );
   }
 
+  const visibleProjects = projects.slice(0, visibleCount);
+  const hasMore = visibleCount < projects.length;
+
   return (
     <div className="flex flex-col gap-1">
       <p className="mb-1 text-xs font-medium text-muted-foreground">
         {t.savedProjects}
       </p>
-      {projects.map((project) => (
+      {visibleProjects.map((project) => (
         <button
           key={project.architectureId}
           className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-left transition-colors hover:bg-accent"
@@ -69,6 +76,15 @@ export function SavedProjectsList({ onSelect }: Props = {}) {
           </div>
         </button>
       ))}
+      {hasMore && (
+        <button
+          onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+          className="mt-1 flex w-full items-center justify-center gap-1 rounded-md border border-border py-2 text-xs font-medium text-muted-foreground transition hover:bg-accent hover:text-foreground"
+        >
+          Ver más
+          <ChevronDown className="h-3.5 w-3.5" />
+        </button>
+      )}
     </div>
   );
 }
