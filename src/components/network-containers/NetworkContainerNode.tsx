@@ -3,6 +3,7 @@ import {
   type Node,
   type NodeProps,
 } from "@xyflow/react";
+import { cva } from "class-variance-authority";
 import { Link } from "lucide-react";
 import EditableNodeLabel from "@/components/EditableNodeLabel";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,108 @@ export type NetworkContainerNodeType = Node<
 
 const MIN_CONTAINER_WIDTH = 264;
 const MIN_CONTAINER_HEIGHT = 168;
+
+type ContainerTone =
+  | "region"
+  | "vpc"
+  | "az"
+  | "asg"
+  | "generic"
+  | "privateSubnet"
+  | "publicSubnet";
+
+const containerNodeVariants = cva(
+  "relative h-full w-full rounded-lg border bg-card/20",
+  {
+    variants: {
+      tone: {
+        region: "border-purple-500/45 bg-purple-500/10",
+        vpc: "border-violet-500/55 bg-violet-950/35",
+        az: "border-indigo-400/55 bg-indigo-400/5 border-dashed",
+        asg: "border-orange-400/60 bg-orange-400/8 border-dashed",
+        generic: "border-zinc-400/50 bg-zinc-400/8 border-dashed",
+        privateSubnet: "border-blue-500/45 bg-blue-500/10",
+        publicSubnet: "border-emerald-500/45 bg-emerald-500/10",
+      },
+    },
+  },
+);
+
+const resizeLineVariants = cva("!border-2", {
+  variants: {
+    tone: {
+      region: "!border-purple-400/70",
+      vpc: "!border-violet-500/70",
+      az: "!border-indigo-400/70",
+      asg: "!border-orange-400/70",
+      generic: "!border-zinc-400/70",
+      privateSubnet: "!border-blue-400/70",
+      publicSubnet: "!border-emerald-400/70",
+    },
+  },
+});
+
+const resizeHandleVariants = cva(
+  "!h-3 !w-3 !rounded-full !border-2 !bg-background",
+  {
+    variants: {
+      tone: {
+        region: "!border-purple-400",
+        vpc: "!border-violet-500",
+        az: "!border-indigo-400",
+        asg: "!border-orange-400",
+        generic: "!border-zinc-400",
+        privateSubnet: "!border-blue-400",
+        publicSubnet: "!border-emerald-400",
+      },
+    },
+  },
+);
+
+const labelVariants = cva(
+  "absolute left-3 top-0 -translate-y-1/2 flex items-center gap-1.5 rounded border px-2.5 py-1 text-xs font-semibold leading-none shadow-sm",
+  {
+    variants: {
+      tone: {
+        region: "border-purple-500/50 bg-background text-purple-200",
+        vpc: "border-violet-500/60 bg-background text-violet-200",
+        az: "border-indigo-400/60 bg-background text-indigo-200",
+        asg: "border-orange-400/60 bg-background text-orange-200",
+        generic: "border-zinc-400/50 bg-background text-zinc-300",
+        privateSubnet: "border-blue-500/50 bg-background text-blue-200",
+        publicSubnet: "border-emerald-500/50 bg-background text-emerald-200",
+      },
+    },
+  },
+);
+
+function getContainerTone(data: NetworkContainerNodeData): ContainerTone {
+  if (data.containerType === "region") {
+    return "region";
+  }
+
+  if (data.containerType === "vpc") {
+    return "vpc";
+  }
+
+  if (data.containerType === "az") {
+    return "az";
+  }
+
+  if (data.containerType === "asg") {
+    return "asg";
+  }
+
+  if (data.containerType === "generic") {
+    return "generic";
+  }
+
+  if (data.subnetType === "Private") {
+    return "privateSubnet";
+  }
+
+  return "publicSubnet";
+}
 
 function DropPreviewLayout({
   childType,
@@ -92,7 +195,7 @@ export default function NetworkContainerNode({
   const isAz = data.containerType === "az";
   const isAsg = data.containerType === "asg";
   const isGeneric = data.containerType === "generic";
-  const isPrivateSubnet = data.subnetType === "Private";
+  const containerTone = getContainerTone(data);
   const displayLabel = String(data.label);
 
   const handleResize = (
@@ -132,20 +235,7 @@ export default function NetworkContainerNode({
   return (
     <div
       className={cn(
-        "relative h-full w-full rounded-lg border bg-card/20",
-        isVpc
-          ? "border-violet-500/55 bg-violet-950/35"
-          : isRegion
-            ? "border-purple-500/45 bg-purple-500/10"
-            : isAz
-              ? "border-indigo-400/55 bg-indigo-400/5 border-dashed"
-              : isAsg
-                ? "border-orange-400/60 bg-orange-400/8 border-dashed"
-                : isGeneric
-                  ? "border-zinc-400/50 bg-zinc-400/8 border-dashed"
-                  : isPrivateSubnet
-                    ? "border-blue-500/45 bg-blue-500/10"
-                    : "border-emerald-500/45 bg-emerald-500/10",
+        containerNodeVariants({ tone: containerTone }),
         selected && "ring-2 ring-primary ring-offset-4 ring-offset-background",
         isDropTarget && "ring-2 ring-emerald-400 ring-offset-2 ring-offset-background",
         data.pulseKey && "node-click-pulse",
@@ -163,54 +253,11 @@ export default function NetworkContainerNode({
           minHeight={MIN_CONTAINER_HEIGHT}
           onResize={handleResize}
           isVisible={selected}
-          lineClassName={cn(
-            "!border-2",
-            isVpc
-              ? "!border-violet-500/70"
-              : isRegion
-                ? "!border-purple-400/70"
-                : isAsg
-                  ? "!border-orange-400/70"
-                  : isGeneric
-                    ? "!border-zinc-400/70"
-                    : isPrivateSubnet
-                      ? "!border-blue-400/70"
-                      : "!border-emerald-400/70",
-          )}
-          handleClassName={cn(
-            "!h-3 !w-3 !rounded-full !border-2 !bg-background",
-            isVpc
-              ? "!border-violet-500"
-              : isRegion
-                ? "!border-purple-400"
-                : isAsg
-                  ? "!border-orange-400"
-                  : isGeneric
-                    ? "!border-zinc-400"
-                    : isPrivateSubnet
-                      ? "!border-blue-400"
-                      : "!border-emerald-400",
-          )}
+          lineClassName={resizeLineVariants({ tone: containerTone })}
+          handleClassName={resizeHandleVariants({ tone: containerTone })}
         />
       )}
-      <div
-        className={cn(
-          "absolute left-3 top-0 -translate-y-1/2 flex items-center gap-1.5 rounded border px-2.5 py-1 text-xs font-semibold leading-none shadow-sm",
-          isVpc
-            ? "border-violet-500/60 bg-background text-violet-200"
-            : isRegion
-              ? "border-purple-500/50 bg-background text-purple-200"
-              : isAz
-                ? "border-indigo-400/60 bg-background text-indigo-200"
-                : isAsg
-                  ? "border-orange-400/60 bg-background text-orange-200"
-                  : isGeneric
-                    ? "border-zinc-400/50 bg-background text-zinc-300"
-                    : isPrivateSubnet
-                      ? "border-blue-500/50 bg-background text-blue-200"
-                      : "border-emerald-500/50 bg-background text-emerald-200",
-        )}
-      >
+      <div className={labelVariants({ tone: containerTone })}>
         <EditableNodeLabel
           value={displayLabel}
           editLabel={t.editNodeName}
