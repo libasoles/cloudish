@@ -163,28 +163,54 @@ function isVpcEdgeGateway(gatewayRect: Rect, vpcRect: Rect) {
   );
 }
 
-// Calculates how much the VPC should grow outward to visually embrace its
-// gateway children. Uses relative positions so the result is stable across
-// repeated calls — moving the VPC never changes a gateway's relative position.
-function getVpcGatewayOuterInsets(
-  vpcId: string,
-  vpcW: number,
-  vpcH: number,
+// Calculates how much a region must grow outward so that VPC-edge gateways
+// stay visually inside it. Uses absolute positions so it handles multi-VPC
+// regions. The content rect (the un-grown region box) is derived from the
+// region's current stored insets, making the result idempotent — repeated
+// calls with unchanged gateway positions always produce the same insets.
+function getRegionGatewayOuterInsets(
+  regionId: string,
   nodes: AppNode[],
 ): ContainerInsets {
-  return nodes.reduce<ContainerInsets>((insets, node) => {
-    if (node.parentId !== vpcId || !isGatewayServiceNode(node)) return insets;
+  const nodesById = new Map(nodes.map((n) => [n.id, n]));
+  const region = nodesById.get(regionId);
+  if (!region || !isRegionNode(region)) return EMPTY_CONTAINER_INSETS;
 
-    const { width: gW, height: gH } = getNodeSize(node);
-    const { x, y } = node.position;
+  const { width: regionW, height: regionH } = getNodeSize(region);
+  const storedInsets = (region.data as { gatewayInsets?: ContainerInsets }).gatewayInsets ?? EMPTY_CONTAINER_INSETS;
+
+  // Content box: the stable un-grown region dimensions and position.
+  const baseW = regionW - storedInsets.left - storedInsets.right;
+  const baseH = regionH - storedInsets.top - storedInsets.bottom;
+  const contentX = region.position.x + storedInsets.left;
+  const contentY = region.position.y + storedInsets.top;
+  const contentRight = contentX + baseW;
+  const contentBottom = contentY + baseH;
+
+  // VPC children — used to detect which gateways are VPC-edge gateways.
+  const vpcChildren = nodes.filter((n) => n.parentId === regionId && isVpcNode(n));
+
+  const result = nodes.reduce<ContainerInsets>((insets, node) => {
+    if (!isGatewayServiceNode(node)) return insets;
+
+    const gatewayRect = getNodeRect(node, nodesById);
+    const isEdgeGateway = vpcChildren.some((vpc) =>
+      isVpcEdgeGateway(gatewayRect, getNodeRect(vpc, nodesById)),
+    );
+
+    if (!isEdgeGateway) return insets;
+
+    const gatewayRight = gatewayRect.x + gatewayRect.width;
+    const gatewayBottom = gatewayRect.y + gatewayRect.height;
 
     return {
-      left:  x < 0             ? Math.max(insets.left,  -x + GATEWAY_EDGE_CLEARANCE)               : insets.left,
-      right: x + gW > vpcW     ? Math.max(insets.right,  x + gW - vpcW + GATEWAY_EDGE_CLEARANCE)   : insets.right,
-      top:   y < 0             ? Math.max(insets.top,   -y + GATEWAY_EDGE_CLEARANCE)                : insets.top,
-      bottom: y + gH > vpcH   ? Math.max(insets.bottom, y + gH - vpcH + GATEWAY_EDGE_CLEARANCE)   : insets.bottom,
+      left:   gatewayRect.x < contentX       ? Math.max(insets.left,   contentX - gatewayRect.x + GATEWAY_EDGE_CLEARANCE)  : insets.left,
+      right:  gatewayRight  > contentRight    ? Math.max(insets.right,  gatewayRight - contentRight + GATEWAY_EDGE_CLEARANCE) : insets.right,
+      top:    gatewayRect.y < contentY        ? Math.max(insets.top,    contentY - gatewayRect.y + GATEWAY_EDGE_CLEARANCE)   : insets.top,
+      bottom: gatewayBottom > contentBottom   ? Math.max(insets.bottom, gatewayBottom - contentBottom + GATEWAY_EDGE_CLEARANCE) : insets.bottom,
     };
   }, EMPTY_CONTAINER_INSETS);
+  return result;
 }
 
 export function getVpcGatewayLayoutInsets(
@@ -530,36 +556,52 @@ export function redistributeVpcNodes(
   );
   if (!vpcChildren.length) return nodes;
 
+  // Recover stable content-box dimensions from stored insets so repeated passes
+  // with unchanged gateways produce the identical layout (idempotent).
+  const regionNode = nodes.find((n) => n.id === regionId);
+  const storedInsets = regionNode
+    ? ((regionNode.data as { gatewayInsets?: ContainerInsets }).gatewayInsets ?? EMPTY_CONTAINER_INSETS)
+    : EMPTY_CONTAINER_INSETS;
+  const baseW = regionW - storedInsets.left - storedInsets.right;
+  const baseH = regionH - storedInsets.top - storedInsets.bottom;
+  const contentX = (regionNode?.position.x ?? 0) + storedInsets.left;
+  const contentY = (regionNode?.position.y ?? 0) + storedInsets.top;
+
+  // Compute how much the region must grow to keep VPC-edge gateways inside it.
+  const newInsets = getRegionGatewayOuterInsets(regionId, nodes);
+  const newRegionW = baseW + newInsets.left + newInsets.right;
+  const newRegionH = baseH + newInsets.top + newInsets.bottom;
+  const newRegionX = contentX - newInsets.left;
+  const newRegionY = contentY - newInsets.top;
+
   const count = vpcChildren.length;
-  const vpcH = regionH - REGION_HEADER_H - VPC_PAD;
-  const vpcW = Math.floor((regionW - VPC_PAD * (count + 1)) / count);
+  const vpcH = baseH - REGION_HEADER_H - VPC_PAD;
+  const vpcW = Math.floor((baseW - VPC_PAD * (count + 1)) / count);
 
   return nodes.map((n) => {
+    if (n.id === regionId) {
+      return {
+        ...n,
+        width: newRegionW,
+        height: newRegionH,
+        position: { x: newRegionX, y: newRegionY },
+        style: { ...n.style, width: newRegionW, height: newRegionH },
+        data: { ...n.data, gatewayInsets: newInsets },
+      };
+    }
+
     const vpcIndex = vpcChildren.findIndex((v) => v.id === n.id);
     if (vpcIndex === -1) return n;
 
-    // Grow the VPC outward to visually embrace any edge gateway children.
-    // Growth is capped at VPC_PAD so the VPC never extends past the region border.
-    // Detection uses relative positions → stable across repeated calls.
-    const outer = getVpcGatewayOuterInsets(n.id, vpcW, vpcH, nodes);
-    const growLeft  = Math.min(outer.left,   VPC_PAD);
-    const growRight = Math.min(outer.right,  VPC_PAD);
-    const growTop   = Math.min(outer.top,    VPC_PAD);
-    const growBottom = Math.min(outer.bottom, VPC_PAD);
-
     return {
       ...n,
-      width: vpcW + growLeft + growRight,
-      height: vpcH + growTop + growBottom,
+      width: vpcW,
+      height: vpcH,
       position: {
-        x: VPC_PAD + vpcIndex * (vpcW + VPC_PAD) - growLeft,
-        y: REGION_HEADER_H - growTop,
+        x: newInsets.left + VPC_PAD + vpcIndex * (vpcW + VPC_PAD),
+        y: newInsets.top + REGION_HEADER_H,
       },
-      style: {
-        ...n.style,
-        width: vpcW + growLeft + growRight,
-        height: vpcH + growTop + growBottom,
-      },
+      style: { ...n.style, width: vpcW, height: vpcH },
     };
   });
 }
