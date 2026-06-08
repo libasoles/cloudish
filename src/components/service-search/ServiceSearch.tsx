@@ -14,8 +14,6 @@ import {
   type Locale,
 } from "@/i18n";
 import {
-  CONTAINER_WIDTH,
-  CONTAINER_HEIGHT,
   orderNodesForSubflows,
 } from "@/lib/graph-utils";
 import { useFlowStore } from "@/store/flowStore";
@@ -63,6 +61,10 @@ function getSearchResults(
   }
 
   const serviceResults: ServiceSearchItem[] = AWS_SERVICES.filter((service) => {
+    if (service.id === VPC_SERVICE_ID) {
+      return false;
+    }
+
     const categoryLabel = getCategoryLabel(service.category, locale);
     const description = getServiceDescription(service, locale);
     return (
@@ -145,44 +147,22 @@ export default function ServiceSearch({ onToolClick }: ServiceSearchProps) {
       y: window.innerHeight / 2,
     });
 
-    if (service.id === VPC_SERVICE_ID) {
-      const vpcNode: AppNode = {
-        id: `vpc-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-        type: "networkContainer",
-        selected: true,
-        position: {
-          x: position.x - CONTAINER_WIDTH / 2,
-          y: position.y - CONTAINER_HEIGHT / 2,
-        },
-        data: { containerType: "vpc", label: "VPC" },
-        style: {
-          width: CONTAINER_WIDTH,
-          height: CONTAINER_HEIGHT,
-        },
-      };
+    const serviceNode: AppNode = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      type: getServiceNodeType(service.id),
+      zIndex: 10,
+      selected: true,
+      position,
+      data: getAwsServiceNodeData(service),
+    };
 
-      commitGraphChange(({ nodes, edges }) => ({
-        nodes: [vpcNode, ...nodes.map((n) => ({ ...n, selected: false }))],
-        edges,
-      }));
-    } else {
-      const serviceNode: AppNode = {
-        id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-        type: getServiceNodeType(service.id),
-        zIndex: 10,
-        selected: true,
-        position,
-        data: getAwsServiceNodeData(service),
-      };
-
-      commitGraphChange(({ nodes, edges }) => ({
-        nodes: orderNodesForSubflows([
-          ...nodes.map((n) => ({ ...n, selected: false })),
-          serviceNode,
-        ]),
-        edges,
-      }));
-    }
+    commitGraphChange(({ nodes, edges }) => ({
+      nodes: orderNodesForSubflows([
+        ...nodes.map((n) => ({ ...n, selected: false })),
+        serviceNode,
+      ]),
+      edges,
+    }));
 
     setInspectorOpen(true);
     setQuery("");

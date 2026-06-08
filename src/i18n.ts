@@ -36,6 +36,9 @@ export const UI_TEXT = {
     mobileDescription: "Mobile client consuming applications, APIs, or backend services.",
     regionDescription:
       "Top-level AWS Region container for VPCs and network scope.",
+    vpc: "VPC",
+    vpcDescription:
+      "Isolated virtual network container for launching and connecting AWS resources.",
     subnetDescription: "Network segment inside a VPC or Availability Zone.",
     textDescription: "Plain text annotation for notes and labels.",
     subnet: "Subnet",
@@ -194,6 +197,9 @@ export const UI_TEXT = {
     mobileDescription: "Cliente móvil que consume aplicaciones, APIs o servicios backend.",
     regionDescription:
       "Contenedor principal de Región AWS para VPCs y alcance de red.",
+    vpc: "VPC",
+    vpcDescription:
+      "Contenedor de red virtual aislada para lanzar y conectar recursos de AWS.",
     subnetDescription:
       "Segmento de red dentro de una VPC o Zona de Disponibilidad.",
     textDescription: "Anotación de texto plano para notas y etiquetas.",

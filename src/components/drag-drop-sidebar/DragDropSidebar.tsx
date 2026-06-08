@@ -1,10 +1,14 @@
-import { Fragment, type DragEvent, type ReactNode } from "react";
+import { type DragEvent, type ReactNode } from "react";
 import { Type } from "lucide-react";
 import { AwsServiceIcon } from "@/components/AwsServiceIcon";
-import { VpcIcon } from "@/components/icons/VpcIcon";
 import { HoverOnlyTooltip } from "@/components/HoverOnlyTooltip";
-import { dragServices, vpcService } from "@/data/drag-tool-catalog";
-import { INFRASTRUCTURE_ITEMS } from "@/data/infrastructure-items";
+import { draggableAwsServices } from "@/data/drag-tool-catalog";
+import {
+  CLIENTS,
+  CONTAINERS,
+  CUSTOM,
+  type InfrastructureItem,
+} from "@/data/infrastructure-items";
 import type { AwsService } from "@/data/aws-services";
 import {
   AWS_SERVICE_NODE_TYPE,
@@ -51,19 +55,26 @@ type SidebarToolButtonProps = {
   description: string;
   ariaLabel: string;
   tool: DragTool;
-  featured?: boolean;
+  variant?: "container" | "default";
   children: ReactNode;
   onToolClick?: (tool: DragTool) => void;
   onToolDragStart?: (tool: DragTool) => void;
   onToolDragEnd?: () => void;
 };
 
+const SIDEBAR_TOOL_BUTTON_CLASSES = {
+  container:
+    "flex w-full cursor-pointer flex-col items-center gap-1 rounded-md border border-border bg-card px-1 py-2 text-center text-[11px] font-medium leading-tight text-card-foreground shadow-sm transition hover:border-primary hover:bg-accent",
+  default:
+    "flex w-full cursor-pointer flex-col items-center gap-1 rounded-md border border-transparent px-1 py-2 text-center text-[11px] font-medium leading-tight text-foreground transition hover:border-border hover:bg-accent",
+} as const;
+
 function SidebarToolButton({
   name,
   description,
   ariaLabel,
   tool,
-  featured = false,
+  variant = "default",
   children,
   onToolClick,
   onToolDragStart,
@@ -91,17 +102,52 @@ function SidebarToolButton({
         onDragStart={(event) => setDragPayload(event, tool, onToolDragStart)}
         onDragEnd={onToolDragEnd}
         onClick={() => onToolClick?.(tool)}
-        className={
-          featured
-            ? "flex w-full cursor-pointer flex-col items-center gap-1 rounded-md border border-border bg-card px-1 py-2 text-center text-[11px] font-medium leading-tight text-card-foreground shadow-sm transition hover:border-primary hover:bg-accent"
-            : "flex w-full cursor-pointer flex-col items-center gap-1 rounded-md border border-transparent px-1 py-2 text-center text-[11px] font-medium leading-tight text-foreground transition hover:border-border hover:bg-accent"
-        }
+        className={SIDEBAR_TOOL_BUTTON_CLASSES[variant]}
         aria-label={ariaLabel}
       >
         {children}
         <span className="w-full break-words">{name}</span>
       </button>
     </HoverOnlyTooltip>
+  );
+}
+
+function renderInfrastructureTool(
+  item: InfrastructureItem,
+  {
+    labels,
+    infraLabels,
+    variant = "default",
+    iconClassName,
+    onToolClick,
+    onToolDragStart,
+    onToolDragEnd,
+  }: {
+    labels: DragDropSidebarProps["labels"];
+    infraLabels: DragDropSidebarProps["infraLabels"];
+    variant?: "container" | "default";
+    iconClassName: string;
+    onToolClick?: (tool: DragTool) => void;
+    onToolDragStart?: (tool: DragTool) => void;
+    onToolDragEnd?: () => void;
+  },
+) {
+  const infraLabel = infraLabels[item.id];
+
+  return (
+    <SidebarToolButton
+      key={item.id}
+      name={infraLabel.name}
+      description={`${infraLabel.description} ${labels.dragOrClickToAdd}`}
+      ariaLabel={`Drag ${infraLabel.name}`}
+      tool={item.tool}
+      variant={variant}
+      onToolClick={onToolClick}
+      onToolDragStart={onToolDragStart}
+      onToolDragEnd={onToolDragEnd}
+    >
+      <item.Icon className={iconClassName} />
+    </SidebarToolButton>
   );
 }
 
@@ -118,54 +164,37 @@ export default function DragDropSidebar({
         {labels.dragAndDrop}
       </div>
       <div className="flex-1 space-y-2 overflow-y-auto p-2">
-        {INFRASTRUCTURE_ITEMS.filter((item) => !item.searchOnly).map((item) => {
-          const infraLabel = infraLabels[item.id];
-          const isFeatured =
-            item.tool.type !== "user" &&
-            item.tool.type !== "internet" &&
-            item.tool.type !== "web" &&
-            item.tool.type !== "mobile" &&
-            item.tool.type !== "text";
-          return (
-            <Fragment key={item.id}>
-              <SidebarToolButton
-                name={infraLabel.name}
-                description={`${infraLabel.description} ${labels.dragOrClickToAdd}`}
-                ariaLabel={`Drag ${infraLabel.name}`}
-                tool={item.tool}
-                featured={isFeatured}
-                onToolClick={onToolClick}
-                onToolDragStart={onToolDragStart}
-                onToolDragEnd={onToolDragEnd}
-              >
-                <item.Icon
-                  className={
-                    isFeatured
-                      ? "h-8 w-8 text-muted-foreground"
-                      : "size-10 text-muted-foreground"
-                  }
-                />
-              </SidebarToolButton>
-              {item.id === "infra-region" && vpcService ? (
-                <SidebarToolButton
-                  name={vpcService.name}
-                  description={`${labels.getServiceDescription(vpcService)} ${labels.dragOrClickToAdd}`}
-                  ariaLabel={labels.dragService(vpcService.name)}
-                  tool={{
-                    type: AWS_SERVICE_NODE_TYPE,
-                    serviceId: vpcService.id,
-                  }}
-                  featured
-                  onToolClick={onToolClick}
-                  onToolDragStart={onToolDragStart}
-                  onToolDragEnd={onToolDragEnd}
-                >
-                  <VpcIcon className="h-8 w-8 text-muted-foreground" />
-                </SidebarToolButton>
-              ) : null}
-            </Fragment>
-          );
-        })}
+        {CONTAINERS.filter((item) => !item.searchOnly).map((item) =>
+          renderInfrastructureTool(item, {
+            labels,
+            infraLabels,
+            variant: "container",
+            iconClassName: "h-8 w-8 text-muted-foreground",
+            onToolClick,
+            onToolDragStart,
+            onToolDragEnd,
+          }),
+        )}
+        {CLIENTS.filter((item) => !item.searchOnly).map((item) =>
+          renderInfrastructureTool(item, {
+            labels,
+            infraLabels,
+            iconClassName: "size-10 text-muted-foreground",
+            onToolClick,
+            onToolDragStart,
+            onToolDragEnd,
+          }),
+        )}
+        {CUSTOM.filter((item) => !item.searchOnly).map((item) =>
+          renderInfrastructureTool(item, {
+            labels,
+            infraLabels,
+            iconClassName: "size-10 text-muted-foreground",
+            onToolClick,
+            onToolDragStart,
+            onToolDragEnd,
+          }),
+        )}
         <SidebarToolButton
           name={labels.text}
           description={`${labels.textDescription} ${labels.dragOrClickToAdd}`}
@@ -177,7 +206,7 @@ export default function DragDropSidebar({
         >
           <Type className="h-8 w-8 text-muted-foreground" />
         </SidebarToolButton>
-        {dragServices.map((service) => (
+        {draggableAwsServices.map((service) => (
           <SidebarToolButton
             key={service.id}
             name={service.name}
