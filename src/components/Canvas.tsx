@@ -102,7 +102,7 @@ import {
   addNodeWithAzSync,
   syncNodeGroupPosition,
 } from "@/lib/az-sync";
-import { getAwsServiceNodeData } from "@/lib/node-utils";
+import { getAwsServiceNodeData, getServiceNodeType } from "@/lib/node-utils";
 import { EDGE_STYLE } from "@/lib/edge-tools";
 import { resolveVpnGatewayEdgeLabel } from "@/lib/vpn-gateway-edges";
 import type { ExportFormat } from "@/lib/export/types";
@@ -135,7 +135,6 @@ const edgeTypes: EdgeTypes = {
   default: EditableEdge,
 };
 
-const GATEWAY_SERVICE_IDS = new Set(["internet-gateway", "nat-gateway", "vpn-gateway"]);
 const SERVICE_DROP_OFFSET = { x: 50, y: 36 };
 const TEXT_DROP_OFFSET = { x: 8, y: 14 };
 const TEXT_NODE_WIDTH = 180;
@@ -991,7 +990,7 @@ export default function Canvas() {
 
           const newNode: AppNode = {
             id: nodeId,
-            type: GATEWAY_SERVICE_IDS.has(service.id) ? "gatewayService" : AWS_SERVICE_NODE_TYPE,
+            type: getServiceNodeType(service.id),
             zIndex: 10,
             selected: true,
             ...parentedPosition,
