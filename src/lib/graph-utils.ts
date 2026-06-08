@@ -557,26 +557,38 @@ export function redistributeVpcNodes(
   if (!vpcChildren.length) return nodes;
 
   // Recover stable content-box dimensions from stored insets so repeated passes
-  // with unchanged gateways produce the identical layout (idempotent).
+  // with unchanged gateways/scope-bands produce the identical layout (idempotent).
+  // Both gatewayInsets and scopeInsets contribute to region growth; the VPC content
+  // area must exclude BOTH sets of margins so VPCs never overlap band nodes.
   const regionNode = nodes.find((n) => n.id === regionId);
-  const storedInsets = regionNode
+  const storedGatewayInsets = regionNode
     ? ((regionNode.data as { gatewayInsets?: ContainerInsets }).gatewayInsets ?? EMPTY_CONTAINER_INSETS)
     : EMPTY_CONTAINER_INSETS;
-  const baseW = regionW - storedInsets.left - storedInsets.right;
-  const baseH = regionH - storedInsets.top - storedInsets.bottom;
-  const contentX = (regionNode?.position.x ?? 0) + storedInsets.left;
-  const contentY = (regionNode?.position.y ?? 0) + storedInsets.top;
+  const storedScopeInsets = regionNode
+    ? ((regionNode.data as { scopeInsets?: ContainerInsets }).scopeInsets ?? EMPTY_CONTAINER_INSETS)
+    : EMPTY_CONTAINER_INSETS;
+  // trueBaseW/H = the original content box without any inset growth
+  const trueBaseW = regionW - storedGatewayInsets.left - storedGatewayInsets.right
+                             - storedScopeInsets.left  - storedScopeInsets.right;
+  const trueBaseH = regionH - storedGatewayInsets.top  - storedGatewayInsets.bottom
+                             - storedScopeInsets.top   - storedScopeInsets.bottom;
+  const contentX = (regionNode?.position.x ?? 0) + storedGatewayInsets.left + storedScopeInsets.left;
+  const contentY = (regionNode?.position.y ?? 0) + storedGatewayInsets.top  + storedScopeInsets.top;
 
   // Compute how much the region must grow to keep VPC-edge gateways inside it.
   const newInsets = getRegionGatewayOuterInsets(regionId, nodes);
-  const newRegionW = baseW + newInsets.left + newInsets.right;
-  const newRegionH = baseH + newInsets.top + newInsets.bottom;
+  // Region dimensions = content + new gateway margins + existing scope band margins
+  const newRegionW = trueBaseW + newInsets.left + newInsets.right
+                               + storedScopeInsets.left + storedScopeInsets.right;
+  const newRegionH = trueBaseH + newInsets.top  + newInsets.bottom
+                               + storedScopeInsets.top  + storedScopeInsets.bottom;
   const newRegionX = contentX - newInsets.left;
   const newRegionY = contentY - newInsets.top;
 
   const count = vpcChildren.length;
-  const vpcH = baseH - REGION_HEADER_H - VPC_PAD;
-  const vpcW = Math.floor((baseW - VPC_PAD * (count + 1)) / count);
+  // VPCs fill only the true content area (not the gateway or scope-band margins)
+  const vpcH = trueBaseH - REGION_HEADER_H - VPC_PAD;
+  const vpcW = Math.floor((trueBaseW - VPC_PAD * (count + 1)) / count);
 
   return nodes.map((n) => {
     if (n.id === regionId) {
@@ -598,8 +610,9 @@ export function redistributeVpcNodes(
       width: vpcW,
       height: vpcH,
       position: {
-        x: newInsets.left + VPC_PAD + vpcIndex * (vpcW + VPC_PAD),
-        y: newInsets.top + REGION_HEADER_H,
+        // VPC starts after gateway insets AND scope band left insets
+        x: newInsets.left + storedScopeInsets.left + VPC_PAD + vpcIndex * (vpcW + VPC_PAD),
+        y: newInsets.top  + storedScopeInsets.top  + REGION_HEADER_H,
       },
       style: { ...n.style, width: vpcW, height: vpcH },
     };

@@ -15,6 +15,15 @@ export const AWS_CATEGORIES = {
 
 export type AwsCategory = (typeof AWS_CATEGORIES)[keyof typeof AWS_CATEGORIES];
 
+/**
+ * Placement scope of an AWS service — defines the deepest container allowed.
+ * "subnet" is the default (no restriction beyond the container hierarchy rules).
+ * "vpc"      → can live inside a VPC but not inside AZ/Subnet.
+ * "regional" → must live inside a Region but never inside a VPC.
+ * "global"   → must stay at canvas top-level, outside any Region.
+ */
+export type PlacementScope = "global" | "regional" | "vpc" | "subnet";
+
 export interface AwsService {
   id: string;
   name: string;
@@ -23,6 +32,7 @@ export interface AwsService {
   description: string;
   /** Hidden search terms: expanded acronyms or common aliases not present in name/description */
   aliases?: string;
+  placementScope?: PlacementScope;
 }
 
 const BASE = 'https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons';
@@ -44,7 +54,7 @@ export const AWS_SERVICES: AwsService[] = [
   { id: 'app-runner', name: 'App Runner', category: AWS_CATEGORIES.COMPUTE, slug: 'aws-aws-app-runner', description: 'Crea y ejecuta aplicaciones web y APIs contenerizadas sin administrar infraestructura.' },
   { id: 'outposts', name: 'Outposts', category: AWS_CATEGORIES.COMPUTE, slug: 'aws-aws-outposts', description: 'Extiende infraestructura y servicios de AWS a instalaciones locales.' },
   // Storage
-  { id: 's3', name: 'S3', category: AWS_CATEGORIES.STORAGE, slug: 'aws-amazon-simple-storage-service', description: 'Almacenamiento de objetos escalable para datos, sitios estaticos y backups.', aliases: 'Simple Storage Service bucket objetos' },
+  { id: 's3', name: 'S3', category: AWS_CATEGORIES.STORAGE, slug: 'aws-amazon-simple-storage-service', description: 'Almacenamiento de objetos escalable para datos, sitios estaticos y backups.', aliases: 'Simple Storage Service bucket objetos', placementScope: 'regional' },
   { id: 'ebs', name: 'EBS', category: AWS_CATEGORIES.STORAGE, slug: 'aws-amazon-elastic-block-store', description: 'Volumenes de almacenamiento en bloque persistente para instancias EC2.', aliases: 'Elastic Block Store volumen disco' },
   { id: 'efs', name: 'EFS', category: AWS_CATEGORIES.STORAGE, slug: 'aws-amazon-elastic-file-system', description: 'Sistema de archivos compartido, elastico y administrado para cargas Linux.', aliases: 'Elastic File System NFS' },
   { id: 'fsx', name: 'FSx', category: AWS_CATEGORIES.STORAGE, slug: 'aws-amazon-fsx', description: 'Sistemas de archivos administrados para Windows, Lustre, NetApp ONTAP y OpenZFS.', aliases: 'File System Windows Lustre' },
@@ -53,7 +63,7 @@ export const AWS_SERVICES: AwsService[] = [
   { id: 's3-glacier', name: 'S3 Glacier', category: AWS_CATEGORIES.STORAGE, slug: 'aws-amazon-s3-glacier', description: 'Clases de almacenamiento S3 de bajo costo para archivo y retencion a largo plazo.', aliases: 'archivo cold storage' },
   // Database
   { id: 'rds', name: 'RDS', category: AWS_CATEGORIES.DATABASE, slug: 'aws-amazon-rds', description: 'Base de datos relacional administrada para motores como MySQL, PostgreSQL y SQL Server.', aliases: 'Relational Database Service MySQL PostgreSQL SQL Server' },
-  { id: 'dynamodb', name: 'DynamoDB', category: AWS_CATEGORIES.DATABASE, slug: 'aws-amazon-dynamodb', description: 'Base de datos NoSQL serverless de clave-valor y documentos con baja latencia.' },
+  { id: 'dynamodb', name: 'DynamoDB', category: AWS_CATEGORIES.DATABASE, slug: 'aws-amazon-dynamodb', description: 'Base de datos NoSQL serverless de clave-valor y documentos con baja latencia.', placementScope: 'regional' },
   { id: 'aurora', name: 'Aurora', category: AWS_CATEGORIES.DATABASE, slug: 'aws-amazon-aurora', description: 'Base relacional compatible con MySQL y PostgreSQL, optimizada para AWS.' },
   { id: 'elasticache', name: 'ElastiCache', category: AWS_CATEGORIES.DATABASE, slug: 'aws-amazon-elasticache', description: 'Cache en memoria administrado compatible con Redis, Valkey y Memcached.' },
   { id: 'redshift', name: 'Redshift', category: AWS_CATEGORIES.DATABASE, slug: 'aws-amazon-redshift', description: 'Data warehouse cloud para analitica SQL sobre grandes volumenes de datos.', aliases: 'data warehouse OLAP' },
@@ -64,9 +74,9 @@ export const AWS_SERVICES: AwsService[] = [
   { id: 'timestream', name: 'Timestream', category: AWS_CATEGORIES.DATABASE, slug: 'aws-amazon-timestream', description: 'Base de datos serverless para series temporales de IoT y operaciones.', aliases: 'time series serie temporal' },
   // Networking
   { id: 'vpc', name: 'VPC', category: AWS_CATEGORIES.NETWORKING, slug: 'aws-amazon-virtual-private-cloud', description: 'Red virtual aislada para lanzar y conectar recursos de AWS.', aliases: 'Virtual Private Cloud red virtual' },
-  { id: 'cloudfront', name: 'CloudFront', category: AWS_CATEGORIES.NETWORKING, slug: 'aws-amazon-cloudfront', description: 'CDN global que entrega contenido y APIs con baja latencia.', aliases: 'CF Content Delivery Network distribucion' },
-  { id: 'route53', name: 'Route 53', category: AWS_CATEGORIES.NETWORKING, slug: 'aws-amazon-route-53', description: 'Servicio DNS escalable con registro de dominios y enrutamiento de trafico.', aliases: 'R53 DNS dominio' },
-  { id: 'api-gateway', name: 'API Gateway', category: AWS_CATEGORIES.NETWORKING, slug: 'aws-amazon-api-gateway', description: 'Crea, publica, protege y monitorea APIs REST, HTTP y WebSocket.', aliases: 'APIGW REST HTTP WebSocket' },
+  { id: 'cloudfront', name: 'CloudFront', category: AWS_CATEGORIES.NETWORKING, slug: 'aws-amazon-cloudfront', description: 'CDN global que entrega contenido y APIs con baja latencia.', aliases: 'CF Content Delivery Network distribucion', placementScope: 'global' },
+  { id: 'route53', name: 'Route 53', category: AWS_CATEGORIES.NETWORKING, slug: 'aws-amazon-route-53', description: 'Servicio DNS escalable con registro de dominios y enrutamiento de trafico.', aliases: 'R53 DNS dominio', placementScope: 'global' },
+  { id: 'api-gateway', name: 'API Gateway', category: AWS_CATEGORIES.NETWORKING, slug: 'aws-amazon-api-gateway', description: 'Crea, publica, protege y monitorea APIs REST, HTTP y WebSocket.', aliases: 'APIGW REST HTTP WebSocket', placementScope: 'regional' },
   { id: 'direct-connect', name: 'Direct Connect', category: AWS_CATEGORIES.NETWORKING, slug: 'aws-aws-direct-connect', description: 'Conexion de red dedicada entre instalaciones propias y AWS.', aliases: 'DX conexion dedicada' },
   { id: 'transit-gateway', name: 'Transit Gateway', category: AWS_CATEGORIES.NETWORKING, slug: 'aws-aws-transit-gateway', description: 'Hub administrado para conectar VPCs y redes locales a escala.', aliases: 'TGW hub peering' },
   { id: 'app-mesh', name: 'App Mesh', category: AWS_CATEGORIES.NETWORKING, slug: 'aws-aws-app-mesh', description: 'Service mesh para controlar y observar comunicaciones entre microservicios.', aliases: 'service mesh sidecar Envoy' },
@@ -78,11 +88,11 @@ export const AWS_SERVICES: AwsService[] = [
   { id: 'customer-gateway', name: 'Customer Gateway', category: AWS_CATEGORIES.NETWORKING, slug: 'aws-res-amazon-vpc-customer-gateway', description: 'Representa el gateway del cliente usado para conectar una red local con AWS mediante VPN.', aliases: 'CGW customer gateway on-premises VPN IPsec cliente local' },
   { id: 'elb', name: 'ELB', category: AWS_CATEGORIES.NETWORKING, slug: 'aws-elastic-load-balancing', description: 'Distribuye trafico entrante entre multiples destinos para alta disponibilidad.', aliases: 'Elastic Load Balancing ALB NLB balanceador carga load balancer' },
   // Security
-  { id: 'iam', name: 'IAM', category: AWS_CATEGORIES.SECURITY, slug: 'aws-aws-identity-and-access-management', description: 'Administra identidades, permisos y acceso a recursos de AWS.', aliases: 'Identity and Access Management roles politicas permisos usuarios' },
-  { id: 'cognito', name: 'Cognito', category: AWS_CATEGORIES.SECURITY, slug: 'aws-amazon-cognito', description: 'Agrega registro, inicio de sesion y control de acceso para usuarios de apps.', aliases: 'autenticacion usuarios login registro' },
-  { id: 'acm', name: 'ACM', category: AWS_CATEGORIES.SECURITY, slug: 'aws-aws-certificate-manager', description: 'Aprovisiona, administra y renueva certificados TLS para servicios de AWS.', aliases: 'Certificate Manager TLS SSL certificado HTTPS' },
+  { id: 'iam', name: 'IAM', category: AWS_CATEGORIES.SECURITY, slug: 'aws-aws-identity-and-access-management', description: 'Administra identidades, permisos y acceso a recursos de AWS.', aliases: 'Identity and Access Management roles politicas permisos usuarios', placementScope: 'global' },
+  { id: 'cognito', name: 'Cognito', category: AWS_CATEGORIES.SECURITY, slug: 'aws-amazon-cognito', description: 'Agrega registro, inicio de sesion y control de acceso para usuarios de apps.', aliases: 'autenticacion usuarios login registro', placementScope: 'regional' },
+  { id: 'acm', name: 'ACM', category: AWS_CATEGORIES.SECURITY, slug: 'aws-aws-certificate-manager', description: 'Aprovisiona, administra y renueva certificados TLS para servicios de AWS.', aliases: 'Certificate Manager TLS SSL certificado HTTPS', placementScope: 'global' },
   { id: 'shield', name: 'Shield', category: AWS_CATEGORIES.SECURITY, slug: 'aws-aws-shield', description: 'Proteccion administrada contra ataques DDoS para aplicaciones en AWS.', aliases: 'DDoS proteccion ataque' },
-  { id: 'waf', name: 'WAF', category: AWS_CATEGORIES.SECURITY, slug: 'aws-aws-waf', description: 'Firewall de aplicaciones web para filtrar trafico HTTP malicioso.', aliases: 'Web Application Firewall firewall reglas HTTP' },
+  { id: 'waf', name: 'WAF', category: AWS_CATEGORIES.SECURITY, slug: 'aws-aws-waf', description: 'Firewall de aplicaciones web para filtrar trafico HTTP malicioso.', aliases: 'Web Application Firewall firewall reglas HTTP', placementScope: 'global' },
   { id: 'kms', name: 'KMS', category: AWS_CATEGORIES.SECURITY, slug: 'aws-aws-key-management-service', description: 'Crea y controla claves criptograficas para cifrar datos en AWS.', aliases: 'Key Management Service cifrado encriptacion clave' },
   { id: 'secrets-manager', name: 'Secrets Manager', category: AWS_CATEGORIES.SECURITY, slug: 'aws-aws-secrets-manager', description: 'Almacena, rota y recupera secretos como credenciales y claves de API.', aliases: 'secretos credenciales rotacion' },
   { id: 'guardduty', name: 'GuardDuty', category: AWS_CATEGORIES.SECURITY, slug: 'aws-amazon-guardduty', description: 'Detecta amenazas analizando actividad de cuentas, cargas y datos de AWS.', aliases: 'deteccion amenazas IDS' },
@@ -90,10 +100,10 @@ export const AWS_SERVICES: AwsService[] = [
   { id: 'inspector', name: 'Inspector', category: AWS_CATEGORIES.SECURITY, slug: 'aws-amazon-inspector', description: 'Escanea automaticamente vulnerabilidades en workloads, contenedores y funciones.', aliases: 'vulnerabilidades CVE escaneo' },
   { id: 'macie', name: 'Macie', category: AWS_CATEGORIES.SECURITY, slug: 'aws-amazon-macie', description: 'Descubre y protege datos sensibles, especialmente en Amazon S3.', aliases: 'datos sensibles PII DLP' },
   // Analytics
-  { id: 'athena', name: 'Athena', category: AWS_CATEGORIES.ANALYTICS, slug: 'aws-amazon-athena', description: 'Consulta datos en S3 con SQL sin administrar servidores.', aliases: 'SQL serverless query S3' },
+  { id: 'athena', name: 'Athena', category: AWS_CATEGORIES.ANALYTICS, slug: 'aws-amazon-athena', description: 'Consulta datos en S3 con SQL sin administrar servidores.', aliases: 'SQL serverless query S3', placementScope: 'regional' },
   { id: 'emr', name: 'EMR', category: AWS_CATEGORIES.ANALYTICS, slug: 'aws-amazon-emr', description: 'Ejecuta frameworks de big data como Spark, Hive y Presto administrados.', aliases: 'Elastic MapReduce Hadoop Spark big data' },
-  { id: 'kinesis', name: 'Kinesis', category: AWS_CATEGORIES.ANALYTICS, slug: 'aws-amazon-kinesis', description: 'Ingiere, procesa y analiza datos de streaming en tiempo real.', aliases: 'streaming tiempo real firehose' },
-  { id: 'glue', name: 'Glue', category: AWS_CATEGORIES.ANALYTICS, slug: 'aws-aws-glue', description: 'Integracion de datos serverless para catalogar, preparar y mover datos.', aliases: 'ETL catalogo datos pipeline' },
+  { id: 'kinesis', name: 'Kinesis', category: AWS_CATEGORIES.ANALYTICS, slug: 'aws-amazon-kinesis', description: 'Ingiere, procesa y analiza datos de streaming en tiempo real.', aliases: 'streaming tiempo real firehose', placementScope: 'regional' },
+  { id: 'glue', name: 'Glue', category: AWS_CATEGORIES.ANALYTICS, slug: 'aws-aws-glue', description: 'Integracion de datos serverless para catalogar, preparar y mover datos.', aliases: 'ETL catalogo datos pipeline', placementScope: 'regional' },
   { id: 'quicksight', name: 'QuickSight', category: AWS_CATEGORIES.ANALYTICS, slug: 'aws-amazon-quicksight', description: 'Business intelligence administrado para dashboards, visualizaciones y analitica embebida.', aliases: 'BI Business Intelligence dashboard visualizacion' },
   { id: 'lake-formation', name: 'Lake Formation', category: AWS_CATEGORIES.ANALYTICS, slug: 'aws-aws-lake-formation', description: 'Crea, protege y administra data lakes sobre AWS con gobierno centralizado.', aliases: 'data lake lago de datos gobierno' },
   { id: 'msk', name: 'MSK', category: AWS_CATEGORIES.ANALYTICS, slug: 'aws-amazon-managed-streaming-for-apache-kafka', description: 'Servicio administrado para ejecutar Apache Kafka compatible en AWS.', aliases: 'Managed Streaming Kafka broker' },
@@ -125,15 +135,15 @@ export const AWS_SERVICES: AwsService[] = [
   { id: 'systems-manager', name: 'Systems Manager', category: AWS_CATEGORIES.MANAGEMENT, slug: 'aws-aws-systems-manager', description: 'Administra operaciones, configuracion y automatizacion de recursos a escala.', aliases: 'SSM patch session manager parameter store' },
   { id: 'config', name: 'Config', category: AWS_CATEGORIES.MANAGEMENT, slug: 'aws-aws-config', description: 'Registra configuraciones de recursos y evalua cumplimiento contra reglas.', aliases: 'cumplimiento compliance auditoria configuracion' },
   { id: 'cloudtrail', name: 'CloudTrail', category: AWS_CATEGORIES.MANAGEMENT, slug: 'aws-aws-cloudtrail', description: 'Registra actividad de cuentas y llamadas API para auditoria y seguridad.', aliases: 'CT auditoria logs API actividad' },
-  { id: 'organizations', name: 'Organizations', category: AWS_CATEGORIES.MANAGEMENT, slug: 'aws-aws-organizations', description: 'Administra multiples cuentas AWS con politicas y facturacion centralizadas.', aliases: 'multi-cuenta SCP politicas landing zone' },
+  { id: 'organizations', name: 'Organizations', category: AWS_CATEGORIES.MANAGEMENT, slug: 'aws-aws-organizations', description: 'Administra multiples cuentas AWS con politicas y facturacion centralizadas.', aliases: 'multi-cuenta SCP politicas landing zone', placementScope: 'global' },
   { id: 'control-tower', name: 'Control Tower', category: AWS_CATEGORIES.MANAGEMENT, slug: 'aws-aws-control-tower', description: 'Configura y gobierna entornos multi-cuenta de AWS siguiendo mejores practicas.', aliases: 'gobierno guardrails multi-cuenta' },
   { id: 'service-catalog', name: 'Service Catalog', category: AWS_CATEGORIES.MANAGEMENT, slug: 'aws-aws-service-catalog', description: 'Crea y distribuye catalogos aprobados de productos y recursos cloud.', aliases: 'catalogo productos aprobados self-service' },
   // Messaging
-  { id: 'sqs', name: 'SQS', category: AWS_CATEGORIES.MESSAGING, slug: 'aws-amazon-simple-queue-service', description: 'Colas de mensajes administradas para desacoplar y escalar componentes.', aliases: 'Simple Queue Service cola mensajes queue' },
-  { id: 'sns', name: 'SNS', category: AWS_CATEGORIES.MESSAGING, slug: 'aws-amazon-simple-notification-service', description: 'Mensajeria pub/sub administrada para notificaciones y fanout de eventos.', aliases: 'Simple Notification Service notificacion pub/sub fanout' },
+  { id: 'sqs', name: 'SQS', category: AWS_CATEGORIES.MESSAGING, slug: 'aws-amazon-simple-queue-service', description: 'Colas de mensajes administradas para desacoplar y escalar componentes.', aliases: 'Simple Queue Service cola mensajes queue', placementScope: 'regional' },
+  { id: 'sns', name: 'SNS', category: AWS_CATEGORIES.MESSAGING, slug: 'aws-amazon-simple-notification-service', description: 'Mensajeria pub/sub administrada para notificaciones y fanout de eventos.', aliases: 'Simple Notification Service notificacion pub/sub fanout', placementScope: 'regional' },
   { id: 'eventbridge', name: 'EventBridge', category: AWS_CATEGORIES.MESSAGING, slug: 'aws-amazon-eventbridge', description: 'Bus de eventos serverless para conectar aplicaciones, SaaS y servicios AWS.', aliases: 'event bus eventos reglas scheduler' },
   { id: 'step-functions', name: 'Step Functions', category: AWS_CATEGORIES.MESSAGING, slug: 'aws-aws-step-functions', description: 'Orquesta flujos de trabajo visuales que coordinan servicios y tareas.', aliases: 'SFN workflow flujo estado maquina' },
-  { id: 'ses', name: 'SES', category: AWS_CATEGORIES.MESSAGING, slug: 'aws-amazon-simple-email-service', description: 'Servicio escalable para enviar y recibir correo electronico.', aliases: 'Simple Email Service email correo SMTP' },
+  { id: 'ses', name: 'SES', category: AWS_CATEGORIES.MESSAGING, slug: 'aws-amazon-simple-email-service', description: 'Servicio escalable para enviar y recibir correo electronico.', aliases: 'Simple Email Service email correo SMTP', placementScope: 'regional' },
   { id: 'pinpoint', name: 'Pinpoint', category: AWS_CATEGORIES.MESSAGING, slug: 'aws-amazon-pinpoint', description: 'Gestiona comunicaciones multicanal y campañas dirigidas a usuarios.', aliases: 'marketing push notificaciones campana SMS' },
   { id: 'appsync', name: 'AppSync', category: AWS_CATEGORIES.MESSAGING, slug: 'aws-aws-appsync', description: 'Crea APIs GraphQL administradas con datos en tiempo real y offline.', aliases: 'GraphQL realtime subscripciones' },
   // Languages

@@ -8,6 +8,7 @@ import {
   getBrowserLocale,
   getServiceDescription as getLocalizedServiceDescription,
 } from "@/i18n";
+import { getServicePlacementScope } from "@/lib/placement";
 
 export type FieldValue = string | boolean | number;
 
@@ -44,15 +45,22 @@ export function getFieldValue(
 }
 
 export function getAwsServiceNodeData(service: AwsService): AwsServiceNodeData {
+  const scope = service.placementScope ?? getServicePlacementScope(service.id);
   return {
     name: service.name,
     slug: service.slug,
     category: service.category,
     serviceId: service.id,
+    ...(scope !== "subnet" && { placementScope: scope }),
     ...(CIRCULAR_SERVICE_IDS.has(service.id) && { meta: { shape: "circular" as const } }),
   };
 }
 
 export function getServiceNodeType(serviceId: string): "gatewayService" | "awsService" {
   return GATEWAY_SERVICE_IDS.has(serviceId) ? "gatewayService" : "awsService";
+}
+
+export function getNodePlacementScope(node: AwsServiceNodeType) {
+  if (node.data.placementScope) return node.data.placementScope;
+  return getServicePlacementScope(getServiceId(node));
 }

@@ -5,6 +5,7 @@ import type { NetworkContainerNodeType } from "@/components/nodes/network-contai
 import type { PlainTextNodeType } from "@/components/nodes/PlainTextNode";
 import type { MiscellaneousNodeType } from "@/components/nodes/MiscellaneousNode";
 import type { ContainerInsets } from "@/lib/graph-utils";
+export type { PlacementScope } from "@/data/aws-services";
 
 export type AppNode =
   | Node
@@ -32,6 +33,7 @@ export type NetworkContainerNodeData = {
   pulseKey?: string;
   synced?: boolean;
   gatewayInsets?: ContainerInsets;
+  scopeInsets?: ContainerInsets;
 };
 
 export type SubnetNodeData = NetworkContainerNodeData & {

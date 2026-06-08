@@ -4,7 +4,8 @@ import { AwsServiceIcon } from "@/components/AwsServiceIcon";
 import { CircularServiceIcon } from "@/components/CircularServiceIcon";
 import EditableNodeLabel from "@/components/EditableNodeLabel";
 import { CustomerGatewayIcon } from "@/components/icons/CustomerGatewayIcon";
-import type { AwsCategory } from "@/data/aws-services";
+import type { AwsCategory, PlacementScope } from "@/data/aws-services";
+import type { BandSide } from "@/lib/placement";
 import { getCustomerGatewayHandleIds } from "@/lib/vpn-gateway-edges";
 import { useFlowStore } from "@/store/flowStore";
 import { UI_TEXT, getBrowserLocale } from "@/i18n";
@@ -38,6 +39,10 @@ export type AwsServiceNodeData = {
   meta?: {
     shape?: NodeShape;
   };
+  /** Placement scope — controls which containers this node may nest inside. */
+  placementScope?: PlacementScope;
+  /** Which band side of its container this node lives on (set when expelled). */
+  bandSide?: BandSide;
 };
 
 export type AwsServiceNodeType = Node<AwsServiceNodeData, "awsService">;
