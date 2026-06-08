@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import ChildCountSlider from "@/components/ChildCountSlider";
+import ChildCountSlider from "@/components/network-containers/ChildCountSlider";
 import {
   Select,
   SelectContent,

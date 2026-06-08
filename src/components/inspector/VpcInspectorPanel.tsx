@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import ChildCountSlider from "@/components/ChildCountSlider";
+import ChildCountSlider from "@/components/network-containers/ChildCountSlider";
 import { Input } from "@/components/ui/input";
 import { UI_TEXT, getBrowserLocale } from "@/i18n";
 import { type FieldValue } from "@/lib/node-utils";

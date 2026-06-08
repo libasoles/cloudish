@@ -1,4 +1,4 @@
-import LabeledSlider from "./LabeledSlider";
+import LabeledSlider from "@/components/LabeledSlider";
 
 type ChildCountSliderProps = {
   label: string;
