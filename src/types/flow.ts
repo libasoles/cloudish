@@ -1,6 +1,6 @@
 import type { Edge, Node, Viewport } from "@xyflow/react";
 import type { AwsServiceNodeType } from "@/components/AwsServiceNode";
-import type { NetworkContainerNodeType } from "@/components/NetworkContainerNode";
+import type { NetworkContainerNodeType } from "@/components/network-containers/NetworkContainerNode";
 import type { PlainTextNodeType } from "@/components/PlainTextNode";
 
 export type AppNode =
