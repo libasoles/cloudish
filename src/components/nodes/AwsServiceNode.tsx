@@ -4,11 +4,11 @@ import { AwsServiceIcon } from "@/components/AwsServiceIcon";
 import EditableNodeLabel from "@/components/EditableNodeLabel";
 import { CustomerGatewayIcon } from "@/components/icons/CustomerGatewayIcon";
 import type { AwsCategory } from "@/data/aws-services";
-import { updateSyncedNodeGroup } from "@/lib/az-sync";
 import { getCustomerGatewayHandleIds } from "@/lib/vpn-gateway-edges";
 import { useFlowStore } from "@/store/flowStore";
 import { UI_TEXT, getBrowserLocale } from "@/i18n";
 import type { ApiGatewayRoute } from "@/types/flow";
+import { useNodeCommit } from "@/hooks/useNodeCommit";
 
 const VPN_HANDLE_BASE: React.CSSProperties = {
   display: "flex",
@@ -41,10 +41,10 @@ export default function AwsServiceNode({
   data,
   selected,
 }: NodeProps<AwsServiceNodeType>) {
-  const commitGraphChange = useFlowStore((state) => state.commitGraphChange);
   const edges = useFlowStore((s) => s.edges);
   const nodes = useFlowStore((s) => s.nodes);
   const t = UI_TEXT[getBrowserLocale()];
+  const commitNodeUpdate = useNodeCommit(id);
 
   const vpnHandleIds = getCustomerGatewayHandleIds(id, edges, nodes);
 
@@ -60,94 +60,7 @@ export default function AwsServiceNode({
   }
 
   function renameNode(name: string) {
-    commitGraphChange(({ nodes, edges }) => ({
-      nodes: updateSyncedNodeGroup(id, nodes, (node) => ({
-        ...node,
-        data: {
-          ...node.data,
-          name,
-        },
-      })),
-      edges,
-    }));
-  }
-
-  const isCircular =
-    data.serviceId === "internet-gateway" ||
-    data.serviceId === "nat-gateway" ||
-    data.serviceId === "vpn-gateway";
-
-  if (isCircular) {
-    return (
-      <div className="flex flex-col items-center gap-1.5 w-14">
-        <Handle
-          type="source"
-          position={Position.Left}
-          id="left"
-          className={vpnHandleClassName("left")}
-          style={{ top: 28, ...vpnHandleStyle("left") }}
-        >
-          {vpnHandleIds.has("left") && (
-            <CustomerGatewayIcon className="size-7 text-purple-600 pointer-events-none" />
-          )}
-        </Handle>
-        <Handle
-          type="source"
-          position={Position.Right}
-          id="right"
-          className={vpnHandleClassName("right")}
-          style={{ top: 28, ...vpnHandleStyle("right") }}
-        >
-          {vpnHandleIds.has("right") && (
-            <CustomerGatewayIcon className="size-7 text-purple-600 pointer-events-none" />
-          )}
-        </Handle>
-        <Handle
-          type="source"
-          position={Position.Top}
-          id="top"
-          className={vpnHandleClassName("top", "handle-vertical")}
-          style={{ left: 28, ...vpnHandleStyle("top") }}
-        >
-          {vpnHandleIds.has("top") && (
-            <CustomerGatewayIcon className="size-7 text-purple-600 pointer-events-none" />
-          )}
-        </Handle>
-        <Handle
-          type="source"
-          position={Position.Bottom}
-          id="bottom"
-          className={vpnHandleClassName("bottom", "handle-vertical")}
-          style={{ left: 28, top: 56, ...vpnHandleStyle("bottom") }}
-        >
-          {vpnHandleIds.has("bottom") && (
-            <CustomerGatewayIcon className="size-7 text-purple-600 pointer-events-none" />
-          )}
-        </Handle>
-        <div
-          className={cn(
-            "size-14 rounded-full bg-white border-2 shadow-sm flex items-center justify-center",
-            data.pulseKey && "node-click-pulse",
-            selected
-              ? "border-blue-500 shadow-md ring-2 ring-primary ring-offset-4 ring-offset-background"
-              : "border-gray-200",
-          )}
-        >
-          <AwsServiceIcon
-            slug={data.slug}
-            category={data.category}
-            name={data.name}
-            size={40}
-          />
-        </div>
-        <EditableNodeLabel
-          value={data.name}
-          editLabel={t.editNodeName}
-          className="text-white"
-          onCommit={renameNode}
-        />
-      </div>
-    );
+    commitNodeUpdate((node) => ({ ...node, data: { ...node.data, name } }));
   }
 
   if (data.serviceId === "api-gateway") {

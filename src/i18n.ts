@@ -30,6 +30,10 @@ export const UI_TEXT = {
     userDescription: "External actor or client that interacts with the system.",
     internet: "Internet",
     internetDescription: "Represents the public internet or external network.",
+    web: "Web",
+    webDescription: "Web client running in a browser consuming applications, APIs, or backend services.",
+    mobile: "Mobile",
+    mobileDescription: "Mobile client consuming applications, APIs, or backend services.",
     regionDescription:
       "Top-level AWS Region container for VPCs and network scope.",
     subnetDescription: "Network segment inside a VPC or Availability Zone.",
@@ -184,6 +188,10 @@ export const UI_TEXT = {
     userDescription: "Actor externo o cliente que interactúa con el sistema.",
     internet: "Internet",
     internetDescription: "Representa el internet público o una red externa.",
+    web: "Web",
+    webDescription: "Cliente web ejecutado en navegador para consumir aplicaciones, APIs o servicios backend.",
+    mobile: "Móvil",
+    mobileDescription: "Cliente móvil que consume aplicaciones, APIs o servicios backend.",
     regionDescription:
       "Contenedor principal de Región AWS para VPCs y alcance de red.",
     subnetDescription:

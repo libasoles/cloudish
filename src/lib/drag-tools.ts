@@ -7,6 +7,8 @@ export type DragTool =
   | { type: "awsService"; serviceId: string }
   | { type: "user" }
   | { type: "internet" }
+  | { type: "web" }
+  | { type: "mobile" }
   | { type: "region" };
 
 export const CONTAINER_NODE_TYPE = "container";
@@ -51,6 +53,14 @@ export function decodeDragTool(value: string): DragTool | null {
 
     if (tool.type === "internet") {
       return { type: "internet" };
+    }
+
+    if (tool.type === "web") {
+      return { type: "web" };
+    }
+
+    if (tool.type === "mobile") {
+      return { type: "mobile" };
     }
 
     if (tool.type === "region") {

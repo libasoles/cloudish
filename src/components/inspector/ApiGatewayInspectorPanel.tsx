@@ -12,7 +12,7 @@ import {
 import { UI_TEXT, getBrowserLocale } from "@/i18n";
 import { updateSyncedNodeGroup } from "@/lib/az-sync";
 import { useFlowStore } from "@/store/flowStore";
-import type { AwsServiceNodeType } from "@/components/AwsServiceNode";
+import type { AwsServiceNodeType } from "@/components/nodes/AwsServiceNode";
 import type { ApiGatewayRoute, HttpMethod } from "@/types/flow";
 import { AwsServiceInspectorPanel } from "@/components/inspector/AwsServiceInspectorPanel";
 

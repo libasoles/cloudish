@@ -1,4 +1,4 @@
-import { User, Cloud, Globe, Layers, Network, TrendingUp, Box } from 'lucide-react';
+import { User, Cloud, Globe, Layers, Network, TrendingUp, Box, Monitor, Smartphone } from 'lucide-react';
 import type { DragTool } from '@/lib/drag-tools';
 
 export type InfrastructureItem = {
@@ -30,6 +30,24 @@ export const INFRASTRUCTURE_ITEMS: InfrastructureItem[] = [
     tool: { type: 'internet' },
     Icon: Cloud,
     aliases: 'web red externa network external',
+  },
+  {
+    id: 'infra-web',
+    name: 'Web',
+    descriptionKey: 'webDescription',
+    tooltipKey: 'web',
+    tool: { type: 'web' },
+    Icon: Monitor,
+    aliases: 'browser navegador frontend cliente web client spa',
+  },
+  {
+    id: 'infra-mobile',
+    name: 'Mobile',
+    descriptionKey: 'mobileDescription',
+    tooltipKey: 'mobile',
+    tool: { type: 'mobile' },
+    Icon: Smartphone,
+    aliases: 'app telefono smartphone tablet iOS Android cliente mobile',
   },
   {
     id: 'infra-region',

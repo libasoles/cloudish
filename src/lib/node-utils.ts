@@ -3,7 +3,7 @@ import { type ServiceField } from "@/data/aws-service-fields";
 import {
   type AwsServiceNodeType,
   type AwsServiceNodeData,
-} from "@/components/AwsServiceNode";
+} from "@/components/nodes/AwsServiceNode";
 import {
   getBrowserLocale,
   getServiceDescription as getLocalizedServiceDescription,

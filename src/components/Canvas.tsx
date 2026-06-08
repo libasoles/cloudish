@@ -44,12 +44,12 @@ import SaveArchitectureButton from "@/components/SaveArchitectureButton";
 import DeleteArchitectureButton from "@/components/DeleteArchitectureButton";
 import { ProjectNameEditor } from "@/components/ProjectNameEditor";
 const AuthDialog = lazy(() => import("@/components/AuthDialog"));
-import AwsServiceNode from "@/components/AwsServiceNode";
-import NetworkContainerNode from "@/components/NetworkContainerNode";
-import PlainTextNode from "@/components/PlainTextNode";
-import UserNode from "@/components/UserNode";
-import InternetNode from "@/components/InternetNode";
-import SelectionGroupNode from "@/components/SelectionGroupNode";
+import AwsServiceNode from "@/components/nodes/AwsServiceNode";
+import CircularServiceNode from "@/components/nodes/CircularServiceNode";
+import NetworkContainerNode from "@/components/nodes/NetworkContainerNode";
+import PlainTextNode from "@/components/nodes/PlainTextNode";
+import ExternalNode from "@/components/nodes/ExternalNode";
+import SelectionGroupNode from "@/components/nodes/SelectionGroupNode";
 import EditableEdge from "@/components/EditableEdge";
 import ServiceSearch from "@/components/ServiceSearch";
 import { SelectionToolbar } from "@/components/SelectionToolbar";
@@ -124,10 +124,13 @@ const SELECTION_GROUP_ID = "__selection-group__";
 
 const nodeTypes: NodeTypes = {
   awsService: AwsServiceNode,
+  circularService: CircularServiceNode,
   networkContainer: NetworkContainerNode,
   plainText: PlainTextNode,
-  user: UserNode,
-  internet: InternetNode,
+  user: ExternalNode,
+  internet: ExternalNode,
+  web: ExternalNode,
+  mobile: ExternalNode,
   selectionGroup: SelectionGroupNode,
 };
 
@@ -135,6 +138,7 @@ const edgeTypes: EdgeTypes = {
   default: EditableEdge,
 };
 
+const CIRCULAR_SERVICE_IDS = new Set(["internet-gateway", "nat-gateway", "vpn-gateway"]);
 const SERVICE_DROP_OFFSET = { x: 50, y: 36 };
 const TEXT_DROP_OFFSET = { x: 8, y: 14 };
 const TEXT_NODE_WIDTH = 180;
@@ -974,7 +978,7 @@ export default function Canvas() {
 
           const newNode: AppNode = {
             id: nodeId,
-            type: AWS_SERVICE_NODE_TYPE,
+            type: CIRCULAR_SERVICE_IDS.has(service.id) ? "circularService" : AWS_SERVICE_NODE_TYPE,
             zIndex: 10,
             selected: true,
             ...parentedPosition,
@@ -1035,6 +1039,56 @@ export default function Canvas() {
             data: { label: t.internet, fields: { label: t.internet }, ...pulseData },
           };
 
+          return { nodes: addNodeWithAzSync(newNode, nodes.map((n) => ({ ...n, selected: false }))), edges };
+        });
+        return;
+      }
+
+      if (tool.type === "web") {
+        const nodeId = `web-${serviceIdRef.current++}`;
+        const nodePosition = {
+          x: position.x - SERVICE_DROP_OFFSET.x,
+          y: position.y - SERVICE_DROP_OFFSET.y,
+        };
+        commitGraphChange(({ nodes, edges }) => {
+          const parentedPosition = getParentedPosition(
+            nodePosition,
+            { width: DEFAULT_NODE_WIDTH, height: DEFAULT_NODE_HEIGHT },
+            nodes,
+          );
+          const newNode: AppNode = {
+            id: nodeId,
+            type: "web",
+            zIndex: 10,
+            selected: true,
+            ...parentedPosition,
+            data: { label: t.web, fields: { label: t.web }, ...pulseData },
+          };
+          return { nodes: addNodeWithAzSync(newNode, nodes.map((n) => ({ ...n, selected: false }))), edges };
+        });
+        return;
+      }
+
+      if (tool.type === "mobile") {
+        const nodeId = `mobile-${serviceIdRef.current++}`;
+        const nodePosition = {
+          x: position.x - SERVICE_DROP_OFFSET.x,
+          y: position.y - SERVICE_DROP_OFFSET.y,
+        };
+        commitGraphChange(({ nodes, edges }) => {
+          const parentedPosition = getParentedPosition(
+            nodePosition,
+            { width: DEFAULT_NODE_WIDTH, height: DEFAULT_NODE_HEIGHT },
+            nodes,
+          );
+          const newNode: AppNode = {
+            id: nodeId,
+            type: "mobile",
+            zIndex: 10,
+            selected: true,
+            ...parentedPosition,
+            data: { label: t.mobile, fields: { label: t.mobile }, ...pulseData },
+          };
           return { nodes: addNodeWithAzSync(newNode, nodes.map((n) => ({ ...n, selected: false }))), edges };
         });
         return;

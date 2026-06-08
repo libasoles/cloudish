@@ -123,6 +123,8 @@ export default function DragDropSidebar({
           const isFeatured =
             item.tool.type !== "user" &&
             item.tool.type !== "internet" &&
+            item.tool.type !== "web" &&
+            item.tool.type !== "mobile" &&
             item.tool.type !== "text";
           return (
             <Fragment key={item.id}>
