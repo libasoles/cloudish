@@ -11,6 +11,15 @@ import {
 
 export type FieldValue = string | boolean | number;
 
+export const GATEWAY_SERVICE_IDS = new Set([
+  "internet-gateway",
+  "nat-gateway",
+  "vpn-gateway",
+  "customer-gateway",
+]);
+
+export const CIRCULAR_SERVICE_IDS = new Set(["elb"]);
+
 export function getServiceId(node: AwsServiceNodeType) {
   return node.data.serviceId ?? node.id;
 }
@@ -40,15 +49,9 @@ export function getAwsServiceNodeData(service: AwsService): AwsServiceNodeData {
     slug: service.slug,
     category: service.category,
     serviceId: service.id,
+    ...(CIRCULAR_SERVICE_IDS.has(service.id) && { meta: { shape: "circular" as const } }),
   };
 }
-
-export const GATEWAY_SERVICE_IDS = new Set([
-  "internet-gateway",
-  "nat-gateway",
-  "vpn-gateway",
-  "customer-gateway",
-]);
 
 export function getServiceNodeType(serviceId: string): "gatewayService" | "awsService" {
   return GATEWAY_SERVICE_IDS.has(serviceId) ? "gatewayService" : "awsService";
