@@ -2,7 +2,11 @@ import { lazy, Suspense, useState } from "react";
 import { FolderOpen, LogOut } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
 import { HoverOnlyTooltip } from "@/components/HoverOnlyTooltip";
 import {
@@ -112,20 +116,19 @@ export default function Inspector() {
               node={selectedNode}
               containerType={selectedContainerType}
             />
-          ) : selectedAwsNode && selectedAwsNode.data.serviceId === "api-gateway" ? (
-            <ApiGatewayInspectorPanel node={selectedAwsNode} key={selectedAwsNode.id} />
+          ) : selectedAwsNode &&
+            selectedAwsNode.data.serviceId === "api-gateway" ? (
+            <ApiGatewayInspectorPanel
+              node={selectedAwsNode}
+              key={selectedAwsNode.id}
+            />
           ) : selectedAwsNode ? (
             <AwsServiceInspectorPanel node={selectedAwsNode} />
           ) : selectedNode ? (
             <NoOptionsInspectorPanel />
           ) : (
             <div className="flex flex-col gap-4">
-              <div className="flex flex-col items-center gap-4 pt-6 text-center">
-                <img
-                  src="/cloudish-logo.png"
-                  alt={t.appLogoAlt}
-                  className="h-auto w-32"
-                />
+              <div className="flex flex-col items-center gap-4 text-center">
                 <p className="text-sm leading-5 text-muted-foreground">
                   {hasCanvasNodes
                     ? t.clickNodeDetails
@@ -143,7 +146,10 @@ export default function Inspector() {
         )}
         <div className="mt-auto border-t border-border pt-3">
           {authLoading ? (
-            <div className="flex items-center justify-between gap-2" aria-hidden="true">
+            <div
+              className="flex items-center justify-between gap-2"
+              aria-hidden="true"
+            >
               <div className="min-w-0 flex-1 space-y-2">
                 <Skeleton className="h-3 w-20" />
                 <Skeleton className="h-4 w-36" />
@@ -162,7 +168,10 @@ export default function Inspector() {
                 </span>
               </p>
               <div className="flex shrink-0 items-center gap-0.5">
-                <Popover open={savedProjectsOpen} onOpenChange={setSavedProjectsOpen}>
+                <Popover
+                  open={savedProjectsOpen}
+                  onOpenChange={setSavedProjectsOpen}
+                >
                   <HoverOnlyTooltip
                     content={t.savedProjects}
                     side="top"
@@ -180,7 +189,9 @@ export default function Inspector() {
                     </PopoverTrigger>
                   </HoverOnlyTooltip>
                   <PopoverContent side="top" align="end" className="p-3">
-                    <SavedProjectsList onSelect={() => setSavedProjectsOpen(false)} />
+                    <SavedProjectsList
+                      onSelect={() => setSavedProjectsOpen(false)}
+                    />
                   </PopoverContent>
                 </Popover>
                 <HoverOnlyTooltip content={t.signOut} side="top">
