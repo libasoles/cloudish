@@ -1,3 +1,5 @@
+import { getServiceNodeType } from "@/lib/node-utils";
+
 const service = (
   id: string,
   name: string,
@@ -9,7 +11,7 @@ const service = (
 ) => {
   const node = {
     id,
-    type: "awsService",
+    type: getServiceNodeType(serviceId),
     position,
     data: { name, slug, category, serviceId },
   };

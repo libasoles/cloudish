@@ -42,3 +42,9 @@ export function getAwsServiceNodeData(service: AwsService): AwsServiceNodeData {
     serviceId: service.id,
   };
 }
+
+export const GATEWAY_SERVICE_IDS = new Set(["internet-gateway", "nat-gateway", "vpn-gateway"]);
+
+export function getServiceNodeType(serviceId: string): "gatewayService" | "awsService" {
+  return GATEWAY_SERVICE_IDS.has(serviceId) ? "gatewayService" : "awsService";
+}

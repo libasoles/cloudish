@@ -304,7 +304,7 @@ export function generateTerraform(nodes: AppNode[]): ExportResult {
 
   // 3. AWS service nodes
   const serviceNodes = nodes.filter(
-    (n) => n.type === "awsService" && !isNetworkContainerNode(n),
+    (n) => (n.type === "awsService" || n.type === "gatewayService") && !isNetworkContainerNode(n),
   );
 
   const byServiceId: Map<string, AppNode[]> = new Map();

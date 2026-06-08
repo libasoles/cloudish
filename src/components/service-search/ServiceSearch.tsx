@@ -19,7 +19,7 @@ import {
   orderNodesForSubflows,
 } from "@/lib/graph-utils";
 import { useFlowStore } from "@/store/flowStore";
-import { getAwsServiceNodeData } from "@/lib/node-utils";
+import { getAwsServiceNodeData, getServiceNodeType } from "@/lib/node-utils";
 import { type DragTool } from "@/lib/drag-tools";
 
 const VPC_SERVICE_ID = "vpc";
@@ -168,7 +168,7 @@ export default function ServiceSearch({ onToolClick }: ServiceSearchProps) {
     } else {
       const serviceNode: AppNode = {
         id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-        type: "awsService",
+        type: getServiceNodeType(service.id),
         zIndex: 10,
         selected: true,
         position,

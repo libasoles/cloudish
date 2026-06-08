@@ -45,10 +45,10 @@ import DeleteArchitectureButton from "@/components/DeleteArchitectureButton";
 import { ProjectNameEditor } from "@/components/ProjectNameEditor";
 const AuthDialog = lazy(() => import("@/components/AuthDialog"));
 import AwsServiceNode from "@/components/nodes/AwsServiceNode";
-import CircularServiceNode from "@/components/nodes/CircularServiceNode";
-import NetworkContainerNode from "@/components/nodes/NetworkContainerNode";
+import GatewayServiceNode from "@/components/nodes/GatewayServiceNode";
+import NetworkContainerNode from "@/components/nodes/network-containers/NetworkContainerNode";
 import PlainTextNode from "@/components/nodes/PlainTextNode";
-import ExternalNode from "@/components/nodes/ExternalNode";
+import MiscellaneousNode from "@/components/nodes/MiscellaneousNode";
 import SelectionGroupNode from "@/components/nodes/SelectionGroupNode";
 import EditableEdge from "@/components/EditableEdge";
 import ServiceSearch from "@/components/service-search/ServiceSearch";
@@ -102,7 +102,7 @@ import {
   addNodeWithAzSync,
   syncNodeGroupPosition,
 } from "@/lib/az-sync";
-import { getAwsServiceNodeData } from "@/lib/node-utils";
+import { getAwsServiceNodeData, getServiceNodeType } from "@/lib/node-utils";
 import { EDGE_STYLE } from "@/lib/edge-tools";
 import { resolveVpnGatewayEdgeLabel } from "@/lib/vpn-gateway-edges";
 import type { ExportFormat } from "@/lib/export/types";
@@ -113,10 +113,7 @@ import {
   useSaveArchitecture,
 } from "@/hooks/useArchitectures";
 import { useUrlProjectLoad } from "@/hooks/useUrlProjectLoad";
-import {
-  clearUrlArchitectureId,
-  setUrlArchitectureId,
-} from "@/lib/url-utils";
+import { clearUrlArchitectureId, setUrlArchitectureId } from "@/lib/url-utils";
 import { SELECTION_BOX_PADDING } from "@/lib/selection-constants";
 import { HoverOnlyTooltip } from "@/components/HoverOnlyTooltip";
 
@@ -124,13 +121,13 @@ const SELECTION_GROUP_ID = "__selection-group__";
 
 const nodeTypes: NodeTypes = {
   awsService: AwsServiceNode,
-  circularService: CircularServiceNode,
+  gatewayService: GatewayServiceNode,
   networkContainer: NetworkContainerNode,
   plainText: PlainTextNode,
-  user: ExternalNode,
-  internet: ExternalNode,
-  web: ExternalNode,
-  mobile: ExternalNode,
+  user: MiscellaneousNode,
+  internet: MiscellaneousNode,
+  web: MiscellaneousNode,
+  mobile: MiscellaneousNode,
   selectionGroup: SelectionGroupNode,
 };
 
@@ -138,7 +135,6 @@ const edgeTypes: EdgeTypes = {
   default: EditableEdge,
 };
 
-const CIRCULAR_SERVICE_IDS = new Set(["internet-gateway", "nat-gateway", "vpn-gateway"]);
 const SERVICE_DROP_OFFSET = { x: 50, y: 36 };
 const TEXT_DROP_OFFSET = { x: 8, y: 14 };
 const TEXT_NODE_WIDTH = 180;
@@ -147,7 +143,10 @@ const TEXT_NODE_STYLE = {
   width: TEXT_NODE_WIDTH,
   height: TEXT_NODE_HEIGHT,
 } as const;
-const TEXT_NODE_FONT_SIZE = Math.min(TEXT_NODE_WIDTH / 8, TEXT_NODE_HEIGHT * 0.46);
+const TEXT_NODE_FONT_SIZE = Math.min(
+  TEXT_NODE_WIDTH / 8,
+  TEXT_NODE_HEIGHT * 0.46,
+);
 const INITIAL_FIT_VIEW_PADDING = 1.3;
 const VPC_SERVICE_ID = "vpc";
 const CLICK_PULSE_PREFIX = "sidebar-click";
@@ -236,7 +235,9 @@ function ContainerSelectionGuard({
   const userSelectionRect = useStore((s) => s.userSelectionRect);
   const lastRectRef = useRef<typeof userSelectionRect>(null);
   const guardNodesRef = useRef(guardNodes);
-  useLayoutEffect(() => { guardNodesRef.current = guardNodes; });
+  useLayoutEffect(() => {
+    guardNodesRef.current = guardNodes;
+  });
 
   useEffect(() => {
     const getPartiallySelectedContainerIds = (
@@ -341,10 +342,8 @@ export default function Canvas() {
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
   const [authDialogMounted, setAuthDialogMounted] = useState(false);
   const [pendingSave, setPendingSave] = useState(false);
-  const [
-    suppressedContainerSelectionIds,
-    setSuppressedContainerSelectionIds,
-  ] = useState<Set<string>>(new Set());
+  const [suppressedContainerSelectionIds, setSuppressedContainerSelectionIds] =
+    useState<Set<string>>(new Set());
 
   const containerIdRef = useRef(1);
   const subnetIdRef = useRef(1);
@@ -375,7 +374,9 @@ export default function Canvas() {
   const paneClickedRef = useRef(false);
   const suppressNextClickRef = useRef(false);
   const nodesRef = useRef(nodes);
-  useEffect(() => { nodesRef.current = nodes; }, [nodes]);
+  useEffect(() => {
+    nodesRef.current = nodes;
+  }, [nodes]);
   useEffect(() => {
     if (
       idScanRef.current.nodes === nodes.length &&
@@ -384,7 +385,11 @@ export default function Canvas() {
     ) {
       return;
     }
-    idScanRef.current = { nodes: nodes.length, edges: edges.length, restore: viewportRestoreKey };
+    idScanRef.current = {
+      nodes: nodes.length,
+      edges: edges.length,
+      restore: viewportRestoreKey,
+    };
 
     const containerIds = nodes
       .filter((node) => node.type === "networkContainer")
@@ -425,28 +430,31 @@ export default function Canvas() {
 
   // Fires in CAPTURE phase — before React Flow's own handlers — so we can snapshot
   // the current selection as the "base" and identify the clicked node via DOM.
-  const handleContainerPointerDown = useCallback((e: PointerEvent<HTMLDivElement>) => {
-    if (e.shiftKey && e.button === 0) {
-      paneClickedRef.current = false;
-      // Identify the clicked node from the DOM now, before React Flow
-      // fires onNodesChange. Using capture-phase timing guarantees we set this before
-      // handleNodesChange runs for the same interaction.
-      const clickedId = getClickedAppNodeId(e);
-      const selectedNodeIds = new Set(
-        nodesRef.current.filter((n) => n.selected).map((n) => n.id),
-      );
-      shiftClickedNodeRef.current = clickedId;
-      shiftSelectionBaseRef.current = selectedNodeIds;
+  const handleContainerPointerDown = useCallback(
+    (e: PointerEvent<HTMLDivElement>) => {
+      if (e.shiftKey && e.button === 0) {
+        paneClickedRef.current = false;
+        // Identify the clicked node from the DOM now, before React Flow
+        // fires onNodesChange. Using capture-phase timing guarantees we set this before
+        // handleNodesChange runs for the same interaction.
+        const clickedId = getClickedAppNodeId(e);
+        const selectedNodeIds = new Set(
+          nodesRef.current.filter((n) => n.selected).map((n) => n.id),
+        );
+        shiftClickedNodeRef.current = clickedId;
+        shiftSelectionBaseRef.current = selectedNodeIds;
 
-      if (clickedId && selectedNodeIds.has(clickedId)) {
-        e.preventDefault();
-        e.stopPropagation();
-        suppressNextClickRef.current = true;
-        shiftSelectionBaseRef.current.clear();
-        onNodesChange([{ type: "select", id: clickedId, selected: false }]);
+        if (clickedId && selectedNodeIds.has(clickedId)) {
+          e.preventDefault();
+          e.stopPropagation();
+          suppressNextClickRef.current = true;
+          shiftSelectionBaseRef.current.clear();
+          onNodesChange([{ type: "select", id: clickedId, selected: false }]);
+        }
       }
-    }
-  }, [onNodesChange]);
+    },
+    [onNodesChange],
+  );
 
   const handleContainerClick = useCallback((e: MouseEvent<HTMLDivElement>) => {
     if (!suppressNextClickRef.current) {
@@ -466,57 +474,64 @@ export default function Canvas() {
   //      spuriously cleared — unless that node is the one the user intentionally clicked.
   //   4. On a plain pane click (paneClickedRef=true), pass deselections straight through
   //      so the selection actually clears.
-  const handleNodesChange = useCallback((changes: NodeChange<AppNode>[]) => {
-    // If React Flow is trying to select the group node, ignore the whole batch.
-    const groupIsBeingSelected = changes.some(
-      (c) =>
-        "id" in c &&
-        c.id === SELECTION_GROUP_ID &&
-        c.type === "select" &&
-        (c as NodeSelectionChange).selected,
-    );
-    if (groupIsBeingSelected) return;
-
-    // Remove every change that targets the selectionGroup, including 'add' changes
-    // emitted by StoreUpdater when it first reconciles the group into its nodeLookup.
-    // 'add' changes use { type:'add', item } — no top-level 'id' — so we must check
-    // item.id explicitly.
-    const realChanges = changes.filter((c) => {
-      if ("id" in c) return (c as { id: string }).id !== SELECTION_GROUP_ID;
-      if (c.type === "add")
-        return (c as unknown as { item: AppNode }).item?.id !== SELECTION_GROUP_ID;
-      return true;
-    });
-
-    if (realChanges.length === 0) return;
-
-    const base = shiftSelectionBaseRef.current;
-    // paneClickedRef is set by onPaneClick which fires *before* resetSelectedElements()
-    // inside React Flow's onClick handler, so by the time we reach here on a pane click
-    // the flag is already true — let the deselections through to clear the selection.
-    if (base.size > 0 && !paneClickedRef.current) {
-      const clickedId = shiftClickedNodeRef.current;
-      // Re-select any base node that React Flow deselected, *except* the node the user
-      // explicitly Shift+clicked (clickedId) — that one should be allowed to deselect.
-      const baseDeselections = realChanges.filter(
-        (c): c is NodeSelectionChange =>
+  const handleNodesChange = useCallback(
+    (changes: NodeChange<AppNode>[]) => {
+      // If React Flow is trying to select the group node, ignore the whole batch.
+      const groupIsBeingSelected = changes.some(
+        (c) =>
+          "id" in c &&
+          c.id === SELECTION_GROUP_ID &&
           c.type === "select" &&
-          !(c as NodeSelectionChange).selected &&
-          base.has((c as NodeSelectionChange).id) &&
-          (c as NodeSelectionChange).id !== clickedId,
+          (c as NodeSelectionChange).selected,
       );
-      if (baseDeselections.length > 0) {
-        const reselections: NodeChange<AppNode>[] = baseDeselections.map((c) => ({
-          type: "select" as const,
-          id: c.id,
-          selected: true,
-        }));
-        onNodesChange([...realChanges, ...reselections]);
-        return;
+      if (groupIsBeingSelected) return;
+
+      // Remove every change that targets the selectionGroup, including 'add' changes
+      // emitted by StoreUpdater when it first reconciles the group into its nodeLookup.
+      // 'add' changes use { type:'add', item } — no top-level 'id' — so we must check
+      // item.id explicitly.
+      const realChanges = changes.filter((c) => {
+        if ("id" in c) return (c as { id: string }).id !== SELECTION_GROUP_ID;
+        if (c.type === "add")
+          return (
+            (c as unknown as { item: AppNode }).item?.id !== SELECTION_GROUP_ID
+          );
+        return true;
+      });
+
+      if (realChanges.length === 0) return;
+
+      const base = shiftSelectionBaseRef.current;
+      // paneClickedRef is set by onPaneClick which fires *before* resetSelectedElements()
+      // inside React Flow's onClick handler, so by the time we reach here on a pane click
+      // the flag is already true — let the deselections through to clear the selection.
+      if (base.size > 0 && !paneClickedRef.current) {
+        const clickedId = shiftClickedNodeRef.current;
+        // Re-select any base node that React Flow deselected, *except* the node the user
+        // explicitly Shift+clicked (clickedId) — that one should be allowed to deselect.
+        const baseDeselections = realChanges.filter(
+          (c): c is NodeSelectionChange =>
+            c.type === "select" &&
+            !(c as NodeSelectionChange).selected &&
+            base.has((c as NodeSelectionChange).id) &&
+            (c as NodeSelectionChange).id !== clickedId,
+        );
+        if (baseDeselections.length > 0) {
+          const reselections: NodeChange<AppNode>[] = baseDeselections.map(
+            (c) => ({
+              type: "select" as const,
+              id: c.id,
+              selected: true,
+            }),
+          );
+          onNodesChange([...realChanges, ...reselections]);
+          return;
+        }
       }
-    }
-    onNodesChange(realChanges);
-  }, [onNodesChange]);
+      onNodesChange(realChanges);
+    },
+    [onNodesChange],
+  );
 
   const handleExport = useCallback(
     async (format: ExportFormat) => {
@@ -576,12 +591,7 @@ export default function Canvas() {
         },
       );
     },
-    [
-      currentArchitectureId,
-      renameArchitectureMutation,
-      setProjectName,
-      user,
-    ],
+    [currentArchitectureId, renameArchitectureMutation, setProjectName, user],
   );
 
   const handleReset = useCallback(() => {
@@ -618,11 +628,9 @@ export default function Canvas() {
       setReactFlowInstance(instance);
       if (viewport) {
         isRestoringViewportRef.current = true;
-        void instance
-          .setViewport(viewport, { duration: 0 })
-          .finally(() => {
-            isRestoringViewportRef.current = false;
-          });
+        void instance.setViewport(viewport, { duration: 0 }).finally(() => {
+          isRestoringViewportRef.current = false;
+        });
         return;
       }
 
@@ -798,7 +806,9 @@ export default function Canvas() {
         );
 
         setDropTargetNodeId(target?.id ?? null);
-        setDropPreview(target ? { parentId: target.id, childType: "vpc" } : null);
+        setDropPreview(
+          target ? { parentId: target.id, childType: "vpc" } : null,
+        );
         return;
       }
 
@@ -820,7 +830,9 @@ export default function Canvas() {
         );
 
         setDropTargetNodeId(target?.id ?? null);
-        setDropPreview(target ? { parentId: target.id, childType: "az" } : null);
+        setDropPreview(
+          target ? { parentId: target.id, childType: "az" } : null,
+        );
         return;
       }
 
@@ -871,11 +883,7 @@ export default function Canvas() {
   );
 
   const addToolAtPosition = useCallback(
-    (
-      tool: DragTool,
-      position: { x: number; y: number },
-      pulseKey?: string,
-    ) => {
+    (tool: DragTool, position: { x: number; y: number }, pulseKey?: string) => {
       const pulseData = pulseKey ? { pulseKey } : {};
       setInspectorOpen(true);
 
@@ -906,7 +914,9 @@ export default function Canvas() {
 
             // Check if VPC is dropped inside a Region
             const parentRegion = nodes.find(
-              (n) => isRegionNode(n) && isRectIntersecting(vpcRect, getNodeRect(n, nodesById)),
+              (n) =>
+                isRegionNode(n) &&
+                isRectIntersecting(vpcRect, getNodeRect(n, nodesById)),
             );
             const parentRegionPosition = parentRegion
               ? getAbsolutePosition(parentRegion, nodesById)
@@ -955,7 +965,10 @@ export default function Canvas() {
 
             if (parentRegion) {
               const { width: rw, height: rh } = getNodeSize(parentRegion);
-              return { nodes: redistributeVpcNodes(parentRegion.id, rw, rh, allNodes), edges };
+              return {
+                nodes: redistributeVpcNodes(parentRegion.id, rw, rh, allNodes),
+                edges,
+              };
             }
             return { nodes: allNodes, edges };
           });
@@ -977,14 +990,20 @@ export default function Canvas() {
 
           const newNode: AppNode = {
             id: nodeId,
-            type: CIRCULAR_SERVICE_IDS.has(service.id) ? "circularService" : AWS_SERVICE_NODE_TYPE,
+            type: getServiceNodeType(service.id),
             zIndex: 10,
             selected: true,
             ...parentedPosition,
             data: { ...getAwsServiceNodeData(service), ...pulseData },
           };
 
-          return { nodes: addNodeWithAzSync(newNode, nodes.map((n) => ({ ...n, selected: false }))), edges };
+          return {
+            nodes: addNodeWithAzSync(
+              newNode,
+              nodes.map((n) => ({ ...n, selected: false })),
+            ),
+            edges,
+          };
         });
         return;
       }
@@ -1011,7 +1030,13 @@ export default function Canvas() {
             data: { label: t.user, fields: { label: t.user }, ...pulseData },
           };
 
-          return { nodes: addNodeWithAzSync(newNode, nodes.map((n) => ({ ...n, selected: false }))), edges };
+          return {
+            nodes: addNodeWithAzSync(
+              newNode,
+              nodes.map((n) => ({ ...n, selected: false })),
+            ),
+            edges,
+          };
         });
         return;
       }
@@ -1035,10 +1060,20 @@ export default function Canvas() {
             zIndex: 10,
             selected: true,
             ...parentedPosition,
-            data: { label: t.internet, fields: { label: t.internet }, ...pulseData },
+            data: {
+              label: t.internet,
+              fields: { label: t.internet },
+              ...pulseData,
+            },
           };
 
-          return { nodes: addNodeWithAzSync(newNode, nodes.map((n) => ({ ...n, selected: false }))), edges };
+          return {
+            nodes: addNodeWithAzSync(
+              newNode,
+              nodes.map((n) => ({ ...n, selected: false })),
+            ),
+            edges,
+          };
         });
         return;
       }
@@ -1127,7 +1162,13 @@ export default function Canvas() {
             style: TEXT_NODE_STYLE,
           };
 
-          return { nodes: addNodeWithAzSync(newNode, nodes.map((n) => ({ ...n, selected: false }))), edges };
+          return {
+            nodes: addNodeWithAzSync(
+              newNode,
+              nodes.map((n) => ({ ...n, selected: false })),
+            ),
+            edges,
+          };
         });
         return;
       }
@@ -1173,12 +1214,17 @@ export default function Canvas() {
 
         commitGraphChange(({ nodes, edges }) => {
           const nodesById = new Map(nodes.map((node) => [node.id, node]));
-          const parentContainer = findIntersectingContainer(azRect, nodes, nodesById, {
-            id: azId,
-            type: "networkContainer",
-            position: azPosition,
-            data: { containerType: "az", label: t.availabilityZone },
-          });
+          const parentContainer = findIntersectingContainer(
+            azRect,
+            nodes,
+            nodesById,
+            {
+              id: azId,
+              type: "networkContainer",
+              position: azPosition,
+              data: { containerType: "az", label: t.availabilityZone },
+            },
+          );
           const parentPosition = parentContainer
             ? getAbsolutePosition(parentContainer, nodesById)
             : null;
@@ -1192,7 +1238,10 @@ export default function Canvas() {
                 selected: true,
                 parentId: parentContainer?.id,
                 position: parentPosition
-                  ? { x: azPosition.x - parentPosition.x, y: azPosition.y - parentPosition.y }
+                  ? {
+                      x: azPosition.x - parentPosition.x,
+                      y: azPosition.y - parentPosition.y,
+                    }
                   : azPosition,
                 data: {
                   containerType: "az" as const,
@@ -1364,7 +1413,9 @@ export default function Canvas() {
             (parentVpc.data as { synced?: boolean }).synced
           ) {
             const sourceSubnetIds = allNodes
-              .filter((node) => node.parentId === parentVpc.id && isSubnetNode(node))
+              .filter(
+                (node) => node.parentId === parentVpc.id && isSubnetNode(node),
+              )
               .map((node) => node.id);
 
             for (const nodeId of [...sourceSubnetIds, ...absorbedNodeIds]) {
@@ -1450,7 +1501,10 @@ export default function Canvas() {
         const updates = new Map<string, AppNode>();
         const reparentedContainers = new Map<
           string,
-          { oldParentId?: string; childType: ReturnType<typeof getNetworkContainerType> }
+          {
+            oldParentId?: string;
+            childType: ReturnType<typeof getNetworkContainerType>;
+          }
         >();
 
         function getUpdatedNode(node: AppNode) {
@@ -1542,11 +1596,15 @@ export default function Canvas() {
         );
 
         // After reparenting containers, redistribute their siblings in new and old parents.
-        for (const [draggedNodeId, { oldParentId, childType }] of reparentedContainers) {
+        for (const [
+          draggedNodeId,
+          { oldParentId, childType },
+        ] of reparentedContainers) {
           const newParentId = updates.get(draggedNodeId)?.parentId;
           const parentsToRedistribute = new Set<string>();
           if (newParentId) parentsToRedistribute.add(newParentId);
-          if (oldParentId && oldParentId !== newParentId) parentsToRedistribute.add(oldParentId);
+          if (oldParentId && oldParentId !== newParentId)
+            parentsToRedistribute.add(oldParentId);
 
           if (childType) {
             for (const parentId of parentsToRedistribute) {
@@ -1591,13 +1649,11 @@ export default function Canvas() {
       const isNewParent = target && target.id !== node.parentId;
 
       setDropTargetNodeId(isNewParent ? target.id : null);
-      setDropPreview(isNewParent && childType ? { parentId: target.id, childType } : null);
+      setDropPreview(
+        isNewParent && childType ? { parentId: target.id, childType } : null,
+      );
     },
-    [
-      dropTargetNodeId,
-      setDropPreview,
-      setDropTargetNodeId,
-    ],
+    [dropTargetNodeId, setDropPreview, setDropTargetNodeId],
   );
 
   const onNodeDragStop: OnNodeDrag<AppNode> = useCallback(
@@ -1613,19 +1669,22 @@ export default function Canvas() {
     [syncNodeSubnet, setDropPreview, setDropTargetNodeId],
   );
 
-  const handleSelectionStart = useCallback((event: MouseEvent<Element>) => {
-    setSelectionDragActive(true);
-    // Snapshot which containers were already selected before this drag.
-    // nodesRef.current still reflects pre-reset state here (useEffect hasn't re-run).
-    preDragContainersRef.current = event.shiftKey
-      ? new Set(
-          nodesRef.current
-            .filter((n) => n.type === "networkContainer" && n.selected)
-            .map((n) => n.id),
-        )
-      : new Set();
-    setSelectionBoxActive(false);
-  }, [setSelectionBoxActive]);
+  const handleSelectionStart = useCallback(
+    (event: MouseEvent<Element>) => {
+      setSelectionDragActive(true);
+      // Snapshot which containers were already selected before this drag.
+      // nodesRef.current still reflects pre-reset state here (useEffect hasn't re-run).
+      preDragContainersRef.current = event.shiftKey
+        ? new Set(
+            nodesRef.current
+              .filter((n) => n.type === "networkContainer" && n.selected)
+              .map((n) => n.id),
+          )
+        : new Set();
+      setSelectionBoxActive(false);
+    },
+    [setSelectionBoxActive],
+  );
 
   const handleSelectionEnd = useCallback(() => {
     setSelectionDragActive(false);
@@ -1685,13 +1744,21 @@ export default function Canvas() {
     const minY = Math.min(...rects.map((r) => r.y));
     const maxX = Math.max(...rects.map((r) => r.x + r.width));
     const maxY = Math.max(...rects.map((r) => r.y + r.height));
-    const bounds = { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+    const bounds = {
+      x: minX,
+      y: minY,
+      width: maxX - minX,
+      height: maxY - minY,
+    };
     const w = bounds.width + SELECTION_BOX_PADDING * 2;
     const h = bounds.height + SELECTION_BOX_PADDING * 2;
     const groupNode = {
       id: SELECTION_GROUP_ID,
       type: "selectionGroup" as const,
-      position: { x: bounds.x - SELECTION_BOX_PADDING, y: bounds.y - SELECTION_BOX_PADDING },
+      position: {
+        x: bounds.x - SELECTION_BOX_PADDING,
+        y: bounds.y - SELECTION_BOX_PADDING,
+      },
       data: {} as Record<string, never>,
       style: { width: w, height: h },
       // Pre-supply measured dimensions so React Flow doesn't set visibility:hidden
