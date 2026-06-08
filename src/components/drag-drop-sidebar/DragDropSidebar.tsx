@@ -164,6 +164,16 @@ export default function DragDropSidebar({
         {labels.dragAndDrop}
       </div>
       <div className="flex-1 space-y-2 overflow-y-auto p-2">
+        {CUSTOM.filter((item) => !item.searchOnly).map((item) =>
+          renderInfrastructureTool(item, {
+            labels,
+            infraLabels,
+            iconClassName: "size-10 text-muted-foreground",
+            onToolClick,
+            onToolDragStart,
+            onToolDragEnd,
+          }),
+        )}
         {CONTAINERS.filter((item) => !item.searchOnly).map((item) =>
           renderInfrastructureTool(item, {
             labels,
@@ -175,26 +185,7 @@ export default function DragDropSidebar({
             onToolDragEnd,
           }),
         )}
-        {CLIENTS.filter((item) => !item.searchOnly).map((item) =>
-          renderInfrastructureTool(item, {
-            labels,
-            infraLabels,
-            iconClassName: "size-10 text-muted-foreground",
-            onToolClick,
-            onToolDragStart,
-            onToolDragEnd,
-          }),
-        )}
-        {CUSTOM.filter((item) => !item.searchOnly).map((item) =>
-          renderInfrastructureTool(item, {
-            labels,
-            infraLabels,
-            iconClassName: "size-10 text-muted-foreground",
-            onToolClick,
-            onToolDragStart,
-            onToolDragEnd,
-          }),
-        )}
+
         <SidebarToolButton
           name={labels.text}
           description={`${labels.textDescription} ${labels.dragOrClickToAdd}`}
@@ -228,6 +219,16 @@ export default function DragDropSidebar({
             />
           </SidebarToolButton>
         ))}
+        {CLIENTS.filter((item) => !item.searchOnly).map((item) =>
+          renderInfrastructureTool(item, {
+            labels,
+            infraLabels,
+            iconClassName: "size-10 text-muted-foreground",
+            onToolClick,
+            onToolDragStart,
+            onToolDragEnd,
+          }),
+        )}
       </div>
     </aside>
   );
