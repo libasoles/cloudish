@@ -4,6 +4,7 @@ import type { GatewayServiceNodeType } from "@/components/nodes/GatewayServiceNo
 import type { NetworkContainerNodeType } from "@/components/nodes/network-containers/NetworkContainerNode";
 import type { PlainTextNodeType } from "@/components/nodes/PlainTextNode";
 import type { MiscellaneousNodeType } from "@/components/nodes/MiscellaneousNode";
+import type { ContainerInsets } from "@/lib/graph-utils";
 
 export type AppNode =
   | Node
@@ -30,6 +31,7 @@ export type NetworkContainerNodeData = {
   fields?: Record<string, string | boolean | number>;
   pulseKey?: string;
   synced?: boolean;
+  gatewayInsets?: ContainerInsets;
 };
 
 export type SubnetNodeData = NetworkContainerNodeData & {
