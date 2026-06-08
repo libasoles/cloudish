@@ -1,5 +1,5 @@
-import { type DragEvent, type ReactNode } from "react";
-import { Type } from "lucide-react";
+import { type DragEvent, type ReactNode, useState } from "react";
+import { Type, ChevronDown } from "lucide-react";
 import { AwsServiceIcon } from "@/components/AwsServiceIcon";
 import { HoverOnlyTooltip } from "@/components/HoverOnlyTooltip";
 import { draggableAwsServices } from "@/data/drag-tool-catalog";
@@ -53,6 +53,7 @@ function setDragPayload(
 type SidebarToolButtonProps = {
   name: string;
   description: string;
+  dragOrClickText: string;
   ariaLabel: string;
   tool: DragTool;
   variant?: "container" | "default";
@@ -72,6 +73,7 @@ const SIDEBAR_TOOL_BUTTON_CLASSES = {
 function SidebarToolButton({
   name,
   description,
+  dragOrClickText,
   ariaLabel,
   tool,
   variant = "default",
@@ -92,6 +94,9 @@ function SidebarToolButton({
           </span>
           <span className="mt-1 block text-xs leading-snug text-muted-foreground">
             {description}
+          </span>
+          <span className="mt-2 block text-xs leading-snug text-muted-foreground/60">
+            {dragOrClickText}
           </span>
         </>
       }
@@ -138,7 +143,8 @@ function renderInfrastructureTool(
     <SidebarToolButton
       key={item.id}
       name={infraLabel.name}
-      description={`${infraLabel.description} ${labels.dragOrClickToAdd}`}
+      description={infraLabel.description}
+      dragOrClickText={labels.dragOrClickToAdd}
       ariaLabel={`Drag ${infraLabel.name}`}
       tool={item.tool}
       variant={variant}
@@ -158,6 +164,12 @@ export default function DragDropSidebar({
   onToolDragStart,
   onToolDragEnd,
 }: DragDropSidebarProps) {
+  const [showAllServices, setShowAllServices] = useState(false);
+  const visibleServices = showAllServices
+    ? draggableAwsServices
+    : draggableAwsServices.slice(0, 5);
+  const hasMoreServices = draggableAwsServices.length > 5;
+
   return (
     <aside className="flex h-full w-24 shrink-0 flex-col border-r border-border bg-background">
       <div className="border-b border-border px-2 py-3 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -188,7 +200,8 @@ export default function DragDropSidebar({
 
         <SidebarToolButton
           name={labels.text}
-          description={`${labels.textDescription} ${labels.dragOrClickToAdd}`}
+          description={labels.textDescription}
+          dragOrClickText={labels.dragOrClickToAdd}
           ariaLabel={labels.dragText}
           tool={{ type: "text" }}
           onToolClick={onToolClick}
@@ -197,11 +210,12 @@ export default function DragDropSidebar({
         >
           <Type className="h-8 w-8 text-muted-foreground" />
         </SidebarToolButton>
-        {draggableAwsServices.map((service) => (
+        {visibleServices.map((service) => (
           <SidebarToolButton
             key={service.id}
             name={service.name}
-            description={`${labels.getServiceDescription(service)} ${labels.dragOrClickToAdd}`}
+            description={labels.getServiceDescription(service)}
+            dragOrClickText={labels.dragOrClickToAdd}
             ariaLabel={labels.dragService(service.name)}
             tool={{
               type: AWS_SERVICE_NODE_TYPE,
@@ -219,6 +233,20 @@ export default function DragDropSidebar({
             />
           </SidebarToolButton>
         ))}
+        {hasMoreServices && (
+          <button
+            onClick={() => setShowAllServices(!showAllServices)}
+            className="flex w-full items-center justify-center gap-1 rounded-md border border-border py-2 text-xs font-medium text-muted-foreground transition hover:bg-accent hover:text-foreground"
+          >
+            {showAllServices ? "Ver menos" : "Ver más"}
+            <ChevronDown
+              className="h-4 w-4 transition-transform"
+              style={{
+                transform: showAllServices ? "rotate(180deg)" : "rotate(0deg)",
+              }}
+            />
+          </button>
+        )}
         {CLIENTS.filter((item) => !item.searchOnly).map((item) =>
           renderInfrastructureTool(item, {
             labels,
