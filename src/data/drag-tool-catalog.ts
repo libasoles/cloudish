@@ -14,12 +14,6 @@ export const TOP_AWS_SERVICE_IDS = [
   "sqs",
 ] as const;
 
-export const VPC_SERVICE_ID = "vpc";
-
-export const vpcService = AWS_SERVICES.find(
-  (service) => service.id === VPC_SERVICE_ID,
-);
-
-export const dragServices = TOP_AWS_SERVICE_IDS.map((serviceId) =>
+export const draggableAwsServices = TOP_AWS_SERVICE_IDS.map((serviceId) =>
   AWS_SERVICES.find((service) => service.id === serviceId),
 ).filter((service): service is AwsService => Boolean(service));
