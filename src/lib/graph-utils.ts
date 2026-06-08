@@ -539,21 +539,26 @@ export function redistributeVpcNodes(
     if (vpcIndex === -1) return n;
 
     // Grow the VPC outward to visually embrace any edge gateway children.
+    // Growth is capped at VPC_PAD so the VPC never extends past the region border.
     // Detection uses relative positions → stable across repeated calls.
     const outer = getVpcGatewayOuterInsets(n.id, vpcW, vpcH, nodes);
+    const growLeft  = Math.min(outer.left,   VPC_PAD);
+    const growRight = Math.min(outer.right,  VPC_PAD);
+    const growTop   = Math.min(outer.top,    VPC_PAD);
+    const growBottom = Math.min(outer.bottom, VPC_PAD);
 
     return {
       ...n,
-      width: vpcW + outer.left + outer.right,
-      height: vpcH + outer.top + outer.bottom,
+      width: vpcW + growLeft + growRight,
+      height: vpcH + growTop + growBottom,
       position: {
-        x: VPC_PAD + vpcIndex * (vpcW + VPC_PAD) - outer.left,
-        y: REGION_HEADER_H - outer.top,
+        x: VPC_PAD + vpcIndex * (vpcW + VPC_PAD) - growLeft,
+        y: REGION_HEADER_H - growTop,
       },
       style: {
         ...n.style,
-        width: vpcW + outer.left + outer.right,
-        height: vpcH + outer.top + outer.bottom,
+        width: vpcW + growLeft + growRight,
+        height: vpcH + growTop + growBottom,
       },
     };
   });
