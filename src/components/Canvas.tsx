@@ -36,7 +36,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import { Button } from "@/components/ui/button";
 import { PanelRightClose, PanelRightOpen } from "lucide-react";
-import DragDropSidebar from "@/components/DragDropSidebar";
+import DragDropSidebar from "@/components/drag-drop-sidebar/DragDropSidebar";
 import { INFRASTRUCTURE_ITEMS } from "@/data/infrastructure-items";
 import NewToolMenu from "@/components/NewToolMenu";
 import ExportMenu from "@/components/ExportMenu";
@@ -51,7 +51,7 @@ import PlainTextNode from "@/components/nodes/PlainTextNode";
 import ExternalNode from "@/components/nodes/ExternalNode";
 import SelectionGroupNode from "@/components/nodes/SelectionGroupNode";
 import EditableEdge from "@/components/EditableEdge";
-import ServiceSearch from "@/components/ServiceSearch";
+import ServiceSearch from "@/components/service-search/ServiceSearch";
 import { SelectionToolbar } from "@/components/SelectionToolbar";
 import { AWS_SERVICES } from "@/data/aws-services";
 import {

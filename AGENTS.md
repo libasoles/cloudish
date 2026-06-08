@@ -25,6 +25,7 @@ Don't use inline styles in JSX except for dynamic values that can't be handled v
 ## Code Style
 
 - Don't use nested ternaries — prefer `if` statements for clarity, or multiple conditions for JSX.
+- When choosing CSS classes from component state or props, prefer explicit variants (for example `class-variance-authority`) over conditional class chains.
 
 ## React State
 
