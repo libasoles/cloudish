@@ -37,13 +37,13 @@ const containerNodeVariants = cva(
   {
     variants: {
       tone: {
-        region: "border-purple-500/45 bg-purple-500/10",
-        vpc: "border-violet-500/55 bg-violet-950/35",
-        az: "border-indigo-400/55 bg-indigo-400/5 border-dashed",
-        asg: "border-orange-400/60 bg-orange-400/8 border-dashed",
-        generic: "border-zinc-400/50 bg-zinc-400/8 border-dashed",
-        privateSubnet: "border-blue-500/45 bg-blue-500/10",
-        publicSubnet: "border-emerald-500/45 bg-emerald-500/10",
+        region: "border-purple-400/35 bg-purple-400/5",
+        vpc: "border-violet-400/45 bg-violet-400/8",
+        az: "border-indigo-400/45 bg-indigo-400/4 border-dashed",
+        asg: "border-orange-400/50 bg-orange-400/5 border-dashed",
+        generic: "border-zinc-400/40 bg-zinc-400/5 border-dashed",
+        privateSubnet: "border-blue-400/40 bg-blue-400/7",
+        publicSubnet: "border-emerald-400/40 bg-emerald-400/7",
       },
     },
   },
