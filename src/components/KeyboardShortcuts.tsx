@@ -65,6 +65,7 @@ function matchesShortcut(
 export function KeyboardShortcuts() {
   const undo = useFlowStore((s) => s.undo);
   const duplicateSelectedNodes = useFlowStore((s) => s.duplicateSelectedNodes);
+  const navigateToConnectedNode = useFlowStore((s) => s.navigateToConnectedNode);
 
   useEffect(() => {
     const isMac = isApplePlatform();
@@ -78,6 +79,26 @@ export function KeyboardShortcuts() {
         key: "d",
         modifiers: { primary: true },
         action: duplicateSelectedNodes,
+      },
+      {
+        key: "ArrowUp",
+        modifiers: { primary: true },
+        action: () => navigateToConnectedNode("up"),
+      },
+      {
+        key: "ArrowDown",
+        modifiers: { primary: true },
+        action: () => navigateToConnectedNode("down"),
+      },
+      {
+        key: "ArrowLeft",
+        modifiers: { primary: true },
+        action: () => navigateToConnectedNode("left"),
+      },
+      {
+        key: "ArrowRight",
+        modifiers: { primary: true },
+        action: () => navigateToConnectedNode("right"),
       },
     ];
 
@@ -101,7 +122,7 @@ export function KeyboardShortcuts() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [duplicateSelectedNodes, undo]);
+  }, [duplicateSelectedNodes, navigateToConnectedNode, undo]);
 
   return null;
 }

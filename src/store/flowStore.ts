@@ -90,6 +90,7 @@ type FlowStore = {
   setEditingEdgeId: (id: string | null) => void;
   toggleAzSync: (azId: string, synced: boolean) => void;
   addRelatedNode: (sourceNodeId: string, serviceId: string, side: "left" | "right" | "top" | "bottom") => void;
+  navigateToConnectedNode: (direction: "up" | "down" | "left" | "right") => void;
 };
 
 function resizeChangedContainers(
@@ -359,6 +360,28 @@ export const useFlowStore = create<FlowStore>()((set) => ({
     }),
   editingEdgeId: null,
   setEditingEdgeId: (id) => set({ editingEdgeId: id }),
+
+  navigateToConnectedNode: (direction) =>
+    set((s) => {
+      const selected = s.nodes.filter((n) => n.selected);
+      if (selected.length !== 1) return {};
+
+      const currentId = selected[0].id;
+      const handleSide = direction === "up" ? "top" : direction === "down" ? "bottom" : direction;
+
+      const edge = s.edges.find(
+        (e) =>
+          (e.source === currentId && e.sourceHandle === handleSide) ||
+          (e.target === currentId && e.targetHandle === handleSide),
+      );
+      if (!edge) return {};
+
+      const nextId = edge.source === currentId ? edge.target : edge.source;
+      if (!s.nodesById.has(nextId)) return {};
+
+      const nodes = s.nodes.map((n) => ({ ...n, selected: n.id === nextId }));
+      return { nodes, ...getNodeDerivatives(nodes) };
+    }),
 
   toggleAzSync: (azId, synced) =>
     set((s) => {
