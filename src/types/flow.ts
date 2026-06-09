@@ -4,6 +4,7 @@ import type { GatewayServiceNodeType } from "@/components/nodes/GatewayServiceNo
 import type { NetworkContainerNodeType } from "@/components/nodes/network-containers/NetworkContainerNode";
 import type { PlainTextNodeType } from "@/components/nodes/PlainTextNode";
 import type { MiscellaneousNodeType } from "@/components/nodes/MiscellaneousNode";
+import type { ImageNodeType } from "@/components/nodes/ImageNode";
 import type { ContainerInsets } from "@/lib/graph-utils";
 export type { PlacementScope } from "@/data/aws-services";
 
@@ -13,6 +14,7 @@ export type AppNode =
   | GatewayServiceNodeType
   | NetworkContainerNodeType
   | PlainTextNodeType
+  | ImageNodeType
   | MiscellaneousNodeType;
 export type AppEdge = Edge;
 

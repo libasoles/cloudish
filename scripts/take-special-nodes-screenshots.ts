@@ -4,6 +4,7 @@
  * Requires the dev server running on port 5173 (or BASE_URL env var).
  *
  * Outputs:
+ *   public/docs/screenshots/pasted-images/
  *   public/docs/screenshots/api-gateway/
  *   public/docs/screenshots/vpn-gateway/
  */
@@ -176,6 +177,26 @@ async function removeMouseCursor(page: Page) {
   await page.evaluate(() => { document.getElementById('mouse-cursor-temp')?.remove() })
 }
 
+async function pasteAwsLogoImage(page: Page) {
+  await page.evaluate(async () => {
+    const logo = await fetch('/aws-logo.svg').then((response) => response.text())
+    const inner = logo.match(/<svg[^>]*>([\s\S]*)<\/svg>/)?.[1] ?? logo
+    const whiteLogo = inner.replace(/fill="#252f3e"/g, 'fill="#fff"')
+    const svg =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">' +
+      '<rect width="1024" height="1024" fill="#223244"/>' +
+      '<g transform="translate(122 280) scale(2.56)">' +
+      whiteLogo +
+      '</g></svg>'
+    const file = new File([svg], 'aws-logo-demo.svg', { type: 'image/svg+xml' })
+    const dataTransfer = new DataTransfer()
+    dataTransfer.items.add(file)
+    const event = new Event('paste', { bubbles: true, cancelable: true })
+    Object.defineProperty(event, 'clipboardData', { value: dataTransfer })
+    window.dispatchEvent(event)
+  })
+}
+
 async function main() {
   const browser = await chromium.launch({ headless: true })
   const context = await browser.newContext({ viewport: VIEWPORT, locale: 'es-ES' })
@@ -184,8 +205,28 @@ async function main() {
 
   console.log('Capturing special-nodes screenshots...\n')
 
-  // ── 1. API Gateway (4 shots) ─────────────────────────────────────────
-  console.log('1/2 API Gateway routes...')
+  // ── 1. Pasted images (1 shot) ────────────────────────────────────────
+  console.log('1/3 Pasted images...')
+  await loadApp(page)
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(400)
+  await pasteAwsLogoImage(page)
+  await page.waitForFunction(
+    () => document.querySelectorAll('.react-flow__node-image').length === 1,
+    null,
+    { timeout: 5000 },
+  )
+  const imageNode = page.locator('.react-flow__node-image').first()
+  await imageNode.click({ force: true })
+  await page.waitForTimeout(600)
+  const imageResizeHandleCount = await imageNode.locator('.react-flow__resize-control.handle').count()
+  if (imageResizeHandleCount === 0) {
+    throw new Error('Pasted image resize handles were not visible')
+  }
+  await shot(page, 'pasted-images', 'resizable.png')
+
+  // ── 2. API Gateway (4 shots) ─────────────────────────────────────────
+  console.log('2/3 API Gateway routes...')
   await loadApp(page)
   await page.keyboard.press('Escape')
   await page.waitForTimeout(400)
@@ -278,8 +319,8 @@ async function main() {
   // Shot 4: routes connected to Lambdas
   await shot(page, 'api-gateway', 'routes-connected.png')
 
-  // ── 2. VPN Gateway (3 shots) ─────────────────────────────────────────
-  console.log('2/2 VPN Gateway...')
+  // ── 3. VPN Gateway (3 shots) ─────────────────────────────────────────
+  console.log('3/3 VPN Gateway...')
   await loadApp(page)
   await page.keyboard.press('Escape')
   await page.waitForTimeout(400)
@@ -448,7 +489,7 @@ async function main() {
 
   await browser.close()
   console.log('\n✅ All special-nodes screenshots captured and validated:')
-  console.log('  api-gateway/ (4 shots), vpn-gateway/ (3 shots)')
+  console.log('  pasted-images/ (1 shot), api-gateway/ (4 shots), vpn-gateway/ (3 shots)')
 }
 
 main().catch((err) => {

@@ -24,6 +24,30 @@ function Tip({ children }: { children: React.ReactNode }) {
 export default function SpecialNodes() {
   return (
     <>
+      {/* ── 1. Pasted images ───────────────────────────────── */}
+      <h2 id="imagenes-pegadas">Imágenes pegadas</h2>
+      <p>
+        Puedes pegar imágenes directamente desde el portapapeles con{" "}
+        <kbd>Cmd</kbd> + <kbd>V</kbd> o <kbd>Ctrl</kbd> + <kbd>V</kbd>. Cloudish
+        las agrega como nodos visuales sin borde en el centro del lienzo, útiles
+        para insertar logos, capturas, diagramas externos o referencias rápidas.
+      </p>
+      <p>
+        Las imágenes pegadas se pueden mover como cualquier otro nodo. Al
+        seleccionarlas aparecen los handles de redimensionado: arrastra una esquina
+        para cambiar el tamaño manteniendo la proporción de la imagen.
+      </p>
+      <Figure
+        src="/docs/screenshots/pasted-images/resizable.png"
+        alt="Logo de AWS pegado como nodo de imagen seleccionado con handles de redimensionado visibles"
+        caption="Las imágenes pegadas son nodos sin borde y redimensionables"
+      />
+      <Tip>
+        Puedes usar imágenes sin iniciar sesión. Si luego guardas el proyecto
+        estando logueado, Cloudish sube esas imágenes junto con la arquitectura
+        para que sigan disponibles al reabrirla.
+      </Tip>
+
       {/* ── 1. API Gateway ───────────────────────────────── */}
       <h2 id="api-gateway-rutas">API Gateway: rutas HTTP</h2>
       <p>
