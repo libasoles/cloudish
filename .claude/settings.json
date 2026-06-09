@@ -23,7 +23,9 @@
     ],
     "additionalDirectories": [
       "../cloudish-edge-inspector-docs/src",
-      "../nodes/cloudish-worktrees/**"
+      "../nodes/cloudish-worktrees/**",
+      "/Users/guillermoperez/Projects/playground/nodes/cloudish-worktrees/cloudish-related-services/src/store",
+      "/Users/guillermoperez/Projects/playground/nodes/cloudish-worktrees/cloudish-band-resize/src/lib"
     ]
   }
 }

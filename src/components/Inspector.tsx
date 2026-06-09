@@ -1,6 +1,12 @@
 import { lazy, Suspense, useState } from "react";
 import { FolderOpen, LogOut } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -107,6 +113,13 @@ export default function Inspector() {
     <Card className="hidden h-full w-72 flex-col rounded-none border-y-0 border-r-0 max-md:!hidden md:flex">
       <CardHeader className="px-4 py-4">
         <CardTitle className="text-sm font-medium">{inspectorTitle}</CardTitle>
+        {selectedAwsNode && selectedAwsDescription && (
+          <CardDescription className="text-xs text-muted-foreground">
+            <div className="text-sm leading-5 text-muted-foreground pb-2">
+              {selectedAwsDescription}
+            </div>
+          </CardDescription>
+        )}
       </CardHeader>
       <CardContent className="flex flex-1 flex-col overflow-hidden px-4">
         <div className="flex-1 overflow-y-auto px-0.5">
@@ -151,12 +164,11 @@ export default function Inspector() {
             </div>
           )}
         </div>
-        {selectedAwsNode && <RelatedServicesPanel node={selectedAwsNode} />}
-        {selectedAwsNode && selectedAwsDescription && (
-          <div className="my-4 border-t border-border pt-4 text-sm leading-5 text-muted-foreground">
-            {selectedAwsDescription}
-          </div>
-        )}
+
+        <div className="flex flex-col gap-2">
+          {selectedAwsNode && <RelatedServicesPanel node={selectedAwsNode} />}
+        </div>
+
         <div className="mt-auto border-t border-border pt-3">
           {authLoading ? (
             <div

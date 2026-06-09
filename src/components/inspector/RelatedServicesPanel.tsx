@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { AwsServiceIcon } from "@/components/AwsServiceIcon";
 import { AWS_SERVICES } from "@/data/aws-services";
 import { SERVICE_RELATIONS } from "@/data/aws-service-relations";
@@ -18,7 +18,7 @@ export function RelatedServicesPanel({ node }: RelatedServicesPanelProps) {
   const [showAll, setShowAll] = useState(false);
   const addRelatedNode = useFlowStore((s) => s.addRelatedNode);
   const locale = getBrowserLocale();
-  const t = UI_TEXT[locale] as typeof UI_TEXT["en"];
+  const t = UI_TEXT[locale] as (typeof UI_TEXT)["en"];
 
   const serviceId = getServiceId(node);
   const relatedIds = SERVICE_RELATIONS[serviceId] ?? [];
@@ -32,23 +32,23 @@ export function RelatedServicesPanel({ node }: RelatedServicesPanelProps) {
   const hasMore = !showAll && related.length > PAGE_SIZE;
 
   return (
-    <div className="my-4 border-t border-border pt-4">
-      <p className="mb-2 text-xs font-medium text-muted-foreground">
+    <div className="border-t border-border pt-4 pb-2">
+      <p className="pb-4 text-xs font-medium text-muted-foreground">
         {t.relatedServices}
       </p>
       <ul className="space-y-0.5">
         {visible.map((service) => (
           <li
             key={service.id}
-            className="flex items-center gap-1.5 rounded-md px-0.5 py-0.5 hover:bg-muted/20"
+            className="flex items-center gap-1 rounded-md py-0.5 hover:bg-muted/20"
           >
             <button
               type="button"
               title={t.addToLeft}
               onClick={() => addRelatedNode(node.id, service.id, "left")}
-              className="flex-none rounded p-1 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+              className="flex-none rounded p-1 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground -ml-1.5"
             >
-              <ChevronLeft className="h-3 w-3" />
+              <ArrowLeft className="h-3 w-3" />
             </button>
             <AwsServiceIcon
               slug={service.slug}
@@ -63,9 +63,9 @@ export function RelatedServicesPanel({ node }: RelatedServicesPanelProps) {
               type="button"
               title={t.addToRight}
               onClick={() => addRelatedNode(node.id, service.id, "right")}
-              className="flex-none rounded p-1 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+              className="flex-none rounded p-1 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground -mr-1.5"
             >
-              <ChevronRight className="h-3 w-3" />
+              <ArrowRight className="h-3 w-3" />
             </button>
           </li>
         ))}
