@@ -31,9 +31,11 @@ export const UI_TEXT = {
     internet: "Internet",
     internetDescription: "Represents the public internet or external network.",
     web: "Web",
-    webDescription: "Web client running in a browser consuming applications, APIs, or backend services.",
+    webDescription:
+      "Web client running in a browser consuming applications, APIs, or backend services.",
     mobile: "Mobile",
-    mobileDescription: "Mobile client consuming applications, APIs, or backend services.",
+    mobileDescription:
+      "Mobile client consuming applications, APIs, or backend services.",
     regionDescription:
       "Top-level AWS Region container for VPCs and network scope.",
     vpc: "VPC",
@@ -53,7 +55,7 @@ export const UI_TEXT = {
     appLogoAlt: `${APP_TITLE} logo`,
     emptyCanvasTitle: APP_TITLE,
     emptyCanvasDescription:
-      "Build an AWS architecture by adding a Region, VPCs, subnets, and services from the tools panel.",
+      "Build an AWS architecture by adding regions, services, and networks from the tools panel.",
     noNodeSelected: "No node selected",
     edge: "Edge",
     label: "Label",
@@ -192,9 +194,11 @@ export const UI_TEXT = {
     internet: "Internet",
     internetDescription: "Representa el internet público o una red externa.",
     web: "Web",
-    webDescription: "Cliente web ejecutado en navegador para consumir aplicaciones, APIs o servicios backend.",
+    webDescription:
+      "Cliente web ejecutado en navegador para consumir aplicaciones, APIs o servicios backend.",
     mobile: "Móvil",
-    mobileDescription: "Cliente móvil que consume aplicaciones, APIs o servicios backend.",
+    mobileDescription:
+      "Cliente móvil que consume aplicaciones, APIs o servicios backend.",
     regionDescription:
       "Contenedor principal de Región AWS para VPCs y alcance de red.",
     vpc: "VPC",
@@ -215,7 +219,7 @@ export const UI_TEXT = {
     appLogoAlt: `Logo de ${APP_TITLE}`,
     emptyCanvasTitle: APP_TITLE,
     emptyCanvasDescription:
-      "Diseña una arquitectura AWS agregando una Región, VPCs, subredes y servicios desde el panel de herramientas.",
+      "Diseña una arquitectura AWS agregando regiones, servicios y redes desde el panel de herramientas.",
     noNodeSelected: "Ningún nodo seleccionado",
     edge: "Conexión",
     label: "Etiqueta",

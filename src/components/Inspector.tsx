@@ -58,7 +58,8 @@ export default function Inspector() {
     : null;
 
   const selectedAwsNode =
-    selectedNode?.type === "awsService" || selectedNode?.type === "gatewayService"
+    selectedNode?.type === "awsService" ||
+    selectedNode?.type === "gatewayService"
       ? (selectedNode as AwsServiceNodeType)
       : null;
   const selectedPlainTextNode =
@@ -71,7 +72,10 @@ export default function Inspector() {
     : "";
 
   let selectedLabel = "";
-  if (selectedNode?.type === "awsService" || selectedNode?.type === "gatewayService") {
+  if (
+    selectedNode?.type === "awsService" ||
+    selectedNode?.type === "gatewayService"
+  ) {
     selectedLabel = (selectedNode.data as AwsServiceNodeData).name;
   } else if (selectedNode?.type === "plainText") {
     selectedLabel = selectedPlainTextData?.text.trim() || t.text;
@@ -129,6 +133,13 @@ export default function Inspector() {
           ) : (
             <div className="flex flex-col gap-4">
               <div className="flex flex-col items-center gap-4 text-center">
+                {!hasCanvasNodes && (
+                  <img
+                    src="/cloudish-logo.png"
+                    alt={t.appLogoAlt}
+                    className="h-auto w-32"
+                  />
+                )}
                 <p className="text-sm leading-5 text-muted-foreground">
                   {hasCanvasNodes
                     ? t.clickNodeDetails
