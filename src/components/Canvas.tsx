@@ -101,6 +101,8 @@ import {
   getGatewayNodeSize,
   snapGatewayNodeToVpcBorder,
   isVpcNode,
+  GATEWAY_NODE_FALLBACK_W,
+  GATEWAY_NODE_FALLBACK_H,
 } from "@/lib/graph-utils";
 import {
   addEdgeWithAzSync,
@@ -1291,7 +1293,6 @@ export default function Canvas() {
                 },
               };
             } else {
-              // Always place in the band of the allowed ancestor for non-subnet scope
               placementToastScope = scope;
               const dropAbsCenter = {
                 x: nodePosition.x + DEFAULT_NODE_WIDTH / 2,
@@ -1303,9 +1304,28 @@ export default function Canvas() {
                 height: (allowedAncestor.style as { height?: number })?.height ?? allowedAncestor.height ?? 480,
               };
               const side = resolveBandSide(dropAbsCenter, ancRect, scope, service.id);
-              const bandPos = computeBandPlacement(allowedAncestor, side, nodes, service.id);
-              parentedPosition = bandPos;
-              extraData = { bandSide: side };
+
+              if (getServiceNodeType(service.id) === "gatewayService") {
+                // Gateway nodes live on a VPC border (50% in / 50% out), not in the band.
+                const ancPos = getAbsolutePosition(allowedAncestor, nodesById);
+                const { width: vpcW, height: vpcH } = getNodeSize(allowedAncestor);
+                const nW = GATEWAY_NODE_FALLBACK_W;
+                const nH = GATEWAY_NODE_FALLBACK_H;
+                const dropRelX = dropAbsCenter.x - ancPos.x;
+                const dropRelY = dropAbsCenter.y - ancPos.y;
+                const borderPos =
+                  side === "right"  ? { x: vpcW - nW / 2, y: dropRelY - nH / 2 } :
+                  side === "left"   ? { x: -nW / 2,       y: dropRelY - nH / 2 } :
+                  side === "top"    ? { x: dropRelX - nW / 2, y: -nH / 2 }       :
+                                      { x: dropRelX - nW / 2, y: vpcH - nH / 2 };
+                parentedPosition = { parentId: allowedAncestor.id, position: borderPos };
+                // No bandSide — gateway nodes are positioned at the VPC border, not the band.
+              } else {
+                // Regular vpc/regional-scope service nodes go into the band.
+                const bandPos = computeBandPlacement(allowedAncestor, side, nodes, service.id);
+                parentedPosition = bandPos;
+                extraData = { bandSide: side };
+              }
             }
           }
 
@@ -2100,19 +2120,45 @@ export default function Canvas() {
         });
 
         // Snap gateway nodes to exactly 50/50 on whichever VPC border they're crossing.
+        // If the gateway overshot the border (fully outside the VPC), recover it via
+        // proximity: expand the search by half the node size on each side.
         for (const draggedNode of draggedNodes) {
           if (draggedNode.type !== "gatewayService") continue;
           const updated = updates.get(draggedNode.id) ?? draggedNode;
-          if (!updated.parentId) continue;
-          const parentVpc = nodesById.get(updated.parentId);
+
+          // Find parent VPC: first try the already-assigned parent, then fall back to
+          // proximity so an overshoot drag doesn't permanently detach the gateway.
+          let parentVpc = updated.parentId ? nodesById.get(updated.parentId) : undefined;
+          if (!parentVpc || !isVpcNode(parentVpc)) {
+            const { width: fallbackW, height: fallbackH } = getGatewayNodeSize(updated);
+            const absRect = getNodeRect(updated, nodesById);
+            const expandedRect = {
+              x: absRect.x - fallbackW / 2,
+              y: absRect.y - fallbackH / 2,
+              width:  absRect.width  + fallbackW,
+              height: absRect.height + fallbackH,
+            };
+            parentVpc = nodes.find(
+              (n) => isVpcNode(n) && isRectIntersecting(expandedRect, getNodeRect(n, nodesById)),
+            );
+            if (parentVpc) {
+              const containerPos = getAbsolutePosition(parentVpc, nodesById);
+              updates.set(updated.id, {
+                ...updated,
+                parentId: parentVpc.id,
+                position: { x: absRect.x - containerPos.x, y: absRect.y - containerPos.y },
+              });
+            }
+          }
           if (!parentVpc || !isVpcNode(parentVpc)) continue;
 
-          const { width: nodeW, height: nodeH } = getGatewayNodeSize(updated);
+          const finalUpdated = updates.get(draggedNode.id) ?? draggedNode;
+          const { width: nodeW, height: nodeH } = getGatewayNodeSize(finalUpdated);
           const { width: vpcW, height: vpcH } = getNodeSize(parentVpc);
-          const snapped = snapGatewayNodeToVpcBorder(updated.position, nodeW, nodeH, vpcW, vpcH);
+          const snapped = snapGatewayNodeToVpcBorder(finalUpdated.position, nodeW, nodeH, vpcW, vpcH);
 
-          if (snapped.x !== updated.position.x || snapped.y !== updated.position.y) {
-            updates.set(updated.id, { ...updated, position: snapped });
+          if (snapped.x !== finalUpdated.position.x || snapped.y !== finalUpdated.position.y) {
+            updates.set(finalUpdated.id, { ...finalUpdated, position: snapped });
           }
         }
 
@@ -2222,6 +2268,23 @@ export default function Canvas() {
             setDropBandSide(null);
           }
         }
+        // Gateway nodes: highlight the VPC they're hovering over (green ring, no band side).
+        if (node.type === "gatewayService") {
+          const { nodes: currentNodes, nodesById: storeNodesById } = useFlowStore.getState();
+          const nodeRect = getNodeRect(node, storeNodesById);
+          const hoveredVpc = currentNodes.find(
+            (n) => isVpcNode(n) && isRectIntersecting(nodeRect, getNodeRect(n, storeNodesById)),
+          );
+          if (hoveredVpc) {
+            setDropTargetNodeId(hoveredVpc.id);
+          } else if (dropTargetNodeId !== null) {
+            setDropTargetNodeId(null);
+          }
+          setDropBandSide(null);
+          setDropPreview(null);
+          return;
+        }
+
         if (dropTargetNodeId !== null) setDropTargetNodeId(null);
         setDropPreview(null);
         return;

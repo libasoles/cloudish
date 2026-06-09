@@ -106,8 +106,8 @@ export function getNodeSize(node: AppNode) {
 
 // Fallback dimensions for a gateway node before React Flow measures it.
 // Matches the w-14 (56px) width and circle-icon + label height (~80px) in GatewayServiceNode.
-const GATEWAY_NODE_FALLBACK_W = 56;
-const GATEWAY_NODE_FALLBACK_H = 80;
+export const GATEWAY_NODE_FALLBACK_W = 56;
+export const GATEWAY_NODE_FALLBACK_H = 80;
 
 export function getGatewayNodeSize(node: AppNode) {
   const style = node.style as { width?: number; height?: number } | undefined;
@@ -118,11 +118,11 @@ export function getGatewayNodeSize(node: AppNode) {
 }
 
 // Snaps a gateway node's position so it sits exactly 50% inside / 50% outside
-// the VPC border it is crossing. Only the axis perpendicular to the border is
-// snapped; the parallel axis stays free so the user can slide along the edge.
+// the VPC border it is crossing or nearest to. Also handles gateways that are
+// fully outside the VPC (e.g., after an overshoot drag) by projecting to the
+// nearest border. The parallel axis stays free so the user can slide along the edge.
 // When the node crosses two borders at once (corner drop), the border whose edge
 // is closest to the node center wins.
-// Returns the position unchanged if the node is fully inside or fully outside.
 export function snapGatewayNodeToVpcBorder(
   pos: { x: number; y: number },
   nodeW: number,
@@ -135,7 +135,35 @@ export function snapGatewayNodeToVpcBorder(
   const crossTop    = pos.y < 0 && pos.y + nodeH > 0;
   const crossBottom = pos.y < vpcH && pos.y + nodeH > vpcH;
 
-  if (!crossLeft && !crossRight && !crossTop && !crossBottom) return pos;
+  // Fully outside — snap to the nearest border.
+  if (!crossLeft && !crossRight && !crossTop && !crossBottom) {
+    const fullyRight  = pos.x >= vpcW;
+    const fullyLeft   = pos.x + nodeW <= 0;
+    const fullyBottom = pos.y >= vpcH;
+    const fullyTop    = pos.y + nodeH <= 0;
+
+    if (fullyRight && !fullyTop && !fullyBottom) return { x: vpcW - nodeW / 2, y: pos.y };
+    if (fullyLeft  && !fullyTop && !fullyBottom) return { x: -nodeW / 2, y: pos.y };
+    if (fullyBottom && !fullyLeft && !fullyRight) return { x: pos.x, y: vpcH - nodeH / 2 };
+    if (fullyTop   && !fullyLeft && !fullyRight) return { x: pos.x, y: -nodeH / 2 };
+
+    // Corner overshoot: pick closest border by center distance.
+    if (fullyRight || fullyLeft || fullyBottom || fullyTop) {
+      const cx = pos.x + nodeW / 2;
+      const cy = pos.y + nodeH / 2;
+      const dLeft   = Math.abs(cx);
+      const dRight  = Math.abs(cx - vpcW);
+      const dTop    = Math.abs(cy);
+      const dBottom = Math.abs(cy - vpcH);
+      const minD = Math.min(dLeft, dRight, dTop, dBottom);
+      if (minD === dRight)  return { x: vpcW - nodeW / 2, y: pos.y };
+      if (minD === dLeft)   return { x: -nodeW / 2, y: pos.y };
+      if (minD === dBottom) return { x: pos.x, y: vpcH - nodeH / 2 };
+      return { x: pos.x, y: -nodeH / 2 };
+    }
+
+    return pos; // fully inside — no snap needed
+  }
 
   let x = pos.x;
   let y = pos.y;
