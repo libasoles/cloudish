@@ -2185,7 +2185,7 @@ export default function Canvas() {
                 useFlowStore.getState().setNodes((prev) =>
                   propagateBandGrowthToAncestors(
                     allowedAncestor.id,
-                    applyInsetResizeOnly(allowedAncestor.id, newInsets, prev),
+                    applyInsetResizeOnly(allowedAncestor.id, newInsets, prev, node.id),
                   ),
                 );
               }
