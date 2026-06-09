@@ -21,6 +21,7 @@ const SCOPE_MAX_DEPTH: Record<PlacementScope, number> = {
   global: 0,    // canvas only — no container parent allowed
   regional: 1,  // region max
   vpc: 2,       // vpc max
+  az: 3,        // availability zone max
   subnet: 4,    // no extra restriction
 };
 
@@ -60,6 +61,7 @@ const SCOPE_DEFAULT_SIDE: Record<PlacementScope, BandSide> = {
   global: "top",    // global services float above everything
   regional: "right", // data/storage services go to the right
   vpc: "right",
+  az: "right",
   subnet: "right",  // shouldn't be needed but safe fallback
 };
 
