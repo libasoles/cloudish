@@ -194,18 +194,19 @@ All agents must work in a dedicated git worktree to avoid conflicts with other A
 - Before starting any implementation task, create an isolated worktree on a feature branch:
 
   ```bash
-  git worktree add ../cloudish-<feature-slug> -b feat/<feature-slug>
-  cd ../cloudish-<feature-slug>
+  mkdir -p ../cloudish-worktrees
+  git worktree add ../cloudish-worktrees/cloudish-<feature-slug> -b feat/<feature-slug>
+  cd ../cloudish-worktrees/cloudish-<feature-slug>
   npm install
   ```
 
-  **Important:** Always install Node dependencies (`npm install`) in the new worktree after creating it. Each worktree has its own `node_modules` directory, and changes to dependencies in the worktree will not affect the main working tree.
+  **Important:** Worktrees must always be created inside the `../cloudish-worktrees/` folder (a sibling of the main repo). Never create worktrees directly as siblings of the main repo. Always install Node dependencies (`npm install`) in the new worktree after creating it. Each worktree has its own `node_modules` directory, and changes to dependencies in the worktree will not affect the main working tree.
 
 - All file edits, installs, and commits happen inside the worktree directory, not in the main working tree.
 - When the task is complete, open a PR from the feature branch, complete the PR workflow below, **merge to main**, and **immediately remove the worktree and local branch**:
 
   ```bash
-  git worktree remove ../cloudish-<feature-slug>
+  git worktree remove ../cloudish-worktrees/cloudish-<feature-slug>
   git branch -d feat/<feature-slug>
   ```
 
