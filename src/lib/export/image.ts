@@ -181,37 +181,39 @@ export async function exportFlowAsImage(
   `;
   document.head.appendChild(exportStyle);
 
+  const toPngOptions = {
+    backgroundColor: BG,
+    width: contentW,
+    height: contentH,
+    style: {
+      width: `${contentW}px`,
+      height: `${contentH}px`,
+      transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.zoom})`,
+    },
+    filter: (node: Node) => {
+      const el = node as Element;
+      const cls = el.classList;
+      if (!cls) return true;
+      if (
+        cls.contains("react-flow__nodesselection") ||
+        cls.contains("react-flow__resize-control")
+      )
+        return false;
+      if (cls.contains("react-flow__handle")) {
+        const handleId = el.getAttribute("data-handleid") ?? "";
+        const nodeId =
+          el.closest(".react-flow__node")?.getAttribute("data-id") ?? "";
+        return connectedHandles.has(`${nodeId}__${handleId}`);
+      }
+      return true;
+    },
+  };
+
   let rawDataUrl: string;
   try {
-    rawDataUrl = await toPng(viewport, {
-      backgroundColor: BG,
-      width: contentW,
-      height: contentH,
-      style: {
-        width: `${contentW}px`,
-        height: `${contentH}px`,
-        transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.zoom})`,
-      },
-      filter: (node) => {
-        const el = node as Element;
-        const cls = el.classList;
-        if (!cls) return true;
-        // Always exclude: selection overlay, resize controls
-        if (
-          cls.contains("react-flow__nodesselection") ||
-          cls.contains("react-flow__resize-control")
-        )
-          return false;
-        // Handles: only keep those with an active connection
-        if (cls.contains("react-flow__handle")) {
-          const handleId = el.getAttribute("data-handleid") ?? "";
-          const nodeId =
-            el.closest(".react-flow__node")?.getAttribute("data-id") ?? "";
-          return connectedHandles.has(`${nodeId}__${handleId}`);
-        }
-        return true;
-      },
-    });
+    // First call primes the image cache so external CDN icons load on the second pass.
+    await toPng(viewport, toPngOptions);
+    rawDataUrl = await toPng(viewport, toPngOptions);
   } finally {
     document.head.removeChild(exportStyle);
   }

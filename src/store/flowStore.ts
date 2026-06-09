@@ -21,8 +21,7 @@ import {
   redistributeGatewayAffectedVpcLayouts,
   resizeContainerNode,
 } from "@/lib/graph-utils";
-import { getAwsServiceNodeData, getServiceNodeType } from "@/lib/node-utils";
-import { AWS_SERVICES } from "@/data/aws-services";
+import { getAwsServiceNodeData, getServiceNodeType, ALL_SERVICES } from "@/lib/node-utils";
 import { duplicateSelectedGraph } from "@/lib/node-duplication";
 import type { BandSide } from "@/lib/placement";
 import type {
@@ -367,7 +366,7 @@ export const useFlowStore = create<FlowStore>()((set) => ({
     set((s) => {
       const sourceNode = s.nodes.find((n) => n.id === sourceNodeId);
       if (!sourceNode) return {};
-      const service = AWS_SERVICES.find((sv) => sv.id === serviceId);
+      const service = ALL_SERVICES.find((sv) => sv.id === serviceId);
       if (!service) return {};
 
       const nextNum =

@@ -114,10 +114,8 @@ export default function Inspector() {
       <CardHeader className="px-4 py-4">
         <CardTitle className="text-sm font-medium">{inspectorTitle}</CardTitle>
         {selectedAwsNode && selectedAwsDescription && (
-          <CardDescription className="text-xs text-muted-foreground">
-            <div className="text-sm leading-5 text-muted-foreground pb-2">
-              {selectedAwsDescription}
-            </div>
+          <CardDescription className="text-sm leading-5 text-muted-foreground pb-2">
+            {selectedAwsDescription}
           </CardDescription>
         )}
       </CardHeader>

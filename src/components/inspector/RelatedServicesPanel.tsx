@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { ArrowLeft, ArrowRight, ArrowUp, ArrowDown } from "lucide-react";
 import { AwsServiceIcon } from "@/components/AwsServiceIcon";
-import { AWS_SERVICES } from "@/data/aws-services";
 import { SERVICE_RELATIONS } from "@/data/aws-service-relations";
+import { ALL_SERVICES } from "@/lib/node-utils";
 import { UI_TEXT, getBrowserLocale } from "@/i18n";
 import { getServiceId } from "@/lib/node-utils";
 import { useFlowStore } from "@/store/flowStore";
@@ -29,7 +29,7 @@ export function RelatedServicesPanel({ node }: RelatedServicesPanelProps) {
   const serviceId = getServiceId(node);
   const relatedIds = SERVICE_RELATIONS[serviceId] ?? [];
   const related = relatedIds
-    .map((id) => AWS_SERVICES.find((s) => s.id === id))
+    .map((id) => ALL_SERVICES.find((s) => s.id === id))
     .filter((s): s is NonNullable<typeof s> => s !== undefined);
 
   if (related.length === 0) return null;
