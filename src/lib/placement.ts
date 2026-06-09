@@ -415,13 +415,15 @@ export function redistributeScopeAffectedLayouts(nodes: AppNode[]): AppNode[] {
   return result;
 }
 
-// Applies pre-computed scopeInsets to a container and resizes it, WITHOUT shifting
-// child positions. Used during active drag so React Flow's live drag position is not
-// overridden for the node being dragged.
+// Applies pre-computed scopeInsets to a container and resizes it.
+// Shifts all children (to keep their absolute positions when the container origin moves)
+// EXCEPT draggedNodeId — React Flow owns that node's visual position during drag, and
+// updating its stored position would cause a visual jump.
 export function applyInsetResizeOnly(
   containerId: string,
   newScopeInsets: ContainerInsets,
   nodes: AppNode[],
+  draggedNodeId?: string,
 ): AppNode[] {
   const nodesById = new Map(nodes.map((n) => [n.id, n]));
   const container = nodesById.get(containerId);
@@ -461,17 +463,32 @@ export function applyInsetResizeOnly(
     x: newAbsX - parentAbsPos.x,
     y: newAbsY - parentAbsPos.y,
   };
+  const deltaX = newRelPos.x - container.position.x;
+  const deltaY = newRelPos.y - container.position.y;
 
   return nodes.map((n) => {
-    if (n.id !== containerId) return n;
-    return {
-      ...n,
-      width: newW,
-      height: newH,
-      position: newRelPos,
-      style: { ...n.style, width: newW, height: newH },
-      data: { ...n.data, scopeInsets: newScopeInsets },
-    };
+    if (n.id === containerId) {
+      return {
+        ...n,
+        width: newW,
+        height: newH,
+        position: newRelPos,
+        style: { ...n.style, width: newW, height: newH },
+        data: { ...n.data, scopeInsets: newScopeInsets },
+      };
+    }
+    // Keep all other children at the same absolute position by compensating for the
+    // container's origin shift — but skip the dragged node (React Flow owns it during drag).
+    if (n.parentId === containerId && n.id !== draggedNodeId && (deltaX !== 0 || deltaY !== 0)) {
+      return {
+        ...n,
+        position: {
+          x: n.position.x - deltaX,
+          y: n.position.y - deltaY,
+        },
+      };
+    }
+    return n;
   });
 }
 
