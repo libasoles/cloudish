@@ -1,9 +1,17 @@
 import { useState } from "react";
-import { ArrowLeft, ArrowRight, ArrowUp, ArrowDown } from "lucide-react";
+import { ArrowLeft, ArrowRight, ArrowUp, ArrowDown, User, Cloud, Monitor, Smartphone, Database } from "lucide-react";
 import { AwsServiceIcon } from "@/components/AwsServiceIcon";
 import { SERVICE_RELATIONS } from "@/data/aws-service-relations";
-import { ALL_SERVICES } from "@/lib/node-utils";
+import { ALL_SERVICES, MISCELLANEOUS_SERVICE_IDS } from "@/lib/node-utils";
 import { UI_TEXT, getBrowserLocale } from "@/i18n";
+
+const MISC_ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
+  user: User,
+  internet: Cloud,
+  web: Monitor,
+  mobile: Smartphone,
+  database: Database,
+};
 import { useFlowStore } from "@/store/flowStore";
 import {
   Tooltip,
@@ -41,7 +49,14 @@ export function RelatedServicesPanel({ nodeId, serviceId }: RelatedServicesPanel
       </p>
       <TooltipProvider>
       <ul className="space-y-0.5">
-        {visible.map((service) => (
+        {visible.map((service) => {
+          const isMisc = MISCELLANEOUS_SERVICE_IDS.has(service.id);
+          const MiscIcon = isMisc ? MISC_ICON_MAP[service.id] : null;
+          const miscLabelMap: Record<string, string> = {
+            user: t.user, internet: t.internet, web: t.web, mobile: t.mobile, database: t.database,
+          };
+          const displayName = isMisc ? (miscLabelMap[service.id] ?? service.name) : service.name;
+          return (
           <li
             key={service.id}
             className="flex items-center gap-1 rounded-md py-0.5 hover:bg-muted/20"
@@ -58,14 +73,18 @@ export function RelatedServicesPanel({ nodeId, serviceId }: RelatedServicesPanel
               </TooltipTrigger>
               <TooltipContent side="top">{t.addToLeft}</TooltipContent>
             </Tooltip>
-            <AwsServiceIcon
-              slug={service.slug}
-              category={service.category}
-              name={service.name}
-              size={24}
-            />
+            {MiscIcon ? (
+              <MiscIcon className="size-6 shrink-0 text-gray-500" />
+            ) : (
+              <AwsServiceIcon
+                slug={service.slug}
+                category={service.category}
+                name={service.name}
+                size={24}
+              />
+            )}
             <span className="flex-1 truncate text-xs text-foreground">
-              {service.name}
+              {displayName}
             </span>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -104,7 +123,8 @@ export function RelatedServicesPanel({ nodeId, serviceId }: RelatedServicesPanel
               <TooltipContent side="top">{t.addToRight}</TooltipContent>
             </Tooltip>
           </li>
-        ))}
+          );
+        })}
       </ul>
       </TooltipProvider>
       {hasMore && (
