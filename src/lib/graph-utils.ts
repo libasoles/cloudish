@@ -590,6 +590,14 @@ export function redistributeVpcNodes(
   const vpcH = trueBaseH - REGION_HEADER_H - VPC_PAD;
   const vpcW = Math.floor((trueBaseW - VPC_PAD * (count + 1)) / count);
 
+  // How much the region's origin shifts due to gateway inset changes.
+  // Non-VPC direct children (e.g. scope-band nodes) must be adjusted by the
+  // inverse delta so their absolute canvas position stays fixed.
+  const oldRegionX = regionNode?.position.x ?? 0;
+  const oldRegionY = regionNode?.position.y ?? 0;
+  const deltaX = newRegionX - oldRegionX;
+  const deltaY = newRegionY - oldRegionY;
+
   return nodes.map((n) => {
     if (n.id === regionId) {
       return {
@@ -603,7 +611,17 @@ export function redistributeVpcNodes(
     }
 
     const vpcIndex = vpcChildren.findIndex((v) => v.id === n.id);
-    if (vpcIndex === -1) return n;
+    if (vpcIndex === -1) {
+      // Non-VPC direct child of the Region (e.g. scope-band nodes): compensate for
+      // the Region's position shift so its absolute canvas position is preserved.
+      if (n.parentId === regionId && (deltaX !== 0 || deltaY !== 0)) {
+        return {
+          ...n,
+          position: { x: n.position.x - deltaX, y: n.position.y - deltaY },
+        };
+      }
+      return n;
+    }
 
     return {
       ...n,
