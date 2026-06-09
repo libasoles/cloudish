@@ -4,7 +4,6 @@ import { AwsServiceIcon } from "@/components/AwsServiceIcon";
 import { SERVICE_RELATIONS } from "@/data/aws-service-relations";
 import { ALL_SERVICES } from "@/lib/node-utils";
 import { UI_TEXT, getBrowserLocale } from "@/i18n";
-import { getServiceId } from "@/lib/node-utils";
 import { useFlowStore } from "@/store/flowStore";
 import {
   Tooltip,
@@ -12,21 +11,19 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { AwsServiceNodeType } from "@/components/nodes/AwsServiceNode";
-
 type RelatedServicesPanelProps = {
-  node: AwsServiceNodeType;
+  nodeId: string;
+  serviceId: string;
 };
 
 const PAGE_SIZE = 7;
 
-export function RelatedServicesPanel({ node }: RelatedServicesPanelProps) {
+export function RelatedServicesPanel({ nodeId, serviceId }: RelatedServicesPanelProps) {
   const [showAll, setShowAll] = useState(false);
   const addRelatedNode = useFlowStore((s) => s.addRelatedNode);
   const locale = getBrowserLocale();
   const t = UI_TEXT[locale] as (typeof UI_TEXT)["en"];
 
-  const serviceId = getServiceId(node);
   const relatedIds = SERVICE_RELATIONS[serviceId] ?? [];
   const related = relatedIds
     .map((id) => ALL_SERVICES.find((s) => s.id === id))
@@ -53,7 +50,7 @@ export function RelatedServicesPanel({ node }: RelatedServicesPanelProps) {
               <TooltipTrigger asChild>
                 <button
                   type="button"
-                  onClick={() => addRelatedNode(node.id, service.id, "left")}
+                  onClick={() => addRelatedNode(nodeId, service.id, "left")}
                   className="flex-none rounded p-1 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground -ml-1.5"
                 >
                   <ArrowLeft className="h-3 w-3" />
@@ -74,7 +71,7 @@ export function RelatedServicesPanel({ node }: RelatedServicesPanelProps) {
               <TooltipTrigger asChild>
                 <button
                   type="button"
-                  onClick={() => addRelatedNode(node.id, service.id, "top")}
+                  onClick={() => addRelatedNode(nodeId, service.id, "top")}
                   className="flex-none rounded p-1 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
                 >
                   <ArrowUp className="h-3 w-3" />
@@ -86,7 +83,7 @@ export function RelatedServicesPanel({ node }: RelatedServicesPanelProps) {
               <TooltipTrigger asChild>
                 <button
                   type="button"
-                  onClick={() => addRelatedNode(node.id, service.id, "bottom")}
+                  onClick={() => addRelatedNode(nodeId, service.id, "bottom")}
                   className="flex-none rounded p-1 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
                 >
                   <ArrowDown className="h-3 w-3" />
@@ -98,7 +95,7 @@ export function RelatedServicesPanel({ node }: RelatedServicesPanelProps) {
               <TooltipTrigger asChild>
                 <button
                   type="button"
-                  onClick={() => addRelatedNode(node.id, service.id, "right")}
+                  onClick={() => addRelatedNode(nodeId, service.id, "right")}
                   className="flex-none rounded p-1 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground -mr-1.5"
                 >
                   <ArrowRight className="h-3 w-3" />

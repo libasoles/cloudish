@@ -149,6 +149,9 @@ export const AWS_SERVICES: AwsService[] = [
   { id: 'ses', name: 'SES', category: AWS_CATEGORIES.MESSAGING, slug: 'aws-amazon-simple-email-service', description: 'Servicio escalable para enviar y recibir correo electronico.', aliases: 'Simple Email Service email correo SMTP', placementScope: 'regional' },
   { id: 'pinpoint', name: 'Pinpoint', category: AWS_CATEGORIES.MESSAGING, slug: 'aws-amazon-pinpoint', description: 'Gestiona comunicaciones multicanal y campañas dirigidas a usuarios.', aliases: 'marketing push notificaciones campana SMS', placementScope: 'regional' },
   { id: 'appsync', name: 'AppSync', category: AWS_CATEGORIES.MESSAGING, slug: 'aws-aws-appsync', description: 'Crea APIs GraphQL administradas con datos en tiempo real y offline.', aliases: 'GraphQL realtime subscripciones', placementScope: 'regional' },
+  // Clients
+  { id: 'user', name: 'User', category: AWS_CATEGORIES.CLIENTS, slug: 'user', description: 'Actor externo o cliente final que interactua con el sistema.', aliases: 'actor cliente externo client', placementScope: 'global' },
+  { id: 'internet', name: 'Internet', category: AWS_CATEGORIES.CLIENTS, slug: 'internet', description: 'Red publica externa desde la que los usuarios acceden a los servicios.', aliases: 'web red externa network external', placementScope: 'global' },
   // Languages
   { id: 'python-language', name: 'Python', category: AWS_CATEGORIES.LANGUAGES, slug: 'python', description: 'Runtime o componente implementado con Python.', aliases: 'py lenguaje runtime backend script' },
   { id: 'java-language', name: 'Java', category: AWS_CATEGORIES.LANGUAGES, slug: 'java', description: 'Runtime o componente implementado con Java.', aliases: 'jvm lenguaje runtime backend' },

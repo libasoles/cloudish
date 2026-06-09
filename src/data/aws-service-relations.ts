@@ -54,4 +54,6 @@ export const SERVICE_RELATIONS: Record<string, string[]> = {
   codecommit: ["codebuild", "codedeploy", "codepipeline", "iam"],
   codepipeline: ["codecommit", "codebuild", "codedeploy", "s3", "iam"],
   codebuild: ["codecommit", "s3", "ecr", "cloudwatch", "iam"],
+  internet: ["user", "route53", "nat-gateway", "internet-gateway"],
+  user: ["internet", "route53", "cloudfront", "cognito"],
 };
