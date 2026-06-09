@@ -386,6 +386,7 @@ export default function Canvas() {
   const paneClickedRef = useRef(false);
   const suppressNextClickRef = useRef(false);
   const nodesRef = useRef(nodes);
+  const dragOverRafRef = useRef<number | null>(null);
   useEffect(() => {
     nodesRef.current = nodes;
   }, [nodes]);
@@ -781,6 +782,7 @@ export default function Canvas() {
       event.preventDefault();
       event.dataTransfer.dropEffect = "move";
 
+      // Read dataTransfer synchronously — only available inside the event handler
       const droppedTool =
         decodeDragTool(event.dataTransfer.getData(DND_MIME_TYPE)) ??
         activeDragToolRef.current;
@@ -791,9 +793,16 @@ export default function Canvas() {
         return;
       }
 
+      // Throttle the expensive spatial computation to one frame at a time
+      if (dragOverRafRef.current !== null) return;
+      const clientX = event.clientX;
+      const clientY = event.clientY;
+      dragOverRafRef.current = requestAnimationFrame(() => {
+        dragOverRafRef.current = null;
+
       const position = reactFlowInstance.screenToFlowPosition({
-        x: event.clientX,
-        y: event.clientY,
+        x: clientX,
+        y: clientY,
       });
       const { nodes: currentNodes, nodesById } = useFlowStore.getState();
 
@@ -936,6 +945,7 @@ export default function Canvas() {
       setDropTargetNodeId(null);
       setDropPreview(null);
       setDropBandSide(null);
+      }); // end rAF
     },
     [
       reactFlowInstance,

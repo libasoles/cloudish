@@ -103,6 +103,12 @@ const BAND_PAD       = 16;                   // padding around band nodes
 // nodes currently parented to it via the band mechanism.
 // Nodes in the band are stored as children with parentId = containerId but with
 // data.bandSide marking them as band nodes.
+//
+// Right/left bands stack nodes VERTICALLY → width inset is a fixed 1-column reservation.
+// The container only grows TALLER when the stacked nodes overflow the content height.
+//
+// Top/bottom bands stack nodes HORIZONTALLY → height inset is a fixed 1-row reservation.
+// The container only grows WIDER when the stacked nodes overflow the content width.
 export function getScopeBandInsets(
   containerId: string,
   nodes: AppNode[],
@@ -123,11 +129,40 @@ export function getScopeBandInsets(
     if (side) counts[side]++;
   }
 
+  const data = container.data as NetworkContainerNodeData;
+  const oldSi: ContainerInsets = data.scopeInsets   ?? { top: 0, right: 0, bottom: 0, left: 0 };
+  const gi:    ContainerInsets = data.gatewayInsets ?? { top: 0, right: 0, bottom: 0, left: 0 };
+  const { width: cW, height: cH } = getNodeSize(container);
+
+  // True content dimensions: strip all previously-accumulated insets
+  const contentW = cW - oldSi.left - oldSi.right - gi.left - gi.right;
+  const contentH = cH - oldSi.top  - oldSi.bottom - gi.top  - gi.bottom;
+
+  // Fixed-width/height reservation per occupied side (one column/row regardless of count)
+  const rightW = counts.right > 0 ? BAND_PAD + BAND_NODE_SIZE + BAND_PAD : 0;
+  const leftW  = counts.left  > 0 ? BAND_PAD + BAND_NODE_SIZE + BAND_PAD : 0;
+  const topH   = counts.top   > 0 ? BAND_PAD + BAND_NODE_H    + BAND_PAD : 0;
+  const botH   = counts.bottom > 0 ? BAND_PAD + BAND_NODE_H    + BAND_PAD : 0;
+
+  // Right/left nodes stack vertically — only grow taller if they overflow the content height
+  const maxVertNeed = Math.max(
+    counts.right > 0 ? BAND_PAD + counts.right * (BAND_NODE_H    + BAND_PAD) : 0,
+    counts.left  > 0 ? BAND_PAD + counts.left  * (BAND_NODE_H    + BAND_PAD) : 0,
+  );
+  const heightOverflow = Math.max(0, maxVertNeed - contentH);
+
+  // Top/bottom nodes stack horizontally — only grow wider if they overflow the content width
+  const maxHorizNeed = Math.max(
+    counts.top    > 0 ? BAND_PAD + counts.top    * (BAND_NODE_SIZE + BAND_PAD) : 0,
+    counts.bottom > 0 ? BAND_PAD + counts.bottom * (BAND_NODE_SIZE + BAND_PAD) : 0,
+  );
+  const widthOverflow = Math.max(0, maxHorizNeed - contentW);
+
   return {
-    top:    counts.top    > 0 ? BAND_PAD + counts.top    * (BAND_NODE_H + BAND_PAD) : 0,
-    bottom: counts.bottom > 0 ? BAND_PAD + counts.bottom * (BAND_NODE_H + BAND_PAD) : 0,
-    left:   counts.left   > 0 ? BAND_PAD + counts.left   * (BAND_NODE_SIZE + BAND_PAD) : 0,
-    right:  counts.right  > 0 ? BAND_PAD + counts.right  * (BAND_NODE_SIZE + BAND_PAD) : 0,
+    top:    topH,
+    bottom: botH + heightOverflow,
+    left:   leftW,
+    right:  rightW + widthOverflow,
   };
 }
 

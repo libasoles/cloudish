@@ -201,6 +201,17 @@ export default function NetworkContainerNode({
   const containerTone = getContainerTone(data);
   const displayLabel = String(data.label);
 
+  const STRIP_DEFAULT = 20;
+  const si = data.scopeInsets;
+  const stripW = {
+    right:  si?.right  ? si.right  : STRIP_DEFAULT,
+    left:   si?.left   ? si.left   : STRIP_DEFAULT,
+  };
+  const stripH = {
+    top:    si?.top    ? si.top    : STRIP_DEFAULT,
+    bottom: si?.bottom ? si.bottom : STRIP_DEFAULT,
+  };
+
   const handleResize = (
     _: unknown,
     params: { width: number; height: number },
@@ -246,16 +257,28 @@ export default function NetworkContainerNode({
       )}
     >
       {isDropTarget && dropBandSide === "top" && (
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-1.5 rounded-t-[inherit] bg-amber-400/70 shadow-[0_0_10px_rgb(251_191_36_/_0.5)]" />
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 rounded-t-[inherit] bg-amber-400/30 shadow-[0_0_14px_2px_rgb(251_191_36/0.25)]"
+          style={{ height: stripH.top }}
+        />
       )}
       {isDropTarget && dropBandSide === "bottom" && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1.5 rounded-b-[inherit] bg-amber-400/70 shadow-[0_0_10px_rgb(251_191_36_/_0.5)]" />
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-0 rounded-b-[inherit] bg-amber-400/30 shadow-[0_0_14px_2px_rgb(251_191_36/0.25)]"
+          style={{ height: stripH.bottom }}
+        />
       )}
       {isDropTarget && dropBandSide === "left" && (
-        <div className="pointer-events-none absolute inset-y-0 left-0 w-1.5 rounded-l-[inherit] bg-amber-400/70 shadow-[0_0_10px_rgb(251_191_36_/_0.5)]" />
+        <div
+          className="pointer-events-none absolute inset-y-0 left-0 rounded-l-[inherit] bg-amber-400/30 shadow-[0_0_14px_2px_rgb(251_191_36/0.25)]"
+          style={{ width: stripW.left }}
+        />
       )}
       {isDropTarget && dropBandSide === "right" && (
-        <div className="pointer-events-none absolute inset-y-0 right-0 w-1.5 rounded-r-[inherit] bg-amber-400/70 shadow-[0_0_10px_rgb(251_191_36_/_0.5)]" />
+        <div
+          className="pointer-events-none absolute inset-y-0 right-0 rounded-r-[inherit] bg-amber-400/30 shadow-[0_0_14px_2px_rgb(251_191_36/0.25)]"
+          style={{ width: stripW.right }}
+        />
       )}
       {previewChildType && (
         <DropPreviewLayout
