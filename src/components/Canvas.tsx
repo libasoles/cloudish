@@ -98,6 +98,9 @@ import {
   CONTAINER_HEIGHT,
   DEFAULT_NODE_WIDTH,
   DEFAULT_NODE_HEIGHT,
+  getGatewayNodeSize,
+  snapGatewayNodeToVpcBorder,
+  isVpcNode,
 } from "@/lib/graph-utils";
 import {
   addEdgeWithAzSync,
@@ -2090,6 +2093,23 @@ export default function Canvas() {
 
           updateContainerForNode(draggedNode);
         });
+
+        // Snap gateway nodes to exactly 50/50 on whichever VPC border they're crossing.
+        for (const draggedNode of draggedNodes) {
+          if (draggedNode.type !== "gatewayService") continue;
+          const updated = updates.get(draggedNode.id) ?? draggedNode;
+          if (!updated.parentId) continue;
+          const parentVpc = nodesById.get(updated.parentId);
+          if (!parentVpc || !isVpcNode(parentVpc)) continue;
+
+          const { width: nodeW, height: nodeH } = getGatewayNodeSize(updated);
+          const { width: vpcW, height: vpcH } = getNodeSize(parentVpc);
+          const snapped = snapGatewayNodeToVpcBorder(updated.position, nodeW, nodeH, vpcW, vpcH);
+
+          if (snapped.x !== updated.position.x || snapped.y !== updated.position.y) {
+            updates.set(updated.id, { ...updated, position: snapped });
+          }
+        }
 
         let result = orderNodesForSubflows(
           nodes.map((node) => updates.get(node.id) ?? node),

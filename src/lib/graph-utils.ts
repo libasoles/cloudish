@@ -104,6 +104,67 @@ export function getNodeSize(node: AppNode) {
   };
 }
 
+// Fallback dimensions for a gateway node before React Flow measures it.
+// Matches the w-14 (56px) width and circle-icon + label height (~80px) in GatewayServiceNode.
+const GATEWAY_NODE_FALLBACK_W = 56;
+const GATEWAY_NODE_FALLBACK_H = 80;
+
+export function getGatewayNodeSize(node: AppNode) {
+  const style = node.style as { width?: number; height?: number } | undefined;
+  return {
+    width:  node.width  ?? style?.width  ?? node.measured?.width  ?? GATEWAY_NODE_FALLBACK_W,
+    height: node.height ?? style?.height ?? node.measured?.height ?? GATEWAY_NODE_FALLBACK_H,
+  };
+}
+
+// Snaps a gateway node's position so it sits exactly 50% inside / 50% outside
+// the VPC border it is crossing. Only the axis perpendicular to the border is
+// snapped; the parallel axis stays free so the user can slide along the edge.
+// When the node crosses two borders at once (corner drop), the border whose edge
+// is closest to the node center wins.
+// Returns the position unchanged if the node is fully inside or fully outside.
+export function snapGatewayNodeToVpcBorder(
+  pos: { x: number; y: number },
+  nodeW: number,
+  nodeH: number,
+  vpcW: number,
+  vpcH: number,
+): { x: number; y: number } {
+  const crossLeft   = pos.x < 0 && pos.x + nodeW > 0;
+  const crossRight  = pos.x < vpcW && pos.x + nodeW > vpcW;
+  const crossTop    = pos.y < 0 && pos.y + nodeH > 0;
+  const crossBottom = pos.y < vpcH && pos.y + nodeH > vpcH;
+
+  if (!crossLeft && !crossRight && !crossTop && !crossBottom) return pos;
+
+  let x = pos.x;
+  let y = pos.y;
+
+  const xCross = crossLeft || crossRight;
+  const yCross = crossTop  || crossBottom;
+
+  if (xCross && yCross) {
+    // Corner: pick whichever border the node center is closest to.
+    const cx = pos.x + nodeW / 2;
+    const cy = pos.y + nodeH / 2;
+    const minDX = Math.min(Math.abs(cx), Math.abs(cx - vpcW));
+    const minDY = Math.min(Math.abs(cy), Math.abs(cy - vpcH));
+    if (minDX <= minDY) {
+      x = crossLeft ? -nodeW / 2 : vpcW - nodeW / 2;
+    } else {
+      y = crossTop ? -nodeH / 2 : vpcH - nodeH / 2;
+    }
+    return { x, y };
+  }
+
+  if (crossLeft)   x = -nodeW / 2;
+  if (crossRight)  x = vpcW - nodeW / 2;
+  if (crossTop)    y = -nodeH / 2;
+  if (crossBottom) y = vpcH - nodeH / 2;
+
+  return { x, y };
+}
+
 export function getAbsolutePosition(
   node: AppNode,
   nodesById: Map<string, AppNode>,
