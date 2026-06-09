@@ -71,6 +71,7 @@ body {
 .react-flow {
   background: hsl(var(--background));
   color: hsl(var(--foreground));
+  user-select: none;
   --xy-controls-button-background-color: hsl(var(--card));
   --xy-controls-button-background-color-hover: hsl(var(--accent));
   --xy-controls-button-color: hsl(var(--foreground));
