@@ -603,9 +603,14 @@ export default function Canvas() {
   );
 
   const handleExportImage = useCallback(async () => {
-    const { exportFlowAsImage } = await import("@/lib/export/image");
-    await exportFlowAsImage(nodes, edges, projectName ?? "architecture");
-  }, [nodes, edges, projectName]);
+    try {
+      const { exportFlowAsImage } = await import("@/lib/export/image");
+      await exportFlowAsImage(nodes, edges, projectName ?? "architecture");
+    } catch (err) {
+      console.error("Export image failed:", err);
+      toast({ title: t.exportImageError, variant: "destructive" });
+    }
+  }, [nodes, edges, projectName, toast, t.exportImageError]);
 
   const handleSave = useCallback(async () => {
     const uid = user?.uid ?? auth.currentUser?.uid;

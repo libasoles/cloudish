@@ -1,4 +1,6 @@
 import { AWS_SERVICES, type AwsService } from "@/data/aws-services";
+
+export const ALL_SERVICES: AwsService[] = AWS_SERVICES;
 import { type ServiceField } from "@/data/aws-service-fields";
 import {
   type AwsServiceNodeType,
