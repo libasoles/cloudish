@@ -79,6 +79,7 @@ type FlowStore = {
   ) => void;
   setCurrentArchitectureId: (architectureId: string | undefined) => void;
   setProjectName: (projectName: string | null) => void;
+  setProjectNameSilently: (projectName: string | null) => void;
   setViewport: (viewport: FlowViewport) => void;
   duplicateSelectedNodes: () => void;
   markSaved: () => void;
@@ -300,6 +301,12 @@ export const useFlowStore = create<FlowStore>()((set) => ({
     set((s) => {
       if (s.projectName === projectName) return {};
       return { projectName, isDirty: true };
+    }),
+
+  setProjectNameSilently: (projectName) =>
+    set((s) => {
+      if (s.projectName === projectName) return {};
+      return { projectName };
     }),
 
   setViewport: (viewport) =>
