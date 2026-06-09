@@ -1,11 +1,10 @@
 import { useState, useRef, useEffect } from "react";
-import { Panel, useReactFlow } from "@xyflow/react";
+import { Panel } from "@xyflow/react";
 import { Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AWS_SERVICES, type AwsService } from "@/data/aws-services";
 import { INFRASTRUCTURE_ITEMS } from "@/data/infrastructure-items";
 import { AwsServiceIcon } from "@/components/AwsServiceIcon";
-import type { AppNode } from "@/types/flow";
 import {
   UI_TEXT,
   getBrowserLocale,
@@ -13,12 +12,7 @@ import {
   getServiceDescription,
   type Locale,
 } from "@/i18n";
-import {
-  orderNodesForSubflows,
-} from "@/lib/graph-utils";
-import { useFlowStore } from "@/store/flowStore";
-import { getAwsServiceNodeData, getServiceNodeType } from "@/lib/node-utils";
-import { type DragTool } from "@/lib/drag-tools";
+import { AWS_SERVICE_NODE_TYPE, type DragTool } from "@/lib/drag-tools";
 
 const VPC_SERVICE_ID = "vpc";
 
@@ -99,9 +93,6 @@ export default function ServiceSearch({ onToolClick }: ServiceSearchProps) {
   const [open, setOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const { screenToFlowPosition } = useReactFlow<AppNode>();
-  const commitGraphChange = useFlowStore((s) => s.commitGraphChange);
-  const setInspectorOpen = useFlowStore((s) => s.setInspectorOpen);
 
   const infraItems = buildInfraSearchItems(t);
   const results = getSearchResults(query, locale, infraItems);
@@ -134,37 +125,10 @@ export default function ServiceSearch({ onToolClick }: ServiceSearchProps) {
   function addItem(item: SearchItem) {
     if (item.kind === "infra") {
       onToolClick?.(item.tool);
-      setQuery("");
-      setOpen(false);
-      setActiveIndex(-1);
-      inputRef.current?.blur();
-      return;
+    } else {
+      onToolClick?.({ type: AWS_SERVICE_NODE_TYPE, serviceId: item.id });
     }
 
-    const service = item as AwsService;
-    const position = screenToFlowPosition({
-      x: window.innerWidth / 2,
-      y: window.innerHeight / 2,
-    });
-
-    const serviceNode: AppNode = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-      type: getServiceNodeType(service.id),
-      zIndex: 10,
-      selected: true,
-      position,
-      data: getAwsServiceNodeData(service),
-    };
-
-    commitGraphChange(({ nodes, edges }) => ({
-      nodes: orderNodesForSubflows([
-        ...nodes.map((n) => ({ ...n, selected: false })),
-        serviceNode,
-      ]),
-      edges,
-    }));
-
-    setInspectorOpen(true);
     setQuery("");
     setOpen(false);
     setActiveIndex(-1);
@@ -218,7 +182,9 @@ export default function ServiceSearch({ onToolClick }: ServiceSearchProps) {
             onFocus={() => {
               if (results.length > 0) setOpen(true);
             }}
-            onBlur={() => setOpen(false)}
+            onBlur={() => {
+              window.setTimeout(() => setOpen(false), 0);
+            }}
             onKeyDown={handleKeyDown}
           />
           {query && (
@@ -244,7 +210,7 @@ export default function ServiceSearch({ onToolClick }: ServiceSearchProps) {
                     ? "bg-accent text-accent-foreground"
                     : "hover:bg-accent hover:text-accent-foreground",
                 )}
-                onMouseDown={(e) => {
+                onPointerDown={(e) => {
                   e.preventDefault();
                   addItem(item);
                 }}
@@ -260,8 +226,15 @@ export default function ServiceSearch({ onToolClick }: ServiceSearchProps) {
                     size={24}
                   />
                 )}
-                <span className="font-medium text-foreground">{item.name}</span>
-                <span className="ml-auto shrink-0 text-xs text-muted-foreground">
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <span className="font-medium text-foreground">{item.name}</span>
+                  <span className="truncate text-xs text-muted-foreground">
+                    {item.kind === "infra"
+                      ? item.description
+                      : getServiceDescription(item, locale)}
+                  </span>
+                </div>
+                <span className="ml-2 shrink-0 text-xs text-muted-foreground">
                   {item.kind === "infra"
                     ? item.categoryLabel
                     : getCategoryLabel(item.category, locale)}
