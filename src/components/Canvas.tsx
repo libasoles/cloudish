@@ -54,7 +54,7 @@ import SelectionGroupNode from "@/components/nodes/SelectionGroupNode";
 import EditableEdge from "@/components/EditableEdge";
 import ServiceSearch from "@/components/service-search/ServiceSearch";
 import { SelectionToolbar } from "@/components/SelectionToolbar";
-import { AWS_SERVICES } from "@/data/aws-services";
+import { AWS_SERVICES, type PlacementScope } from "@/data/aws-services";
 import {
   AWS_SERVICE_NODE_TYPE,
   DND_MIME_TYPE,
@@ -110,7 +110,12 @@ import {
   computeBandPlacement,
   resolveBandSide,
   redistributeScopeAffectedLayouts,
+  redistributeScopeAffectedLayoutsWithPropagation,
   expelGlobalNodePosition,
+  getBandSide,
+  getScopeBandInsets,
+  applyInsetResizeOnly,
+  propagateBandGrowthToAncestors,
 } from "@/lib/placement";
 import { EDGE_STYLE } from "@/lib/edge-tools";
 import { resolveVpnGatewayEdgeLabel } from "@/lib/vpn-gateway-edges";
@@ -786,6 +791,18 @@ export default function Canvas() {
     setAuthDialogOpen(true);
   }, []);
 
+  const showPlacementScopeToast = useCallback(
+    (serviceName: string, scope: PlacementScope) => {
+      toast({
+        title: serviceName,
+        description: t.placementScopeToastDescription(
+          t.placementScopeLabel(scope),
+        ),
+      });
+    },
+    [t, toast],
+  );
+
   const handleAuthSuccess = useCallback(async () => {
     setAuthDialogOpen(false);
     if (pendingSave) {
@@ -1067,6 +1084,13 @@ export default function Canvas() {
           };
           const allowedAncestor = findAllowedAncestorForScope(nodeRect, scope, currentNodes);
           if (allowedAncestor) {
+            if (scope === "az") {
+              setDropTargetNodeId(allowedAncestor.id);
+              setDropBandSide(null);
+              setDropPreview(null);
+              return;
+            }
+
             const ancPos = getAbsolutePosition(allowedAncestor, nodesById);
             const { width: ancW, height: ancH } = getNodeSize(allowedAncestor);
             const ancRect = { ...ancPos, width: ancW, height: ancH };
@@ -1216,6 +1240,7 @@ export default function Canvas() {
           x: position.x - SERVICE_DROP_OFFSET.x,
           y: position.y - SERVICE_DROP_OFFSET.y,
         };
+        let placementToastScope: PlacementScope | null = null;
 
         commitGraphChange(({ nodes, edges }) => {
           const nodeRect = { ...nodePosition, width: DEFAULT_NODE_WIDTH, height: DEFAULT_NODE_HEIGHT };
@@ -1236,9 +1261,30 @@ export default function Canvas() {
               const safePos = expelGlobalNodePosition(
                 nodePosition, DEFAULT_NODE_WIDTH, DEFAULT_NODE_HEIGHT, nodes,
               );
+              if (
+                scope === "global" ||
+                safePos.x !== nodePosition.x ||
+                safePos.y !== nodePosition.y
+              ) {
+                placementToastScope = scope;
+              }
               parentedPosition = { position: safePos };
+            } else if (scope === "az") {
+              placementToastScope = scope;
+              const ancestorPosition = getAbsolutePosition(
+                allowedAncestor,
+                nodesById,
+              );
+              parentedPosition = {
+                parentId: allowedAncestor.id,
+                position: {
+                  x: nodePosition.x - ancestorPosition.x,
+                  y: nodePosition.y - ancestorPosition.y,
+                },
+              };
             } else {
               // Always place in the band of the allowed ancestor for non-subnet scope
+              placementToastScope = scope;
               const dropAbsCenter = {
                 x: nodePosition.x + DEFAULT_NODE_WIDTH / 2,
                 y: nodePosition.y + DEFAULT_NODE_HEIGHT / 2,
@@ -1274,6 +1320,9 @@ export default function Canvas() {
             edges,
           };
         });
+        if (placementToastScope) {
+          showPlacementScopeToast(service.name, placementToastScope);
+        }
         return;
       }
 
@@ -1732,7 +1781,7 @@ export default function Canvas() {
         return { nodes: orderNodesForSubflows(allNodes), edges };
       });
     },
-    [commitGraphChange, setInspectorOpen, t],
+    [commitGraphChange, setInspectorOpen, showPlacementScopeToast, t],
   );
 
   const onDrop = useCallback(
@@ -1903,6 +1952,25 @@ export default function Canvas() {
                 return;
               }
 
+              if (scope === "az") {
+                if (
+                  node.parentId !== allowedAncestor.id ||
+                  (node.data as { bandSide?: string }).bandSide
+                ) {
+                  const ancPos = getAbsolutePosition(allowedAncestor, nodesById);
+                  updates.set(node.id, {
+                    ...node,
+                    parentId: allowedAncestor.id,
+                    data: { ...node.data, bandSide: undefined },
+                    position: {
+                      x: nodeRect.x - ancPos.x,
+                      y: nodeRect.y - ancPos.y,
+                    },
+                  });
+                }
+                return;
+              }
+
               // Determine if it's being dropped deeper than allowed
               const deepestContainer = findIntersectingContainer(nodeRect, containerNodes, nodesById, node);
               const isExpelled = deepestContainer && deepestContainer.id !== allowedAncestor.id;
@@ -2053,7 +2121,7 @@ export default function Canvas() {
           result,
         );
 
-        return redistributeScopeAffectedLayouts(redistributeGatewayAffectedVpcLayouts(syncedNodes));
+        return redistributeScopeAffectedLayoutsWithPropagation(redistributeGatewayAffectedVpcLayouts(syncedNodes));
       });
     },
     [setNodes],
@@ -2072,6 +2140,13 @@ export default function Canvas() {
             const allowedAncestor = findAllowedAncestorForScope(nodeRect, scope, currentNodes);
 
             if (allowedAncestor) {
+              if (scope === "az") {
+                setDropTargetNodeId(allowedAncestor.id);
+                setDropBandSide(null);
+                setDropPreview(null);
+                return;
+              }
+
               const ancPos = getAbsolutePosition(allowedAncestor, nodesById);
               const { width: ancW, height: ancH } = getNodeSize(allowedAncestor);
               const side = resolveBandSide(
@@ -2083,8 +2158,38 @@ export default function Canvas() {
                 scope,
                 awsNode.data.serviceId,
               );
-              setDropTargetNodeId(allowedAncestor.id);
-              setDropBandSide(side);
+
+              // Fix 1: suppress amber highlight when the node is already on this band
+              const currentBandSide = getBandSide(node as AppNode);
+              const isSameBand = node.parentId === allowedAncestor.id && currentBandSide === side;
+              if (!isSameBand) {
+                setDropTargetNodeId(allowedAncestor.id);
+                setDropBandSide(side);
+              } else {
+                if (dropTargetNodeId !== null) setDropTargetNodeId(null);
+                setDropBandSide(null);
+              }
+
+              // Fix 2B: live-resize the band container using current drag position
+              const patchedNodes = currentNodes.map((n) =>
+                n.id === node.id ? { ...n, position: node.position } : n,
+              );
+              const newInsets = getScopeBandInsets(allowedAncestor.id, patchedNodes);
+              const prevInsets = (allowedAncestor.data as import("@/types/flow").NetworkContainerNodeData).scopeInsets;
+              if (
+                newInsets.top    !== (prevInsets?.top    ?? 0) ||
+                newInsets.right  !== (prevInsets?.right  ?? 0) ||
+                newInsets.bottom !== (prevInsets?.bottom ?? 0) ||
+                newInsets.left   !== (prevInsets?.left   ?? 0)
+              ) {
+                useFlowStore.getState().setNodes((prev) =>
+                  propagateBandGrowthToAncestors(
+                    allowedAncestor.id,
+                    applyInsetResizeOnly(allowedAncestor.id, newInsets, prev),
+                  ),
+                );
+              }
+
               setDropPreview(null);
               return;
             }

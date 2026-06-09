@@ -18,7 +18,8 @@
       "Bash(bash -c *)",
       "Bash(node verify-placement.mjs)",
       "Bash(git push *)",
-      "Bash(gh pr *)"
+      "Bash(gh pr *)",
+      "Bash(git rebase *)"
     ],
     "additionalDirectories": [
       "../cloudish-edge-inspector-docs/src",

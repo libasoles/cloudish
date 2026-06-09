@@ -1,4 +1,8 @@
-import type { AwsCategory, AwsService } from "@/data/aws-services";
+import type {
+  AwsCategory,
+  AwsService,
+  PlacementScope,
+} from "@/data/aws-services";
 import type { ServiceField } from "@/data/aws-service-fields";
 import { APP_TITLE } from "@/config/app";
 
@@ -123,6 +127,18 @@ export const UI_TEXT = {
     pastedImageUploadFailed: "Could not paste image",
     pastedImageUploadFailedDescription:
       "Check the clipboard image and try again.",
+    placementScopeLabel: (scope: PlacementScope) => {
+      const labels: Record<PlacementScope, string> = {
+        global: "AWS Global",
+        regional: "Regional",
+        vpc: "VPC",
+        az: "Availability Zone",
+        subnet: "Subnet",
+      };
+      return labels[scope];
+    },
+    placementScopeToastDescription: (layer: string) =>
+      `This service belongs to the ${layer} layer.`,
     editProjectName: "Edit project name",
     untitledArchitectureName: "Untitled architecture",
     saveArchitecture: "Save",
@@ -295,6 +311,18 @@ export const UI_TEXT = {
     pastedImageUploadFailed: "No se pudo pegar la imagen",
     pastedImageUploadFailedDescription:
       "Verifica la imagen del portapapeles e inténtalo de nuevo.",
+    placementScopeLabel: (scope: PlacementScope) => {
+      const labels: Record<PlacementScope, string> = {
+        global: "AWS global",
+        regional: "regional",
+        vpc: "VPC",
+        az: "Zona de Disponibilidad",
+        subnet: "subred",
+      };
+      return labels[scope];
+    },
+    placementScopeToastDescription: (layer: string) =>
+      `Este servicio pertenece a la capa ${layer}.`,
     editProjectName: "Editar nombre del proyecto",
     untitledArchitectureName: "Arquitectura sin nombre",
     saveArchitecture: "Guardar",

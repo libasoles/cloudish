@@ -228,11 +228,6 @@ export default function ServiceSearch({ onToolClick }: ServiceSearchProps) {
                 )}
                 <div className="flex min-w-0 flex-1 flex-col">
                   <span className="font-medium text-foreground">{item.name}</span>
-                  <span className="truncate text-xs text-muted-foreground">
-                    {item.kind === "infra"
-                      ? item.description
-                      : getServiceDescription(item, locale)}
-                  </span>
                 </div>
                 <span className="ml-2 shrink-0 text-xs text-muted-foreground">
                   {item.kind === "infra"
