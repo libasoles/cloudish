@@ -13,7 +13,6 @@ import {
   getNodeRect,
   getAbsolutePosition,
   DEFAULT_NODE_WIDTH,
-  DEFAULT_NODE_HEIGHT,
 } from "@/lib/graph-utils";
 
 // Numeric depth of the deepest allowed container per scope.
@@ -96,8 +95,9 @@ export function resolveBandSide(
 // ─── Band insets computation ──────────────────────────────────────────────────
 
 const BAND_NODE_SIZE = DEFAULT_NODE_WIDTH;   // 150 — nominal service node width
-const BAND_NODE_H    = DEFAULT_NODE_HEIGHT;  // 40  — nominal service node height
-const BAND_PAD       = 12;                   // padding around band nodes
+// AwsServiceNode visual height: py-2(16) + icon(40) + gap-1(4) + label(~20) ≈ 80px
+const BAND_NODE_H    = 80;
+const BAND_PAD       = 16;                   // padding around band nodes
 
 // Computes the insets (band widths) a container needs to reserve for scope-rejected
 // nodes currently parented to it via the band mechanism.
@@ -156,8 +156,8 @@ export function getBandNodePosition(
   containerW: number,
   containerH: number,
 ): { x: number; y: number } {
-  const nodeW = DEFAULT_NODE_WIDTH;
-  const nodeH = DEFAULT_NODE_HEIGHT;
+  const nodeW = BAND_NODE_SIZE;
+  const nodeH = BAND_NODE_H;
 
   switch (side) {
     case "right":
@@ -276,13 +276,22 @@ export function computeBandPlacement(
   nodes: AppNode[],
 ): { parentId: string; position: { x: number; y: number } } {
   const { width: cW, height: cH } = getNodeSize(container);
+  const data = container.data as NetworkContainerNodeData;
+  const si: ContainerInsets = data.scopeInsets   ?? { top: 0, right: 0, bottom: 0, left: 0 };
+  const gi: ContainerInsets = data.gatewayInsets ?? { top: 0, right: 0, bottom: 0, left: 0 };
+
+  // Use content dimensions so all nodes on the same band side stay aligned.
+  // Total width/height already includes accumulated insets — strip them out.
+  const contentW = cW - (si.left + gi.left) - (si.right  + gi.right);
+  const contentH = cH - (si.top  + gi.top)  - (si.bottom + gi.bottom);
+
   const slotIndex = nodes.filter(
     (n) => n.parentId === container.id && getBandSide(n) === side,
   ).length;
 
   return {
     parentId: container.id,
-    position: getBandNodePosition(side, slotIndex, cW, cH),
+    position: getBandNodePosition(side, slotIndex, contentW, contentH),
   };
 }
 

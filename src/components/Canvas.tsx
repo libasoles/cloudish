@@ -335,6 +335,7 @@ export default function Canvas() {
     dropTargetNodeId,
     setDropTargetNodeId,
     setDropPreview,
+    setDropBandSide,
     setEditingEdgeId,
     setSelectionBoxActive,
     resetCanvas,
@@ -358,6 +359,7 @@ export default function Canvas() {
   const containerIdRef = useRef(1);
   const subnetIdRef = useRef(1);
   const serviceIdRef = useRef(1);
+  const lastCreatedIdRef = useRef<string | null>(null);
   const textIdRef = useRef(1);
   const edgeIdRef = useRef(1);
   const pulseIdRef = useRef(1);
@@ -819,6 +821,7 @@ export default function Canvas() {
         setDropPreview(
           target ? { parentId: target.id, childType: "vpc" } : null,
         );
+        setDropBandSide(null);
         return;
       }
 
@@ -843,6 +846,7 @@ export default function Canvas() {
         setDropPreview(
           target ? { parentId: target.id, childType: "az" } : null,
         );
+        setDropBandSide(null);
         return;
       }
 
@@ -871,20 +875,71 @@ export default function Canvas() {
         setDropPreview(
           target ? { parentId: target.id, childType: "subnet" } : null,
         );
+        setDropBandSide(null);
         return;
       }
 
       if (droppedTool.type === "asg") {
         setDropTargetNodeId(null);
         setDropPreview(null);
+        setDropBandSide(null);
+        return;
+      }
+
+      // AWS service node (non-VPC): show band-side preview for scope-restricted services
+      if (droppedTool.type === AWS_SERVICE_NODE_TYPE) {
+        const service = AWS_SERVICES.find((s) => s.id === droppedTool.serviceId);
+        const scope = service?.placementScope ?? "subnet";
+
+        if (scope !== "subnet") {
+          const nodeRect = {
+            x: position.x - SERVICE_DROP_OFFSET.x,
+            y: position.y - SERVICE_DROP_OFFSET.y,
+            width: DEFAULT_NODE_WIDTH,
+            height: DEFAULT_NODE_HEIGHT,
+          };
+          const allowedAncestor = findAllowedAncestorForScope(nodeRect, scope, currentNodes);
+          if (allowedAncestor) {
+            const ancPos = getAbsolutePosition(allowedAncestor, nodesById);
+            const { width: ancW, height: ancH } = getNodeSize(allowedAncestor);
+            const ancRect = { ...ancPos, width: ancW, height: ancH };
+            const side = resolveBandSide(
+              { x: position.x, y: position.y },
+              ancRect,
+              scope,
+              service?.id,
+            );
+            setDropTargetNodeId(allowedAncestor.id);
+            setDropBandSide(side);
+          } else {
+            setDropTargetNodeId(null);
+            setDropBandSide(null);
+          }
+          setDropPreview(null);
+          return;
+        }
+
+        // subnet-scope: highlight the deepest valid container as a standard drop target
+        const nodeRect = {
+          x: position.x - SERVICE_DROP_OFFSET.x,
+          y: position.y - SERVICE_DROP_OFFSET.y,
+          width: DEFAULT_NODE_WIDTH,
+          height: DEFAULT_NODE_HEIGHT,
+        };
+        const target = findIntersectingContainer(nodeRect, currentNodes, nodesById);
+        setDropTargetNodeId(target?.id ?? null);
+        setDropPreview(null);
+        setDropBandSide(null);
         return;
       }
 
       setDropTargetNodeId(null);
       setDropPreview(null);
+      setDropBandSide(null);
     },
     [
       reactFlowInstance,
+      setDropBandSide,
       setDropPreview,
       setDropTargetNodeId,
       t.availabilityZone,
@@ -988,6 +1043,7 @@ export default function Canvas() {
         }
 
         const nodeId = `${service.id}-${serviceIdRef.current++}`;
+        lastCreatedIdRef.current = nodeId;
         const nodePosition = {
           x: position.x - SERVICE_DROP_OFFSET.x,
           y: position.y - SERVICE_DROP_OFFSET.y,
@@ -1501,6 +1557,7 @@ export default function Canvas() {
       activeDragToolRef.current = null;
       setDropTargetNodeId(null);
       setDropPreview(null);
+      setDropBandSide(null);
 
       const droppedTool =
         decodeDragTool(event.dataTransfer.getData(DND_MIME_TYPE)) ??
@@ -1509,6 +1566,7 @@ export default function Canvas() {
         return;
       }
 
+      lastCreatedIdRef.current = null;
       addToolAtPosition(
         droppedTool,
         reactFlowInstance.screenToFlowPosition({
@@ -1516,8 +1574,32 @@ export default function Canvas() {
           y: event.clientY,
         }),
       );
+
+      // Pan to show expelled/out-of-view nodes after drop
+      const createdId = lastCreatedIdRef.current;
+      if (createdId) {
+        const { nodesById: updatedById } = useFlowStore.getState();
+        const newNode = updatedById.get(createdId);
+        if (newNode) {
+          const absPos = getAbsolutePosition(newNode, updatedById);
+          const screenPos = reactFlowInstance.flowToScreenPosition(absPos);
+          const inView =
+            screenPos.x > -DEFAULT_NODE_WIDTH &&
+            screenPos.x < window.innerWidth + DEFAULT_NODE_WIDTH &&
+            screenPos.y > -DEFAULT_NODE_HEIGHT &&
+            screenPos.y < window.innerHeight + DEFAULT_NODE_HEIGHT;
+          if (!inView) {
+            const { zoom } = reactFlowInstance.getViewport();
+            reactFlowInstance.setCenter(
+              absPos.x + DEFAULT_NODE_WIDTH / 2,
+              absPos.y + DEFAULT_NODE_HEIGHT / 2,
+              { zoom, duration: 300 },
+            );
+          }
+        }
+      }
     },
-    [addToolAtPosition, reactFlowInstance, setDropPreview, setDropTargetNodeId],
+    [addToolAtPosition, reactFlowInstance, setDropBandSide, setDropPreview, setDropTargetNodeId],
   );
 
   const handleToolDragStart = useCallback((tool: DragTool) => {
@@ -1528,7 +1610,8 @@ export default function Canvas() {
     activeDragToolRef.current = null;
     setDropTargetNodeId(null);
     setDropPreview(null);
-  }, [setDropPreview, setDropTargetNodeId]);
+    setDropBandSide(null);
+  }, [setDropBandSide, setDropPreview, setDropTargetNodeId]);
 
   const addToolAtViewportCenter = useCallback(
     (tool: DragTool) => {
@@ -1632,7 +1715,12 @@ export default function Canvas() {
                   width: (allowedAncestor.style as { width?: number })?.width ?? allowedAncestor.width ?? 720,
                   height: (allowedAncestor.style as { height?: number })?.height ?? allowedAncestor.height ?? 480,
                 };
-                const pos = getBandNodePosition(side, existingOnSide, cW, cH);
+                const ancData = allowedAncestor.data as import("@/types/flow").NetworkContainerNodeData;
+                const ancSi = ancData.scopeInsets   ?? { top: 0, right: 0, bottom: 0, left: 0 };
+                const ancGi = ancData.gatewayInsets ?? { top: 0, right: 0, bottom: 0, left: 0 };
+                const contentW = cW - (ancSi.left + ancGi.left) - (ancSi.right  + ancGi.right);
+                const contentH = cH - (ancSi.top  + ancGi.top)  - (ancSi.bottom + ancGi.bottom);
+                const pos = getBandNodePosition(side, existingOnSide, contentW, contentH);
                 updates.set(node.id, {
                   ...node,
                   parentId: allowedAncestor.id,
