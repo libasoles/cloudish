@@ -582,8 +582,8 @@ export function redistributeVpcNodes(
                                + storedScopeInsets.left + storedScopeInsets.right;
   const newRegionH = trueBaseH + newInsets.top  + newInsets.bottom
                                + storedScopeInsets.top  + storedScopeInsets.bottom;
-  const newRegionX = contentX - newInsets.left;
-  const newRegionY = contentY - newInsets.top;
+  const newRegionX = contentX - newInsets.left - storedScopeInsets.left;
+  const newRegionY = contentY - newInsets.top - storedScopeInsets.top;
 
   const count = vpcChildren.length;
   // VPCs fill only the true content area (not the gateway or scope-band margins)
