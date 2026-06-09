@@ -1921,7 +1921,7 @@ export default function Canvas() {
   );
 
   const syncNodeSubnet = useCallback(
-    (draggedNodeIds: string[]) => {
+    (draggedNodeIds: string[], hintTargetId?: string) => {
       setNodes((nodes) => {
         const nodesById = new Map(nodes.map((node) => [node.id, node]));
         const draggedNodes = draggedNodeIds
@@ -2116,50 +2116,65 @@ export default function Canvas() {
             return;
           }
 
-          updateContainerForNode(draggedNode);
+          // Gateway nodes are handled entirely in the snap loop below.
+          if (draggedNode.type !== "gatewayService") {
+            updateContainerForNode(draggedNode);
+          }
         });
 
-        // Snap gateway nodes to exactly 50/50 on whichever VPC border they're crossing.
-        // If the gateway overshot the border (fully outside the VPC), recover it via
-        // proximity: expand the search by half the node size on each side.
+        // Snap gateway nodes to exactly 50/50 on whichever VPC border they're nearest to.
+        // We bypass updateContainerForNode for gateways (skipped above) to avoid depth-ordered
+        // container assignment routing gateways into subnets/AZs. Instead we find the target
+        // VPC directly and compute the snapped border position in one pass.
         for (const draggedNode of draggedNodes) {
           if (draggedNode.type !== "gatewayService") continue;
-          const updated = updates.get(draggedNode.id) ?? draggedNode;
 
-          // Find parent VPC: first try the already-assigned parent, then fall back to
-          // proximity so an overshoot drag doesn't permanently detach the gateway.
-          let parentVpc = updated.parentId ? nodesById.get(updated.parentId) : undefined;
-          if (!parentVpc || !isVpcNode(parentVpc)) {
-            const { width: fallbackW, height: fallbackH } = getGatewayNodeSize(updated);
-            const absRect = getNodeRect(updated, nodesById);
+          // Absolute rect of the gateway at drop position.
+          const absRect = getNodeRect(draggedNode, nodesById);
+
+          // 1) Direct intersection with any VPC.
+          let parentVpc: AppNode | undefined = nodes.find(
+            (n) => isVpcNode(n) && isRectIntersecting(absRect, getNodeRect(n, nodesById)),
+          );
+
+          // 2) Expanded-radius search (gateway may have overshot the border by a few pixels).
+          if (!parentVpc) {
+            const { width: fallbackW, height: fallbackH } = getGatewayNodeSize(draggedNode);
             const expandedRect = {
-              x: absRect.x - fallbackW / 2,
-              y: absRect.y - fallbackH / 2,
-              width:  absRect.width  + fallbackW,
-              height: absRect.height + fallbackH,
+              x: absRect.x - fallbackW,
+              y: absRect.y - fallbackH,
+              width:  absRect.width  + fallbackW * 2,
+              height: absRect.height + fallbackH * 2,
             };
             parentVpc = nodes.find(
               (n) => isVpcNode(n) && isRectIntersecting(expandedRect, getNodeRect(n, nodesById)),
             );
-            if (parentVpc) {
-              const containerPos = getAbsolutePosition(parentVpc, nodesById);
-              updates.set(updated.id, {
-                ...updated,
-                parentId: parentVpc.id,
-                position: { x: absRect.x - containerPos.x, y: absRect.y - containerPos.y },
+          }
+
+          // 3) Hint VPC from the drag-preview green ring (dropTargetNodeId captured before clear).
+          if (!parentVpc && hintTargetId) {
+            const hint = nodesById.get(hintTargetId);
+            if (hint && isVpcNode(hint)) parentVpc = hint;
+          }
+
+          if (!parentVpc) {
+            // No reachable VPC — detach gateway to canvas if it had a parent.
+            if (draggedNode.parentId) {
+              updates.set(draggedNode.id, {
+                ...draggedNode, parentId: undefined,
+                position: { x: absRect.x, y: absRect.y },
               });
             }
+            continue;
           }
-          if (!parentVpc || !isVpcNode(parentVpc)) continue;
 
-          const finalUpdated = updates.get(draggedNode.id) ?? draggedNode;
-          const { width: nodeW, height: nodeH } = getGatewayNodeSize(finalUpdated);
+          const containerPos = getAbsolutePosition(parentVpc, nodesById);
+          const relPos = { x: absRect.x - containerPos.x, y: absRect.y - containerPos.y };
+          const { width: nodeW, height: nodeH } = getGatewayNodeSize(draggedNode);
           const { width: vpcW, height: vpcH } = getNodeSize(parentVpc);
-          const snapped = snapGatewayNodeToVpcBorder(finalUpdated.position, nodeW, nodeH, vpcW, vpcH);
+          const snapped = snapGatewayNodeToVpcBorder(relPos, nodeW, nodeH, vpcW, vpcH);
 
-          if (snapped.x !== finalUpdated.position.x || snapped.y !== finalUpdated.position.y) {
-            updates.set(finalUpdated.id, { ...finalUpdated, position: snapped });
-          }
+          updates.set(draggedNode.id, { ...draggedNode, parentId: parentVpc.id, position: snapped });
         }
 
         let result = orderNodesForSubflows(
@@ -2316,13 +2331,17 @@ export default function Canvas() {
 
   const onNodeDragStop: OnNodeDrag<AppNode> = useCallback(
     (_event, node, draggedNodes) => {
+      // Capture the hovered VPC id BEFORE clearing so the snap code can use
+      // it as a fallback when the gateway is dropped just outside the VPC border.
+      const hintTargetId = useFlowStore.getState().dropTargetNodeId ?? undefined;
       setDropTargetNodeId(null);
       setDropPreview(null);
       setDropBandSide(null);
       syncNodeSubnet(
         draggedNodes.length
-          ? draggedNodes.map((draggedNode) => draggedNode.id)
+          ? draggedNodes.map((n) => n.id)
           : [node.id],
+        hintTargetId,
       );
     },
     [syncNodeSubnet, setDropBandSide, setDropPreview, setDropTargetNodeId],
