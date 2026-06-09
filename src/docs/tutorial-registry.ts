@@ -77,8 +77,9 @@ export const TUTORIALS: TutorialMeta[] = [
   {
     id: 'special-nodes',
     title: 'Nodos especiales',
-    description: 'API Gateway con rutas HTTP por handle y VPN Gateway con Customer Gateway.',
+    description: 'Imágenes pegadas, API Gateway con rutas HTTP y VPN Gateway con Customer Gateway.',
     sections: [
+      { id: 'imagenes-pegadas', title: 'Imágenes pegadas' },
       { id: 'api-gateway-rutas', title: 'API Gateway: rutas HTTP' },
       { id: 'vpn-gateway-conexion', title: 'VPN Gateway y Customer Gateway' },
     ],

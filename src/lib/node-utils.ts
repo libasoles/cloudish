@@ -19,7 +19,7 @@ export const GATEWAY_SERVICE_IDS = new Set([
   "customer-gateway",
 ]);
 
-export const CIRCULAR_SERVICE_IDS = new Set(["elb"]);
+export const CIRCULAR_SERVICE_IDS = new Set(["elb", "nacl"]);
 
 export function getServiceId(node: AwsServiceNodeType) {
   return node.data.serviceId ?? node.id;

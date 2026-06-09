@@ -118,6 +118,12 @@ export const UI_TEXT = {
     textNodePlaceholder: "Text",
     textContent: "Text",
     textFontSize: "Text size",
+    pastedImageAlt: "Pasted image",
+    pastedImageLoading: "Loading image...",
+    pastedImageLoadFailed: "Could not load image",
+    pastedImageUploadFailed: "Could not paste image",
+    pastedImageUploadFailedDescription:
+      "Check the clipboard image and try again.",
     editProjectName: "Edit project name",
     untitledArchitectureName: "Untitled architecture",
     saveArchitecture: "Save",
@@ -285,6 +291,12 @@ export const UI_TEXT = {
     textNodePlaceholder: "Texto",
     textContent: "Texto",
     textFontSize: "Tamaño del texto",
+    pastedImageAlt: "Imagen pegada",
+    pastedImageLoading: "Cargando imagen...",
+    pastedImageLoadFailed: "No se pudo cargar la imagen",
+    pastedImageUploadFailed: "No se pudo pegar la imagen",
+    pastedImageUploadFailedDescription:
+      "Verifica la imagen del portapapeles e inténtalo de nuevo.",
     editProjectName: "Editar nombre del proyecto",
     untitledArchitectureName: "Arquitectura sin nombre",
     saveArchitecture: "Guardar",
@@ -440,6 +452,7 @@ const EN_SERVICE_DESCRIPTIONS: Record<string, string> = {
   privatelink:
     "Private access to services across VPCs without exposing traffic to the internet.",
   elb: "Distributes incoming traffic across multiple targets for high availability.",
+  nacl: "Subnet-level security layer that controls inbound and outbound traffic using stateless allow and deny rules.",
   iam: "Manages identities, permissions, and access to AWS resources.",
   cognito: "Adds sign-up, sign-in, and access control for app users.",
   acm: "Provisions, manages, and renews TLS certificates for AWS services.",

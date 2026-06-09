@@ -49,6 +49,7 @@ import GatewayServiceNode from "@/components/nodes/GatewayServiceNode";
 import NetworkContainerNode from "@/components/nodes/network-containers/NetworkContainerNode";
 import PlainTextNode from "@/components/nodes/PlainTextNode";
 import MiscellaneousNode from "@/components/nodes/MiscellaneousNode";
+import ImageNode from "@/components/nodes/ImageNode";
 import SelectionGroupNode from "@/components/nodes/SelectionGroupNode";
 import EditableEdge from "@/components/EditableEdge";
 import ServiceSearch from "@/components/service-search/ServiceSearch";
@@ -126,6 +127,13 @@ import { useUrlProjectLoad } from "@/hooks/useUrlProjectLoad";
 import { clearUrlArchitectureId, setUrlArchitectureId } from "@/lib/url-utils";
 import { SELECTION_BOX_PADDING } from "@/lib/selection-constants";
 import { HoverOnlyTooltip } from "@/components/HoverOnlyTooltip";
+import { useToast } from "@/components/ui/use-toast";
+import { auth } from "@/lib/firebase-auth";
+import {
+  createLocalPastedImage,
+  persistLocalImageNodes,
+  type LocalImageAsset,
+} from "@/lib/pasted-images";
 
 const SELECTION_GROUP_ID = "__selection-group__";
 
@@ -139,6 +147,7 @@ const nodeTypes: NodeTypes = {
   web: MiscellaneousNode,
   mobile: MiscellaneousNode,
   database: MiscellaneousNode,
+  image: ImageNode,
   selectionGroup: SelectionGroupNode,
 };
 
@@ -148,6 +157,7 @@ const edgeTypes: EdgeTypes = {
 
 const SERVICE_DROP_OFFSET = { x: 50, y: 36 };
 const TEXT_DROP_OFFSET = { x: 8, y: 14 };
+const IMAGE_PASTE_OFFSET = { x: 28, y: 28 };
 const TEXT_NODE_WIDTH = 180;
 const TEXT_NODE_HEIGHT = 56;
 const TEXT_NODE_STYLE = {
@@ -228,6 +238,27 @@ function areSetsEqual<T>(a: Set<T>, b: Set<T>) {
   }
 
   return true;
+}
+
+function isEditableTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  return (
+    target.matches("input, textarea, select") ||
+    target.closest("[contenteditable='true'], [contenteditable='']") !== null ||
+    target.isContentEditable
+  );
+}
+
+function getClipboardImageFiles(event: ClipboardEvent) {
+  const items = Array.from(event.clipboardData?.items ?? []);
+
+  return items
+    .filter((item) => item.kind === "file" && item.type.startsWith("image/"))
+    .map((item) => item.getAsFile())
+    .filter((file): file is File => Boolean(file));
 }
 
 // Rendered inside <ReactFlow> so it can access the internal store.
@@ -347,6 +378,7 @@ export default function Canvas() {
     AppEdge
   > | null>(null);
   const { user } = useAuth();
+  const { toast } = useToast();
   useUrlProjectLoad();
   const saveArchitectureMutation = useSaveArchitecture();
   const renameArchitectureMutation = useRenameArchitecture();
@@ -362,6 +394,7 @@ export default function Canvas() {
   const serviceIdRef = useRef(1);
   const lastCreatedIdRef = useRef<string | null>(null);
   const textIdRef = useRef(1);
+  const imageIdRef = useRef(1);
   const edgeIdRef = useRef(1);
   const pulseIdRef = useRef(1);
   const idScanRef = useRef({ nodes: -1, edges: -1, restore: -1 });
@@ -419,6 +452,9 @@ export default function Canvas() {
     const textIds = nodes
       .filter((node) => node.type === "plainText")
       .map((node) => node.id);
+    const imageIds = nodes
+      .filter((node) => node.type === "image")
+      .map((node) => node.id);
 
     containerIdRef.current = Math.max(
       containerIdRef.current,
@@ -435,6 +471,10 @@ export default function Canvas() {
     textIdRef.current = Math.max(
       textIdRef.current,
       getNextNumericIdSuffix(textIds),
+    );
+    imageIdRef.current = Math.max(
+      imageIdRef.current,
+      getNextNumericIdSuffix(imageIds),
     );
     edgeIdRef.current = Math.max(
       edgeIdRef.current,
@@ -562,15 +602,22 @@ export default function Canvas() {
   }, [nodes, edges, projectName]);
 
   const handleSave = useCallback(async () => {
+    const uid = user?.uid ?? auth.currentUser?.uid;
+    if (!uid) {
+      throw new Error("User must be signed in to save.");
+    }
+
     const currentViewport = reactFlowInstance?.getViewport() ?? viewport;
+    const nodesToSave = await persistLocalImageNodes(uid, nodes);
     const result = await saveArchitectureMutation.mutateAsync({
       architectureId: currentArchitectureId,
       name: projectName?.trim() || t.untitledArchitectureName,
-      nodes,
+      nodes: nodesToSave,
       edges,
       viewport: currentViewport,
     });
 
+    setNodes(nodesToSave);
     setCurrentArchitectureId(result.architectureId);
     setUrlArchitectureId(result.architectureId);
     markSaved();
@@ -582,8 +629,10 @@ export default function Canvas() {
     nodes,
     projectName,
     reactFlowInstance,
+    setNodes,
     setCurrentArchitectureId,
     t.untitledArchitectureName,
+    user?.uid,
     viewport,
   ]);
 
@@ -622,6 +671,116 @@ export default function Canvas() {
     resetCanvas();
     clearUrlArchitectureId();
   }, [currentArchitectureId, deleteArchitectureMutation, resetCanvas]);
+
+  const getCanvasCenterFlowPosition = useCallback(() => {
+    if (!containerRef.current) {
+      return null;
+    }
+
+    const bounds = containerRef.current.getBoundingClientRect();
+    const screenCenter = {
+      x: bounds.left + bounds.width / 2,
+      y: bounds.top + bounds.height / 2,
+    };
+
+    if (reactFlowInstance) {
+      return reactFlowInstance.screenToFlowPosition(screenCenter);
+    }
+
+    const currentViewport = viewport ?? { x: 0, y: 0, zoom: 1 };
+    return {
+      x: (bounds.width / 2 - currentViewport.x) / currentViewport.zoom,
+      y: (bounds.height / 2 - currentViewport.y) / currentViewport.zoom,
+    };
+  }, [reactFlowInstance, viewport]);
+
+  const addLocalImagesAtPosition = useCallback(
+    (images: LocalImageAsset[], position: { x: number; y: number }) => {
+      if (!images.length) {
+        return;
+      }
+
+      commitGraphChange(({ nodes, edges }) => {
+        const existingIds = new Set(nodes.map((node) => node.id));
+        const nextImageNodes = images.map((image, index) => {
+          let nodeId = `image-${imageIdRef.current++}`;
+          while (existingIds.has(nodeId)) {
+            nodeId = `image-${imageIdRef.current++}`;
+          }
+          existingIds.add(nodeId);
+
+          const nodePosition = {
+            x:
+              position.x -
+              image.width / 2 +
+              index * IMAGE_PASTE_OFFSET.x,
+            y:
+              position.y -
+              image.height / 2 +
+              index * IMAGE_PASTE_OFFSET.y,
+          };
+          const parentedPosition = getParentedPosition(
+            nodePosition,
+            { width: image.width, height: image.height },
+            nodes,
+          );
+
+          return {
+            id: nodeId,
+            type: "image",
+            zIndex: 10,
+            selected: true,
+            ...parentedPosition,
+            data: {
+              localAssetId: image.localAssetId,
+              objectUrl: image.objectUrl,
+              contentType: image.contentType,
+              alt: t.pastedImageAlt,
+              naturalWidth: image.naturalWidth,
+              naturalHeight: image.naturalHeight,
+            },
+            style: {
+              width: image.width,
+              height: image.height,
+            },
+          } satisfies AppNode;
+        });
+
+        return {
+          nodes: orderNodesForSubflows([
+            ...nodes.map((node) => ({ ...node, selected: false })),
+            ...nextImageNodes,
+          ]),
+          edges,
+        };
+      });
+    },
+    [commitGraphChange, t.pastedImageAlt],
+  );
+
+  const processPastedImages = useCallback(
+    async (files: File[]) => {
+      const position = getCanvasCenterFlowPosition();
+      if (!position) {
+        return;
+      }
+
+      try {
+        const localImages = await Promise.all(
+          files.map((file) => createLocalPastedImage(file)),
+        );
+        addLocalImagesAtPosition(localImages, position);
+      } catch (error) {
+        console.error(error);
+        toast({
+          title: t.pastedImageUploadFailed,
+          description: t.pastedImageUploadFailedDescription,
+          variant: "destructive",
+        });
+      }
+    },
+    [addLocalImagesAtPosition, getCanvasCenterFlowPosition, t, toast],
+  );
 
   const handleAuthRequired = useCallback(() => {
     setPendingSave(true);
@@ -1648,23 +1807,42 @@ export default function Canvas() {
     setDropBandSide(null);
   }, [setDropBandSide, setDropPreview, setDropTargetNodeId]);
 
-  const addToolAtViewportCenter = useCallback(
-    (tool: DragTool) => {
-      if (!reactFlowInstance || !containerRef.current) {
+  const handlePasteImages = useCallback(
+    (event: ClipboardEvent) => {
+      if (isEditableTarget(event.target)) {
         return;
       }
 
-      const bounds = containerRef.current.getBoundingClientRect();
+      const imageFiles = getClipboardImageFiles(event);
+      if (!imageFiles.length) {
+        return;
+      }
+
+      event.preventDefault();
+      void processPastedImages(imageFiles);
+    },
+    [processPastedImages],
+  );
+
+  useEffect(() => {
+    window.addEventListener("paste", handlePasteImages);
+    return () => window.removeEventListener("paste", handlePasteImages);
+  }, [handlePasteImages]);
+
+  const addToolAtViewportCenter = useCallback(
+    (tool: DragTool) => {
+      const position = getCanvasCenterFlowPosition();
+      if (!position) {
+        return;
+      }
+
       addToolAtPosition(
         tool,
-        reactFlowInstance.screenToFlowPosition({
-          x: bounds.left + bounds.width / 2,
-          y: bounds.top + bounds.height / 2,
-        }),
+        position,
         `${CLICK_PULSE_PREFIX}-${pulseIdRef.current++}`,
       );
     },
-    [addToolAtPosition, reactFlowInstance],
+    [addToolAtPosition, getCanvasCenterFlowPosition],
   );
 
   const syncNodeSubnet = useCallback(
@@ -2063,8 +2241,12 @@ export default function Canvas() {
       />
       <div
         ref={containerRef}
+        tabIndex={-1}
         style={{ flex: 1, position: "relative" }}
-        onPointerDownCapture={handleContainerPointerDown}
+        onPointerDownCapture={(event) => {
+          event.currentTarget.focus({ preventScroll: true });
+          handleContainerPointerDown(event);
+        }}
         onClickCapture={handleContainerClick}
         onDoubleClickCapture={handlePaneDoubleClick}
       >
