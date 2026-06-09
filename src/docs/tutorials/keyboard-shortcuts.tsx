@@ -76,6 +76,14 @@ export default function KeyboardShortcuts() {
               Dibuja un rectángulo de selección
             </td>
           </tr>
+          <tr style={{ borderBottom: "1px solid hsl(var(--border))" }}>
+            <td style={{ padding: "0.75rem" }}>
+              <kbd>⌘↑↓←→</kbd> / <kbd>Ctrl ↑↓←→</kbd>
+            </td>
+            <td style={{ padding: "0.75rem" }}>
+              Salta al nodo conectado en esa dirección
+            </td>
+          </tr>
         </tbody>
       </table>
 
