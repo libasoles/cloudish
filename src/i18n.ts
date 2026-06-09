@@ -79,8 +79,7 @@ export const UI_TEXT = {
     fieldsUnavailable:
       "Configuration fields for this service are not available yet.",
     inspectorNoOptionsTitle: "No configurable options",
-    inspectorNoOptionsDescription:
-      "This node does not have editable settings in the inspector.",
+    inspectorNoOptionsDescription: "This node does not have editable settings.",
     position: "Position",
     clickNodeDetails: "Click a node or edge to see its details.",
     user: "User",
@@ -252,8 +251,7 @@ export const UI_TEXT = {
     fieldsUnavailable:
       "Los campos de configuración para este servicio todavía no están disponibles.",
     inspectorNoOptionsTitle: "Sin opciones configurables",
-    inspectorNoOptionsDescription:
-      "Este nodo no tiene ajustes editables en el inspector.",
+    inspectorNoOptionsDescription: "Este nodo no tiene ajustes editables.",
     position: "Posición",
     clickNodeDetails: "Selecciona un nodo o conexión para ver sus detalles.",
     user: "Usuario",

@@ -64,7 +64,7 @@ const SCOPE_DEFAULT_SIDE: Record<PlacementScope, BandSide> = {
 };
 
 // Edge-service ids that should prefer the left side when in the central zone
-const EDGE_SERVICE_IDS = new Set(["cloudfront", "route53", "waf"]);
+const EDGE_SERVICE_IDS = new Set(["api-gateway", "cloudfront", "route53", "waf"]);
 
 export function resolveBandSide(
   dropAbsCenter: { x: number; y: number },
@@ -93,13 +93,46 @@ export function resolveBandSide(
 
 // ─── Band insets computation ──────────────────────────────────────────────────
 
-// AwsServiceNode renders with min-w-20 (80px) and py-2+icon40+gap+label ≈ 80px tall
+// AwsServiceNode renders with min-w-20 (80px) and py-2+icon40+gap+label ≈ 80px tall.
+// API Gateway renders wider because route rows need room for method + path text.
 const BAND_NODE_SIZE = 80;
 const BAND_NODE_H    = 80;
+const API_GATEWAY_BAND_NODE_W = 144;
 // Outer strip padding AND gap between consecutive nodes.
 // Sized so that after subtracting the 4px React Flow handle protrusion from each side,
 // the visible clearance (handle-tip to strip boundary) is ~28px — equal on both sides.
 const BAND_PAD       = 32;
+
+type BandNodeSize = {
+  width: number;
+  height: number;
+};
+
+function getNodeNumericDimension(
+  node: AppNode,
+  axis: "width" | "height",
+): number | undefined {
+  const style = node.style as { width?: number; height?: number } | undefined;
+  const measured = node.measured as { width?: number; height?: number } | undefined;
+  return node[axis] ?? style?.[axis] ?? measured?.[axis];
+}
+
+export function getBandNodeVisualSize(nodeOrServiceId?: AppNode | string): BandNodeSize {
+  const serviceId =
+    typeof nodeOrServiceId === "string"
+      ? nodeOrServiceId
+      : (nodeOrServiceId?.data as { serviceId?: string } | undefined)?.serviceId;
+  const minWidth = serviceId === "api-gateway" ? API_GATEWAY_BAND_NODE_W : BAND_NODE_SIZE;
+
+  if (typeof nodeOrServiceId === "object") {
+    return {
+      width: Math.max(minWidth, getNodeNumericDimension(nodeOrServiceId, "width") ?? minWidth),
+      height: Math.max(BAND_NODE_H, getNodeNumericDimension(nodeOrServiceId, "height") ?? BAND_NODE_H),
+    };
+  }
+
+  return { width: minWidth, height: BAND_NODE_H };
+}
 
 // Computes the insets (band widths) a container needs to reserve for scope-rejected
 // nodes currently parented to it via the band mechanism.
@@ -125,10 +158,15 @@ export function getScopeBandInsets(
     (n) => n.parentId === containerId && isBandNode(n),
   );
 
-  const counts = { top: 0, right: 0, bottom: 0, left: 0 };
+  const bandNodesBySide: Record<BandSide, AppNode[]> = {
+    top: [],
+    right: [],
+    bottom: [],
+    left: [],
+  };
   for (const n of bandChildren) {
     const side = getBandSide(n);
-    if (side) counts[side]++;
+    if (side) bandNodesBySide[side].push(n);
   }
 
   const data = container.data as NetworkContainerNodeData;
@@ -140,23 +178,40 @@ export function getScopeBandInsets(
   const contentW = cW - oldSi.left - oldSi.right - gi.left - gi.right;
   const contentH = cH - oldSi.top  - oldSi.bottom - gi.top  - gi.bottom;
 
+  const maxNodeWidth = (side: BandSide) =>
+    Math.max(0, ...bandNodesBySide[side].map((n) => getBandNodeVisualSize(n).width));
+  const maxNodeHeight = (side: BandSide) =>
+    Math.max(0, ...bandNodesBySide[side].map((n) => getBandNodeVisualSize(n).height));
+  const totalNodeWidth = (side: BandSide) =>
+    bandNodesBySide[side].reduce((sum, n) => sum + getBandNodeVisualSize(n).width, 0);
+  const totalNodeHeight = (side: BandSide) =>
+    bandNodesBySide[side].reduce((sum, n) => sum + getBandNodeVisualSize(n).height, 0);
+
   // Fixed-width/height reservation per occupied side (one column/row regardless of count)
-  const rightW = counts.right > 0 ? BAND_PAD + BAND_NODE_SIZE + BAND_PAD : 0;
-  const leftW  = counts.left  > 0 ? BAND_PAD + BAND_NODE_SIZE + BAND_PAD : 0;
-  const topH   = counts.top   > 0 ? BAND_PAD + BAND_NODE_H    + BAND_PAD : 0;
-  const botH   = counts.bottom > 0 ? BAND_PAD + BAND_NODE_H    + BAND_PAD : 0;
+  const rightW = bandNodesBySide.right.length > 0 ? BAND_PAD + maxNodeWidth("right") + BAND_PAD : 0;
+  const leftW  = bandNodesBySide.left.length  > 0 ? BAND_PAD + maxNodeWidth("left")  + BAND_PAD : 0;
+  const topH   = bandNodesBySide.top.length   > 0 ? BAND_PAD + maxNodeHeight("top")  + BAND_PAD : 0;
+  const botH   = bandNodesBySide.bottom.length > 0 ? BAND_PAD + maxNodeHeight("bottom") + BAND_PAD : 0;
 
   // Right/left nodes stack vertically — only grow taller if they overflow the content height
   const maxVertNeed = Math.max(
-    counts.right > 0 ? BAND_PAD + counts.right * (BAND_NODE_H    + BAND_PAD) : 0,
-    counts.left  > 0 ? BAND_PAD + counts.left  * (BAND_NODE_H    + BAND_PAD) : 0,
+    bandNodesBySide.right.length > 0
+      ? BAND_PAD + totalNodeHeight("right") + bandNodesBySide.right.length * BAND_PAD
+      : 0,
+    bandNodesBySide.left.length > 0
+      ? BAND_PAD + totalNodeHeight("left") + bandNodesBySide.left.length * BAND_PAD
+      : 0,
   );
   const heightOverflow = Math.max(0, maxVertNeed - contentH);
 
   // Top/bottom nodes stack horizontally — only grow wider if they overflow the content width
   const maxHorizNeed = Math.max(
-    counts.top    > 0 ? BAND_PAD + counts.top    * (BAND_NODE_SIZE + BAND_PAD) : 0,
-    counts.bottom > 0 ? BAND_PAD + counts.bottom * (BAND_NODE_SIZE + BAND_PAD) : 0,
+    bandNodesBySide.top.length > 0
+      ? BAND_PAD + totalNodeWidth("top") + bandNodesBySide.top.length * BAND_PAD
+      : 0,
+    bandNodesBySide.bottom.length > 0
+      ? BAND_PAD + totalNodeWidth("bottom") + bandNodesBySide.bottom.length * BAND_PAD
+      : 0,
   );
   const widthOverflow = Math.max(0, maxHorizNeed - contentW);
 
@@ -192,29 +247,39 @@ export function getBandNodePosition(
   slotIndex: number,
   containerW: number,
   containerH: number,
+  nodeSize: BandNodeSize = { width: BAND_NODE_SIZE, height: BAND_NODE_H },
+  previousNodeSizes: BandNodeSize[] = [],
 ): { x: number; y: number } {
-  const nodeW = BAND_NODE_SIZE;
-  const nodeH = BAND_NODE_H;
+  const previousHorizontalSpan =
+    previousNodeSizes.length > 0
+      ? previousNodeSizes.reduce((sum, size) => sum + size.width, 0) +
+        previousNodeSizes.length * BAND_PAD
+      : slotIndex * (BAND_NODE_SIZE + BAND_PAD);
+  const previousVerticalSpan =
+    previousNodeSizes.length > 0
+      ? previousNodeSizes.reduce((sum, size) => sum + size.height, 0) +
+        previousNodeSizes.length * BAND_PAD
+      : slotIndex * (BAND_NODE_H + BAND_PAD);
 
   switch (side) {
     case "right":
       return {
         x: containerW + BAND_PAD,
-        y: BAND_PAD + slotIndex * (nodeH + BAND_PAD),
+        y: BAND_PAD + previousVerticalSpan,
       };
     case "left":
       return {
-        x: -(nodeW + BAND_PAD),
-        y: BAND_PAD + slotIndex * (nodeH + BAND_PAD),
+        x: -(nodeSize.width + BAND_PAD),
+        y: BAND_PAD + previousVerticalSpan,
       };
     case "top":
       return {
-        x: BAND_PAD + slotIndex * (nodeW + BAND_PAD),
-        y: -(nodeH + BAND_PAD),
+        x: BAND_PAD + previousHorizontalSpan,
+        y: -(nodeSize.height + BAND_PAD),
       };
     case "bottom":
       return {
-        x: BAND_PAD + slotIndex * (nodeW + BAND_PAD),
+        x: BAND_PAD + previousHorizontalSpan,
         y: containerH + BAND_PAD,
       };
   }
@@ -274,6 +339,8 @@ export function redistributeScopeBandForContainer(
     x: newAbsX - parentAbsPos.x,
     y: newAbsY - parentAbsPos.y,
   };
+  const deltaX = newRelPos.x - container.position.x;
+  const deltaY = newRelPos.y - container.position.y;
 
   return nodes.map((n) => {
     if (n.id === containerId) {
@@ -284,6 +351,15 @@ export function redistributeScopeBandForContainer(
         position: newRelPos,
         style: { ...n.style, width: newW, height: newH },
         data: { ...n.data, scopeInsets: newScopeInsets },
+      };
+    }
+    if (n.parentId === containerId && (deltaX !== 0 || deltaY !== 0)) {
+      return {
+        ...n,
+        position: {
+          x: n.position.x - deltaX,
+          y: n.position.y - deltaY,
+        },
       };
     }
     return n;
@@ -311,6 +387,7 @@ export function computeBandPlacement(
   container: AppNode,
   side: BandSide,
   nodes: AppNode[],
+  serviceId?: string,
 ): { parentId: string; position: { x: number; y: number } } {
   const { width: cW, height: cH } = getNodeSize(container);
   const data = container.data as NetworkContainerNodeData;
@@ -322,13 +399,23 @@ export function computeBandPlacement(
   const contentW = cW - (si.left + gi.left) - (si.right  + gi.right);
   const contentH = cH - (si.top  + gi.top)  - (si.bottom + gi.bottom);
 
-  const slotIndex = nodes.filter(
+  const existingSideNodes = nodes.filter(
     (n) => n.parentId === container.id && getBandSide(n) === side,
-  ).length;
+  );
+  const slotIndex = existingSideNodes.length;
+  const nodeSize = getBandNodeVisualSize(serviceId);
+  const previousNodeSizes = existingSideNodes.map(getBandNodeVisualSize);
 
   return {
     parentId: container.id,
-    position: getBandNodePosition(side, slotIndex, contentW, contentH),
+    position: getBandNodePosition(
+      side,
+      slotIndex,
+      contentW,
+      contentH,
+      nodeSize,
+      previousNodeSizes,
+    ),
   };
 }
 

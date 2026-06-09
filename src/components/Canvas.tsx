@@ -110,8 +110,6 @@ import {
   computeBandPlacement,
   resolveBandSide,
   redistributeScopeAffectedLayouts,
-  isBandNode,
-  getBandNodePosition,
   expelGlobalNodePosition,
 } from "@/lib/placement";
 import { EDGE_STYLE } from "@/lib/edge-tools";
@@ -1251,7 +1249,7 @@ export default function Canvas() {
                 height: (allowedAncestor.style as { height?: number })?.height ?? allowedAncestor.height ?? 480,
               };
               const side = resolveBandSide(dropAbsCenter, ancRect, scope, service.id);
-              const bandPos = computeBandPlacement(allowedAncestor, side, nodes);
+              const bandPos = computeBandPlacement(allowedAncestor, side, nodes, service.id);
               parentedPosition = bandPos;
               extraData = { bandSide: side };
             }
@@ -1920,25 +1918,18 @@ export default function Canvas() {
                   height: (allowedAncestor.style as { height?: number })?.height ?? allowedAncestor.height ?? 480,
                 };
                 const side = resolveBandSide(dropAbsCenter, ancRect, scope, awsNode.data.serviceId);
-                const existingOnSide = nodes.filter(
-                  (n) => n.parentId === allowedAncestor.id && isBandNode(n) &&
-                    (n.data as { bandSide?: string }).bandSide === side && n.id !== node.id,
-                ).length;
-                const { width: cW, height: cH } = {
-                  width: (allowedAncestor.style as { width?: number })?.width ?? allowedAncestor.width ?? 720,
-                  height: (allowedAncestor.style as { height?: number })?.height ?? allowedAncestor.height ?? 480,
-                };
-                const ancData = allowedAncestor.data as import("@/types/flow").NetworkContainerNodeData;
-                const ancSi = ancData.scopeInsets   ?? { top: 0, right: 0, bottom: 0, left: 0 };
-                const ancGi = ancData.gatewayInsets ?? { top: 0, right: 0, bottom: 0, left: 0 };
-                const contentW = cW - (ancSi.left + ancGi.left) - (ancSi.right  + ancGi.right);
-                const contentH = cH - (ancSi.top  + ancGi.top)  - (ancSi.bottom + ancGi.bottom);
-                const pos = getBandNodePosition(side, existingOnSide, contentW, contentH);
+                const existingNodes = nodes.filter((n) => n.id !== node.id);
+                const bandPlacement = computeBandPlacement(
+                  allowedAncestor,
+                  side,
+                  existingNodes,
+                  awsNode.data.serviceId,
+                );
                 updates.set(node.id, {
                   ...node,
                   parentId: allowedAncestor.id,
                   data: { ...node.data, bandSide: side },
-                  position: pos,
+                  position: bandPlacement.position,
                 });
                 return;
               }
@@ -2071,6 +2062,36 @@ export default function Canvas() {
   const onNodeDrag: OnNodeDrag<AppNode> = useCallback(
     (_event, node) => {
       if (!isNetworkContainerNode(node)) {
+        if (node.type === "awsService") {
+          const awsNode = node as import("@/components/nodes/AwsServiceNode").AwsServiceNodeType;
+          const scope = getNodePlacementScope(awsNode);
+
+          if (scope !== "subnet") {
+            const { nodes: currentNodes, nodesById } = useFlowStore.getState();
+            const nodeRect = getNodeRect(node, nodesById);
+            const allowedAncestor = findAllowedAncestorForScope(nodeRect, scope, currentNodes);
+
+            if (allowedAncestor) {
+              const ancPos = getAbsolutePosition(allowedAncestor, nodesById);
+              const { width: ancW, height: ancH } = getNodeSize(allowedAncestor);
+              const side = resolveBandSide(
+                {
+                  x: nodeRect.x + nodeRect.width / 2,
+                  y: nodeRect.y + nodeRect.height / 2,
+                },
+                { ...ancPos, width: ancW, height: ancH },
+                scope,
+                awsNode.data.serviceId,
+              );
+              setDropTargetNodeId(allowedAncestor.id);
+              setDropBandSide(side);
+              setDropPreview(null);
+              return;
+            }
+
+            setDropBandSide(null);
+          }
+        }
         if (dropTargetNodeId !== null) setDropTargetNodeId(null);
         setDropPreview(null);
         return;
@@ -2092,24 +2113,26 @@ export default function Canvas() {
       const isNewParent = target && target.id !== node.parentId;
 
       setDropTargetNodeId(isNewParent ? target.id : null);
+      setDropBandSide(null);
       setDropPreview(
         isNewParent && childType ? { parentId: target.id, childType } : null,
       );
     },
-    [dropTargetNodeId, setDropPreview, setDropTargetNodeId],
+    [dropTargetNodeId, setDropBandSide, setDropPreview, setDropTargetNodeId],
   );
 
   const onNodeDragStop: OnNodeDrag<AppNode> = useCallback(
     (_event, node, draggedNodes) => {
       setDropTargetNodeId(null);
       setDropPreview(null);
+      setDropBandSide(null);
       syncNodeSubnet(
         draggedNodes.length
           ? draggedNodes.map((draggedNode) => draggedNode.id)
           : [node.id],
       );
     },
-    [syncNodeSubnet, setDropPreview, setDropTargetNodeId],
+    [syncNodeSubnet, setDropBandSide, setDropPreview, setDropTargetNodeId],
   );
 
   const handleSelectionStart = useCallback(
