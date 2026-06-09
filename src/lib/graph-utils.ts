@@ -11,15 +11,15 @@ export const CONTAINER_HEIGHT = 264;
 export const DEFAULT_NODE_WIDTH = 150;
 export const DEFAULT_NODE_HEIGHT = 40;
 
-export const REGION_WIDTH = 1080;
-export const REGION_HEIGHT = 720;
-export const VPC_WIDTH = 720;
-export const VPC_HEIGHT = 480;
+export const REGION_WIDTH = 1160;
+export const REGION_HEIGHT = 760;
+export const VPC_WIDTH = 760;
+export const VPC_HEIGHT = 520;
 export const SUBNET_WIDTH = 384;
 export const SUBNET_HEIGHT = 264;
 
-export const AZ_WIDTH = 540;
-export const AZ_HEIGHT = 360;
+export const AZ_WIDTH = 580;
+export const AZ_HEIGHT = 400;
 
 export const ASG_WIDTH = 480;
 export const ASG_HEIGHT = 312;
@@ -324,9 +324,8 @@ export function getParentedPosition(
 }
 
 const REGION_HEADER_H = 36;
-const AZ_PAD = 12;
-const VPC_PAD = 18;
-const SUBNET_PAD = 12;
+const CONTAINER_INNER_GAP = 24;
+const CONTAINER_CONTENT_TOP = REGION_HEADER_H + CONTAINER_INNER_GAP;
 
 export function buildAzNodes(
   parentId: string,
@@ -335,14 +334,17 @@ export function buildAzNodes(
   count: number,
   insets: ContainerInsets = EMPTY_CONTAINER_INSETS,
 ) {
-  const leftPad = Math.max(AZ_PAD, insets.left);
-  const rightPad = Math.max(AZ_PAD, insets.right);
-  const topPad = Math.max(REGION_HEADER_H, insets.top);
-  const bottomPad = Math.max(AZ_PAD, insets.bottom);
+  const leftPad = Math.max(CONTAINER_INNER_GAP, insets.left);
+  const rightPad = Math.max(CONTAINER_INNER_GAP, insets.right);
+  const topPad = Math.max(CONTAINER_CONTENT_TOP, insets.top);
+  const bottomPad = Math.max(CONTAINER_INNER_GAP, insets.bottom);
   const azH = Math.max(1, parentH - topPad - bottomPad);
   const azW = Math.max(
     1,
-    Math.floor((parentW - leftPad - rightPad - AZ_PAD * (count - 1)) / count),
+    Math.floor(
+      (parentW - leftPad - rightPad - CONTAINER_INNER_GAP * (count - 1)) /
+        count,
+    ),
   );
 
   return Array.from({ length: count }, (_, i) => ({
@@ -351,7 +353,7 @@ export function buildAzNodes(
     parentId,
     draggable: false,
     selectable: true,
-    position: { x: leftPad + i * (azW + AZ_PAD), y: topPad },
+    position: { x: leftPad + i * (azW + CONTAINER_INNER_GAP), y: topPad },
     data: {
       containerType: "az" as const,
       label: `AZ ${i + 1}`,
@@ -374,14 +376,17 @@ export function redistributeAzNodes(
   if (!azChildren.length) return nodes;
 
   const count = azChildren.length;
-  const leftPad = Math.max(AZ_PAD, insets.left);
-  const rightPad = Math.max(AZ_PAD, insets.right);
-  const topPad = Math.max(REGION_HEADER_H, insets.top);
-  const bottomPad = Math.max(AZ_PAD, insets.bottom);
+  const leftPad = Math.max(CONTAINER_INNER_GAP, insets.left);
+  const rightPad = Math.max(CONTAINER_INNER_GAP, insets.right);
+  const topPad = Math.max(CONTAINER_CONTENT_TOP, insets.top);
+  const bottomPad = Math.max(CONTAINER_INNER_GAP, insets.bottom);
   const azH = Math.max(1, parentH - topPad - bottomPad);
   const azW = Math.max(
     1,
-    Math.floor((parentW - leftPad - rightPad - AZ_PAD * (count - 1)) / count),
+    Math.floor(
+      (parentW - leftPad - rightPad - CONTAINER_INNER_GAP * (count - 1)) /
+        count,
+    ),
   );
 
   return nodes.map((n) => {
@@ -392,7 +397,10 @@ export function redistributeAzNodes(
       ...n,
       width: azW,
       height: azH,
-      position: { x: leftPad + azIndex * (azW + AZ_PAD), y: topPad },
+      position: {
+        x: leftPad + azIndex * (azW + CONTAINER_INNER_GAP),
+        y: topPad,
+      },
       style: { ...n.style, width: azW, height: azH },
     };
   });
@@ -404,8 +412,10 @@ export function buildVpcNodes(
   regionH: number,
   count: number,
 ): AppNode[] {
-  const vpcH = regionH - REGION_HEADER_H - VPC_PAD;
-  const vpcW = Math.floor((regionW - VPC_PAD * (count + 1)) / count);
+  const vpcH = regionH - CONTAINER_CONTENT_TOP - CONTAINER_INNER_GAP;
+  const vpcW = Math.floor(
+    (regionW - CONTAINER_INNER_GAP * (count + 1)) / count,
+  );
 
   return Array.from({ length: count }, (_, i) => ({
     id: `vpc-${regionId}-${i + 1}`,
@@ -413,7 +423,10 @@ export function buildVpcNodes(
     parentId: regionId,
     draggable: false,
     selectable: true,
-    position: { x: VPC_PAD + i * (vpcW + VPC_PAD), y: REGION_HEADER_H },
+    position: {
+      x: CONTAINER_INNER_GAP + i * (vpcW + CONTAINER_INNER_GAP),
+      y: CONTAINER_CONTENT_TOP,
+    },
     data: {
       containerType: "vpc" as const,
       label: `VPC ${i + 1}`,
@@ -430,9 +443,9 @@ export function buildSubnetNodes(
   count: number,
   getSubnetLabel: (subnetType: string, index: number) => string,
 ): AppNode[] {
-  const subnetW = azW - SUBNET_PAD * 2;
+  const subnetW = azW - CONTAINER_INNER_GAP * 2;
   const subnetH = Math.floor(
-    (azH - REGION_HEADER_H - SUBNET_PAD * (count + 1)) / count,
+    (azH - CONTAINER_CONTENT_TOP - CONTAINER_INNER_GAP * count) / count,
   );
 
   return Array.from({ length: count }, (_, i) => ({
@@ -442,8 +455,8 @@ export function buildSubnetNodes(
     draggable: false,
     selectable: true,
     position: {
-      x: SUBNET_PAD,
-      y: REGION_HEADER_H + SUBNET_PAD + i * (subnetH + SUBNET_PAD),
+      x: CONTAINER_INNER_GAP,
+      y: CONTAINER_CONTENT_TOP + i * (subnetH + CONTAINER_INNER_GAP),
     },
     data: {
       containerType: "subnet" as const,
@@ -467,9 +480,9 @@ export function redistributeSubnetNodes(
   if (!subnetChildren.length) return nodes;
 
   const count = subnetChildren.length;
-  const subnetW = azW - SUBNET_PAD * 2;
+  const subnetW = azW - CONTAINER_INNER_GAP * 2;
   const subnetH = Math.floor(
-    (azH - REGION_HEADER_H - SUBNET_PAD * (count + 1)) / count,
+    (azH - CONTAINER_CONTENT_TOP - CONTAINER_INNER_GAP * count) / count,
   );
 
   return nodes.map((n) => {
@@ -481,8 +494,8 @@ export function redistributeSubnetNodes(
       width: subnetW,
       height: subnetH,
       position: {
-        x: SUBNET_PAD,
-        y: REGION_HEADER_H + SUBNET_PAD + subnetIndex * (subnetH + SUBNET_PAD),
+        x: CONTAINER_INNER_GAP,
+        y: CONTAINER_CONTENT_TOP + subnetIndex * (subnetH + CONTAINER_INNER_GAP),
       },
       style: { ...n.style, width: subnetW, height: subnetH },
     };
@@ -587,8 +600,10 @@ export function redistributeVpcNodes(
 
   const count = vpcChildren.length;
   // VPCs fill only the true content area (not the gateway or scope-band margins)
-  const vpcH = trueBaseH - REGION_HEADER_H - VPC_PAD;
-  const vpcW = Math.floor((trueBaseW - VPC_PAD * (count + 1)) / count);
+  const vpcH = trueBaseH - CONTAINER_CONTENT_TOP - CONTAINER_INNER_GAP;
+  const vpcW = Math.floor(
+    (trueBaseW - CONTAINER_INNER_GAP * (count + 1)) / count,
+  );
 
   // How much the region's origin shifts due to gateway inset changes.
   // Non-VPC direct children (e.g. scope-band nodes) must be adjusted by the
@@ -629,8 +644,12 @@ export function redistributeVpcNodes(
       height: vpcH,
       position: {
         // VPC starts after gateway insets AND scope band left insets
-        x: newInsets.left + storedScopeInsets.left + VPC_PAD + vpcIndex * (vpcW + VPC_PAD),
-        y: newInsets.top  + storedScopeInsets.top  + REGION_HEADER_H,
+        x:
+          newInsets.left +
+          storedScopeInsets.left +
+          CONTAINER_INNER_GAP +
+          vpcIndex * (vpcW + CONTAINER_INNER_GAP),
+        y: newInsets.top + storedScopeInsets.top + CONTAINER_CONTENT_TOP,
       },
       style: { ...n.style, width: vpcW, height: vpcH },
     };

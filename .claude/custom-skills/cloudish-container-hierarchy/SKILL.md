@@ -31,12 +31,20 @@ Defined as named constants in `src/lib/graph-utils.ts`:
 
 | Container | Width | Height |
 |---|---|---|
-| Region | 900 | 600 |
-| VPC | 600 | 400 |
-| Subnet | 320 | 220 |
-| AZ | auto (fills parent) | auto |
+| Region | 1160 | 760 |
+| VPC | 760 | 520 |
+| AZ | 580 | 400 |
+| Subnet | 384 | 264 |
 
-Use `REGION_STYLE`, `VPC_STYLE`, `SUBNET_STYLE` (or legacy `CONTAINER_STYLE`) when constructing nodes.
+Use `REGION_STYLE`, `VPC_STYLE`, `AZ_STYLE`, `SUBNET_STYLE` (or legacy `CONTAINER_STYLE`) when constructing nodes.
+
+## Container Spacing
+
+Managed nested containers use a single shared inner gap constant in `src/lib/graph-utils.ts`.
+
+- Region → VPC, VPC → AZ, and AZ → Subnet must use the same horizontal/outer spacing.
+- The label/header area is separate from the content gap: content starts at `REGION_HEADER_H + CONTAINER_INNER_GAP`.
+- When changing default container sizes or redistribution logic, keep `buildVpcNodes()`, `redistributeVpcNodes()`, `buildAzNodes()`, `redistributeAzNodes()`, `buildSubnetNodes()`, and `redistributeSubnetNodes()` aligned.
 
 ## Auto-Subdivision
 
