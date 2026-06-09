@@ -1,5 +1,5 @@
 import { Handle, Position, type NodeProps, type Node } from "@xyflow/react";
-import { User, Cloud, Monitor, Smartphone } from "lucide-react";
+import { User, Cloud, Monitor, Smartphone, Database } from "lucide-react";
 import { cn } from "@/lib/utils";
 import EditableNodeLabel from "@/components/EditableNodeLabel";
 import { CustomerGatewayIcon } from "@/components/icons/CustomerGatewayIcon";
@@ -13,6 +13,7 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   internet: Cloud,
   web: Monitor,
   mobile: Smartphone,
+  database: Database,
 };
 
 const VPN_HANDLE_BASE: React.CSSProperties = {
@@ -34,7 +35,10 @@ export type MiscellaneousNodeData = {
   pulseKey?: string;
 };
 
-export type MiscellaneousNodeType = Node<MiscellaneousNodeData, "user" | "internet" | "web" | "mobile">;
+export type MiscellaneousNodeType = Node<
+  MiscellaneousNodeData,
+  "user" | "internet" | "web" | "mobile" | "database"
+>;
 
 export default function MiscellaneousNode({
   id,

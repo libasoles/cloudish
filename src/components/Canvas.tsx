@@ -138,6 +138,7 @@ const nodeTypes: NodeTypes = {
   internet: MiscellaneousNode,
   web: MiscellaneousNode,
   mobile: MiscellaneousNode,
+  database: MiscellaneousNode,
   selectionGroup: SelectionGroupNode,
 };
 
@@ -1235,6 +1236,41 @@ export default function Canvas() {
             data: { label: t.mobile, fields: { label: t.mobile }, ...pulseData },
           };
           return { nodes: addNodeWithAzSync(newNode, nodes.map((n) => ({ ...n, selected: false }))), edges };
+        });
+        return;
+      }
+
+      if (tool.type === "database") {
+        const nodeId = `database-${serviceIdRef.current++}`;
+        const nodePosition = {
+          x: position.x - SERVICE_DROP_OFFSET.x,
+          y: position.y - SERVICE_DROP_OFFSET.y,
+        };
+        commitGraphChange(({ nodes, edges }) => {
+          const parentedPosition = getParentedPosition(
+            nodePosition,
+            { width: DEFAULT_NODE_WIDTH, height: DEFAULT_NODE_HEIGHT },
+            nodes,
+          );
+          const newNode: AppNode = {
+            id: nodeId,
+            type: "database",
+            zIndex: 10,
+            selected: true,
+            ...parentedPosition,
+            data: {
+              label: t.database,
+              fields: { label: t.database },
+              ...pulseData,
+            },
+          };
+          return {
+            nodes: addNodeWithAzSync(
+              newNode,
+              nodes.map((n) => ({ ...n, selected: false })),
+            ),
+            edges,
+          };
         });
         return;
       }

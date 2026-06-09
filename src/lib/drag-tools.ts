@@ -9,6 +9,7 @@ export type DragTool =
   | { type: "internet" }
   | { type: "web" }
   | { type: "mobile" }
+  | { type: "database" }
   | { type: "region" };
 
 export const CONTAINER_NODE_TYPE = "container";
@@ -61,6 +62,10 @@ export function decodeDragTool(value: string): DragTool | null {
 
     if (tool.type === "mobile") {
       return { type: "mobile" };
+    }
+
+    if (tool.type === "database") {
+      return { type: "database" };
     }
 
     if (tool.type === "region") {
