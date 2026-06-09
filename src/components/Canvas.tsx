@@ -110,7 +110,12 @@ import {
   computeBandPlacement,
   resolveBandSide,
   redistributeScopeAffectedLayouts,
+  redistributeScopeAffectedLayoutsWithPropagation,
   expelGlobalNodePosition,
+  getBandSide,
+  getScopeBandInsets,
+  applyInsetResizeOnly,
+  propagateBandGrowthToAncestors,
 } from "@/lib/placement";
 import { EDGE_STYLE } from "@/lib/edge-tools";
 import { resolveVpnGatewayEdgeLabel } from "@/lib/vpn-gateway-edges";
@@ -2116,7 +2121,7 @@ export default function Canvas() {
           result,
         );
 
-        return redistributeScopeAffectedLayouts(redistributeGatewayAffectedVpcLayouts(syncedNodes));
+        return redistributeScopeAffectedLayoutsWithPropagation(redistributeGatewayAffectedVpcLayouts(syncedNodes));
       });
     },
     [setNodes],
@@ -2153,8 +2158,38 @@ export default function Canvas() {
                 scope,
                 awsNode.data.serviceId,
               );
-              setDropTargetNodeId(allowedAncestor.id);
-              setDropBandSide(side);
+
+              // Fix 1: suppress amber highlight when the node is already on this band
+              const currentBandSide = getBandSide(node as AppNode);
+              const isSameBand = node.parentId === allowedAncestor.id && currentBandSide === side;
+              if (!isSameBand) {
+                setDropTargetNodeId(allowedAncestor.id);
+                setDropBandSide(side);
+              } else {
+                if (dropTargetNodeId !== null) setDropTargetNodeId(null);
+                setDropBandSide(null);
+              }
+
+              // Fix 2B: live-resize the band container using current drag position
+              const patchedNodes = currentNodes.map((n) =>
+                n.id === node.id ? { ...n, position: node.position } : n,
+              );
+              const newInsets = getScopeBandInsets(allowedAncestor.id, patchedNodes);
+              const prevInsets = (allowedAncestor.data as import("@/types/flow").NetworkContainerNodeData).scopeInsets;
+              if (
+                newInsets.top    !== (prevInsets?.top    ?? 0) ||
+                newInsets.right  !== (prevInsets?.right  ?? 0) ||
+                newInsets.bottom !== (prevInsets?.bottom ?? 0) ||
+                newInsets.left   !== (prevInsets?.left   ?? 0)
+              ) {
+                useFlowStore.getState().setNodes((prev) =>
+                  propagateBandGrowthToAncestors(
+                    allowedAncestor.id,
+                    applyInsetResizeOnly(allowedAncestor.id, newInsets, prev),
+                  ),
+                );
+              }
+
               setDropPreview(null);
               return;
             }

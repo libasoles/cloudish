@@ -138,14 +138,10 @@ export function getBandNodeVisualSize(nodeOrServiceId?: AppNode | string): BandN
 
 // Computes the insets (band widths) a container needs to reserve for scope-rejected
 // nodes currently parented to it via the band mechanism.
-// Nodes in the band are stored as children with parentId = containerId but with
-// data.bandSide marking them as band nodes.
 //
-// Right/left bands stack nodes VERTICALLY → width inset is a fixed 1-column reservation.
-// The container only grows TALLER when the stacked nodes overflow the content height.
-//
-// Top/bottom bands stack nodes HORIZONTALLY → height inset is a fixed 1-row reservation.
-// The container only grows WIDER when the stacked nodes overflow the content width.
+// Uses the actual bounding box of band node positions rather than assuming a fixed
+// stacking order. This lets users freely reposition band nodes (e.g. side-by-side)
+// and have the container adapt to whatever arrangement they created.
 export function getScopeBandInsets(
   containerId: string,
   nodes: AppNode[],
@@ -180,42 +176,80 @@ export function getScopeBandInsets(
   const contentW = cW - oldSi.left - oldSi.right - gi.left - gi.right;
   const contentH = cH - oldSi.top  - oldSi.bottom - gi.top  - gi.bottom;
 
+  // Content edges in container-relative space
+  const contentLeft        = oldSi.left + gi.left;
+  const contentTop         = oldSi.top  + gi.top;
+  const contentRightEdge   = contentLeft + contentW;
+  const contentBottomEdge  = contentTop  + contentH;
+
   const maxNodeWidth = (side: BandSide) =>
     Math.max(0, ...bandNodesBySide[side].map((n) => getBandNodeVisualSize(n).width));
   const maxNodeHeight = (side: BandSide) =>
     Math.max(0, ...bandNodesBySide[side].map((n) => getBandNodeVisualSize(n).height));
-  const totalNodeWidth = (side: BandSide) =>
-    bandNodesBySide[side].reduce((sum, n) => sum + getBandNodeVisualSize(n).width, 0);
-  const totalNodeHeight = (side: BandSide) =>
-    bandNodesBySide[side].reduce((sum, n) => sum + getBandNodeVisualSize(n).height, 0);
 
-  // Fixed-width/height reservation per occupied side (one column/row regardless of count)
-  const rightW = bandNodesBySide.right.length > 0 ? BAND_PAD + maxNodeWidth("right") + BAND_PAD : 0;
-  const leftW  = bandNodesBySide.left.length  > 0 ? BAND_PAD + maxNodeWidth("left")  + BAND_PAD : 0;
-  const topH   = bandNodesBySide.top.length   > 0 ? BAND_PAD + maxNodeHeight("top")  + BAND_PAD : 0;
-  const botH   = bandNodesBySide.bottom.length > 0 ? BAND_PAD + maxNodeHeight("bottom") + BAND_PAD : 0;
+  // Position-based bounding extent helpers
+  const xExtent = (ns: AppNode[]) =>
+    ns.length
+      ? Math.max(...ns.map((n) => n.position.x + getBandNodeVisualSize(n).width)) + BAND_PAD
+      : 0;
+  const yExtent = (ns: AppNode[]) =>
+    ns.length
+      ? Math.max(...ns.map((n) => n.position.y + getBandNodeVisualSize(n).height)) + BAND_PAD
+      : 0;
+  const xMinExtent = (ns: AppNode[]) =>
+    ns.length
+      ? Math.min(...ns.map((n) => n.position.x)) - BAND_PAD
+      : 0;
+  const yMinExtent = (ns: AppNode[]) =>
+    ns.length
+      ? Math.min(...ns.map((n) => n.position.y)) - BAND_PAD
+      : 0;
 
-  // Right/left nodes stack vertically — only grow taller if they overflow the content height
-  const maxVertNeed = Math.max(
-    bandNodesBySide.right.length > 0
-      ? BAND_PAD + totalNodeHeight("right") + bandNodesBySide.right.length * BAND_PAD
-      : 0,
-    bandNodesBySide.left.length > 0
-      ? BAND_PAD + totalNodeHeight("left") + bandNodesBySide.left.length * BAND_PAD
-      : 0,
+  // Right band: at least one column wide; widens when nodes are placed side-by-side
+  const rightW = bandNodesBySide.right.length > 0
+    ? Math.max(
+        BAND_PAD + maxNodeWidth("right") + BAND_PAD,
+        xExtent(bandNodesBySide.right) - contentRightEdge,
+      )
+    : 0;
+
+  // Left band: at least one column wide; widens for side-by-side horizontal arrangement
+  const leftW = bandNodesBySide.left.length > 0
+    ? Math.max(
+        BAND_PAD + maxNodeWidth("left") + BAND_PAD,
+        contentLeft - xMinExtent(bandNodesBySide.left),
+      )
+    : 0;
+
+  // Top band: at least one row tall; taller for vertical arrangement
+  const topH = bandNodesBySide.top.length > 0
+    ? Math.max(
+        BAND_PAD + maxNodeHeight("top") + BAND_PAD,
+        contentTop - yMinExtent(bandNodesBySide.top),
+      )
+    : 0;
+
+  // Bottom band: at least one row tall; taller for vertical arrangement
+  const botH = bandNodesBySide.bottom.length > 0
+    ? Math.max(
+        BAND_PAD + maxNodeHeight("bottom") + BAND_PAD,
+        yExtent(bandNodesBySide.bottom) - contentBottomEdge,
+      )
+    : 0;
+
+  // Right/left bands may extend below content bottom (additional rows of nodes)
+  const heightOverflow = Math.max(
+    0,
+    bandNodesBySide.right.length > 0 ? yExtent(bandNodesBySide.right) - contentBottomEdge : 0,
+    bandNodesBySide.left.length  > 0 ? yExtent(bandNodesBySide.left)  - contentBottomEdge : 0,
   );
-  const heightOverflow = Math.max(0, maxVertNeed - contentH);
 
-  // Top/bottom nodes stack horizontally — only grow wider if they overflow the content width
-  const maxHorizNeed = Math.max(
-    bandNodesBySide.top.length > 0
-      ? BAND_PAD + totalNodeWidth("top") + bandNodesBySide.top.length * BAND_PAD
-      : 0,
-    bandNodesBySide.bottom.length > 0
-      ? BAND_PAD + totalNodeWidth("bottom") + bandNodesBySide.bottom.length * BAND_PAD
-      : 0,
+  // Top/bottom bands may extend past content right edge (additional columns of nodes)
+  const widthOverflow = Math.max(
+    0,
+    bandNodesBySide.top.length    > 0 ? xExtent(bandNodesBySide.top)    - contentRightEdge : 0,
+    bandNodesBySide.bottom.length > 0 ? xExtent(bandNodesBySide.bottom) - contentRightEdge : 0,
   );
-  const widthOverflow = Math.max(0, maxHorizNeed - contentW);
 
   return {
     top:    topH,
@@ -377,6 +411,146 @@ export function redistributeScopeAffectedLayouts(nodes: AppNode[]): AppNode[] {
 
   for (const id of containerIds) {
     result = redistributeScopeBandForContainer(id, result);
+  }
+  return result;
+}
+
+// Applies pre-computed scopeInsets to a container and resizes it, WITHOUT shifting
+// child positions. Used during active drag so React Flow's live drag position is not
+// overridden for the node being dragged.
+export function applyInsetResizeOnly(
+  containerId: string,
+  newScopeInsets: ContainerInsets,
+  nodes: AppNode[],
+): AppNode[] {
+  const nodesById = new Map(nodes.map((n) => [n.id, n]));
+  const container = nodesById.get(containerId);
+  if (!container || !isNetworkContainerNode(container)) return nodes;
+
+  const data = container.data as NetworkContainerNodeData;
+  const oldInsets: ContainerInsets = data.scopeInsets   ?? { top: 0, right: 0, bottom: 0, left: 0 };
+  const gateInsets: ContainerInsets = data.gatewayInsets ?? { top: 0, right: 0, bottom: 0, left: 0 };
+
+  const totalOld = {
+    top:    oldInsets.top    + gateInsets.top,
+    right:  oldInsets.right  + gateInsets.right,
+    bottom: oldInsets.bottom + gateInsets.bottom,
+    left:   oldInsets.left   + gateInsets.left,
+  };
+  const totalNew = {
+    top:    newScopeInsets.top    + gateInsets.top,
+    right:  newScopeInsets.right  + gateInsets.right,
+    bottom: newScopeInsets.bottom + gateInsets.bottom,
+    left:   newScopeInsets.left   + gateInsets.left,
+  };
+
+  const { width: cW, height: cH } = getNodeSize(container);
+  const baseW = cW - totalOld.left - totalOld.right;
+  const baseH = cH - totalOld.top  - totalOld.bottom;
+  const newW = baseW + totalNew.left + totalNew.right;
+  const newH = baseH + totalNew.top  + totalNew.bottom;
+
+  // Shift container position to keep content area fixed (same as redistributeScopeBandForContainer)
+  const absPos = getAbsolutePosition(container, nodesById);
+  const newAbsX = absPos.x - (totalNew.left - totalOld.left);
+  const newAbsY = absPos.y - (totalNew.top  - totalOld.top);
+  const parentAbsPos = container.parentId
+    ? getAbsolutePosition(nodesById.get(container.parentId)!, nodesById)
+    : { x: 0, y: 0 };
+  const newRelPos = {
+    x: newAbsX - parentAbsPos.x,
+    y: newAbsY - parentAbsPos.y,
+  };
+
+  return nodes.map((n) => {
+    if (n.id !== containerId) return n;
+    return {
+      ...n,
+      width: newW,
+      height: newH,
+      position: newRelPos,
+      style: { ...n.style, width: newW, height: newH },
+      data: { ...n.data, scopeInsets: newScopeInsets },
+    };
+  });
+}
+
+// After a container's band grows, walk up its ancestor chain and expand each ancestor
+// that is now too small to contain the grown child (including the child's bands).
+// Interior children of the ancestor keep their positions; the ancestor's right/bottom
+// edge extends outward. Ancestor band nodes are re-anchored via redistributeScopeBandForContainer.
+export function propagateBandGrowthToAncestors(
+  containerId: string,
+  nodes: AppNode[],
+): AppNode[] {
+  let result = nodes;
+  let childId = containerId;
+
+  for (;;) {
+    const nodesById = new Map(result.map((n) => [n.id, n]));
+    const child = nodesById.get(childId);
+    if (!child || !child.parentId) break;
+
+    const ancestor = nodesById.get(child.parentId);
+    if (!ancestor || !isNetworkContainerNode(ancestor)) break;
+
+    const ancData = ancestor.data as NetworkContainerNodeData;
+    const ancGi: ContainerInsets = ancData.gatewayInsets ?? { top: 0, right: 0, bottom: 0, left: 0 };
+    const ancSi: ContainerInsets = ancData.scopeInsets   ?? { top: 0, right: 0, bottom: 0, left: 0 };
+    const { width: ancW, height: ancH } = getNodeSize(ancestor);
+
+    // Content area of ancestor (excluding insets)
+    const contentLeft  = ancSi.left  + ancGi.left;
+    const contentTop   = ancSi.top   + ancGi.top;
+    const contentW = ancW - (ancSi.left + ancGi.left) - (ancSi.right  + ancGi.right);
+    const contentH = ancH - (ancSi.top  + ancGi.top)  - (ancSi.bottom + ancGi.bottom);
+
+    // Child's extent within ancestor space (child position is relative to ancestor)
+    const { width: childW, height: childH } = getNodeSize(child);
+    const childRight  = child.position.x + childW;
+    const childBottom = child.position.y + childH;
+
+    const neededContentW = childRight  - contentLeft;
+    const neededContentH = childBottom - contentTop;
+
+    const growW = Math.max(0, neededContentW - contentW);
+    const growH = Math.max(0, neededContentH - contentH);
+
+    if (growW === 0 && growH === 0) break; // no overflow, stop propagation
+
+    // Grow the ancestor's content area rightward/downward (position stays fixed)
+    const newAncW = ancW + growW;
+    const newAncH = ancH + growH;
+
+    result = result.map((n) => {
+      if (n.id !== ancestor.id) return n;
+      return {
+        ...n,
+        width: newAncW,
+        height: newAncH,
+        style: { ...n.style, width: newAncW, height: newAncH },
+      };
+    });
+
+    // Re-anchor the ancestor's own band nodes now that its content area changed
+    result = redistributeScopeBandForContainer(ancestor.id, result);
+
+    childId = ancestor.id;
+  }
+
+  return result;
+}
+
+// Like redistributeScopeAffectedLayouts but also propagates band growth to ancestors.
+export function redistributeScopeAffectedLayoutsWithPropagation(nodes: AppNode[]): AppNode[] {
+  let result = nodes;
+  const containerIds = result
+    .filter((n) => isRegionNode(n) || isVpcNode(n))
+    .map((n) => n.id);
+
+  for (const id of containerIds) {
+    result = redistributeScopeBandForContainer(id, result);
+    result = propagateBandGrowthToAncestors(id, result);
   }
   return result;
 }
