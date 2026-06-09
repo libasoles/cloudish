@@ -21,7 +21,15 @@ export const GATEWAY_SERVICE_IDS = new Set([
   "customer-gateway",
 ]);
 
-export const CIRCULAR_SERVICE_IDS = new Set(["elb", "nacl"]);
+export const MISCELLANEOUS_SERVICE_IDS = new Set([
+  "user",
+  "internet",
+  "web",
+  "mobile",
+  "database",
+]);
+
+export const CIRCULAR_SERVICE_IDS = new Set(["elb", "nacl", "gateway-endpoint"]);
 
 export function getServiceId(node: AwsServiceNodeType) {
   return node.data.serviceId ?? node.id;
@@ -58,8 +66,10 @@ export function getAwsServiceNodeData(service: AwsService): AwsServiceNodeData {
   };
 }
 
-export function getServiceNodeType(serviceId: string): "gatewayService" | "awsService" {
-  return GATEWAY_SERVICE_IDS.has(serviceId) ? "gatewayService" : "awsService";
+export function getServiceNodeType(serviceId: string): string {
+  if (GATEWAY_SERVICE_IDS.has(serviceId)) return "gatewayService";
+  if (MISCELLANEOUS_SERVICE_IDS.has(serviceId)) return serviceId;
+  return "awsService";
 }
 
 export function getNodePlacementScope(node: AwsServiceNodeType) {

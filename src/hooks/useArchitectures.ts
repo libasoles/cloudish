@@ -55,6 +55,25 @@ export function useRenameArchitecture() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: renameUserArchitecture,
+    onMutate: async ({ architectureId, name }) => {
+      const queryKey = getArchitecturesQueryKey(user?.uid);
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<SavedArchitecture[]>(queryKey);
+      queryClient.setQueryData<SavedArchitecture[]>(queryKey, (old) =>
+        old?.map((a) =>
+          a.architectureId === architectureId ? { ...a, name } : a,
+        ) ?? old,
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(
+          getArchitecturesQueryKey(user?.uid),
+          context.previous,
+        );
+      }
+    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: getArchitecturesQueryKey(user?.uid),

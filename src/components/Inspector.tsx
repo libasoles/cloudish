@@ -69,6 +69,10 @@ export default function Inspector() {
     selectedNode?.type === "gatewayService"
       ? (selectedNode as AwsServiceNodeType)
       : null;
+  const selectedMiscNodeServiceId =
+    selectedNode?.type === "user" || selectedNode?.type === "internet"
+      ? selectedNode.type
+      : null;
   const selectedPlainTextNode =
     selectedNode?.type === "plainText" ? selectedNode : null;
   const selectedPlainTextData =
@@ -164,7 +168,18 @@ export default function Inspector() {
         </div>
 
         <div className="flex flex-col gap-2">
-          {selectedAwsNode && <RelatedServicesPanel node={selectedAwsNode} />}
+          {selectedAwsNode && (
+            <RelatedServicesPanel
+              nodeId={selectedAwsNode.id}
+              serviceId={selectedAwsNode.data.serviceId ?? selectedAwsNode.id}
+            />
+          )}
+          {selectedMiscNodeServiceId && selectedNode && (
+            <RelatedServicesPanel
+              nodeId={selectedNode.id}
+              serviceId={selectedMiscNodeServiceId}
+            />
+          )}
         </div>
 
         <div className="mt-auto border-t border-border pt-3">

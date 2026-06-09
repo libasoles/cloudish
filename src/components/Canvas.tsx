@@ -365,6 +365,7 @@ export default function Canvas() {
     setViewport,
     setCurrentArchitectureId,
     setProjectName,
+    setProjectNameSilently,
     commitGraphChange,
     isDirty,
     markSaved,
@@ -649,23 +650,23 @@ export default function Canvas() {
 
   const handleProjectNameChange = useCallback(
     (nextName: string) => {
-      setProjectName(nextName);
-
-      if (!user || !currentArchitectureId) return;
-
-      renameArchitectureMutation.mutate(
-        {
-          architectureId: currentArchitectureId,
-          name: nextName,
-        },
-        {
-          onError: (error) => {
-            console.error(error);
-          },
-        },
-      );
+      if (user && currentArchitectureId) {
+        setProjectNameSilently(nextName);
+        renameArchitectureMutation.mutate(
+          { architectureId: currentArchitectureId, name: nextName },
+          { onError: (error) => console.error(error) },
+        );
+      } else {
+        setProjectName(nextName);
+      }
     },
-    [currentArchitectureId, renameArchitectureMutation, setProjectName, user],
+    [
+      currentArchitectureId,
+      renameArchitectureMutation,
+      setProjectName,
+      setProjectNameSilently,
+      user,
+    ],
   );
 
   const handleReset = useCallback(() => {

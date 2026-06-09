@@ -72,7 +72,7 @@ export default function EditableNodeLabel({
       )}
       style={{
         display: "-webkit-box",
-        WebkitLineClamp: 2,
+        WebkitLineClamp: 3,
         WebkitBoxOrient: "vertical",
         overflowWrap: "anywhere",
       }}
