@@ -18,6 +18,7 @@ import {
   resizeContainerNode,
 } from "@/lib/graph-utils";
 import { duplicateSelectedGraph } from "@/lib/node-duplication";
+import type { BandSide } from "@/lib/placement";
 import type {
   AppNode,
   AppEdge,
@@ -45,6 +46,7 @@ type FlowStore = {
   inspectorOpen: boolean;
   dropTargetNodeId: string | null;
   dropPreview: ContainerDropPreview | null;
+  dropBandSide: BandSide | null;
   editingEdgeId: string | null;
   selectionBoxActive: boolean;
   setSelectionBoxActive: (v: boolean) => void;
@@ -77,6 +79,7 @@ type FlowStore = {
   setInspectorOpen: (updater: boolean | ((prev: boolean) => boolean)) => void;
   setDropTargetNodeId: (id: string | null) => void;
   setDropPreview: (preview: ContainerDropPreview | null) => void;
+  setDropBandSide: (side: BandSide | null) => void;
   setEditingEdgeId: (id: string | null) => void;
   toggleAzSync: (azId: string, synced: boolean) => void;
 };
@@ -325,6 +328,8 @@ export const useFlowStore = create<FlowStore>()((set) => ({
   dropTargetNodeId: null,
   setDropTargetNodeId: (id) =>
     set((s) => (s.dropTargetNodeId === id ? s : { dropTargetNodeId: id })),
+  dropBandSide: null,
+  setDropBandSide: (side) => set({ dropBandSide: side }),
   dropPreview: null,
   setDropPreview: (preview) =>
     set((s) => {
