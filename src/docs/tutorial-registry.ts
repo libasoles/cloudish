@@ -22,6 +22,7 @@ export const TUTORIAL_LAZY_MAP: Record<string, LazyComponent> = {
   'keyboard-shortcuts': lazy(() => import('./tutorials/keyboard-shortcuts')),
   'edge-inspector': lazy(() => import('./tutorials/edge-inspector')),
   'special-nodes': lazy(() => import('./tutorials/special-nodes')),
+  'guardar-y-exportar': lazy(() => import('./tutorials/guardar-y-exportar')),
 }
 
 export const TUTORIALS: TutorialMeta[] = [
@@ -80,6 +81,16 @@ export const TUTORIALS: TutorialMeta[] = [
     sections: [
       { id: 'api-gateway-rutas', title: 'API Gateway: rutas HTTP' },
       { id: 'vpn-gateway-conexion', title: 'VPN Gateway y Customer Gateway' },
+    ],
+  },
+  {
+    id: 'guardar-y-exportar',
+    title: 'Guardar y exportar',
+    description: 'Guarda tus arquitecturas en la nube y expórtalas como imagen, Terraform o CloudFormation.',
+    sections: [
+      { id: 'guardar', title: 'Guardar arquitectura' },
+      { id: 'proyectos-guardados', title: 'Proyectos guardados' },
+      { id: 'exportar', title: 'Exportar arquitectura' },
     ],
   },
 ]

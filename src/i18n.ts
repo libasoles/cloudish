@@ -36,6 +36,9 @@ export const UI_TEXT = {
     mobile: "Mobile",
     mobileDescription:
       "Mobile client consuming applications, APIs, or backend services.",
+    database: "Database",
+    databaseDescription:
+      "Generic database dependency used to represent persistent data storage.",
     regionDescription:
       "Top-level AWS Region container for VPCs and network scope.",
     vpc: "VPC",
@@ -199,6 +202,9 @@ export const UI_TEXT = {
     mobile: "Móvil",
     mobileDescription:
       "Cliente móvil que consume aplicaciones, APIs o servicios backend.",
+    database: "Database",
+    databaseDescription:
+      "Dependencia de base de datos genérica para representar almacenamiento persistente.",
     regionDescription:
       "Contenedor principal de Región AWS para VPCs y alcance de red.",
     vpc: "VPC",

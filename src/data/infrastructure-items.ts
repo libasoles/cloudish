@@ -8,6 +8,7 @@ import {
   Box,
   Monitor,
   Smartphone,
+  Database,
 } from "lucide-react";
 import { VpcIcon } from "@/components/icons/VpcIcon";
 import { AWS_SERVICE_NODE_TYPE, type DragTool } from "@/lib/drag-tools";
@@ -99,6 +100,15 @@ export const CLIENTS: InfrastructureItem[] = [
     tool: { type: 'mobile' },
     Icon: Smartphone,
     aliases: 'app telefono smartphone tablet iOS Android cliente mobile',
+  },
+  {
+    id: 'infra-database',
+    name: 'Database',
+    descriptionKey: 'databaseDescription',
+    tooltipKey: 'database',
+    tool: { type: 'database' },
+    Icon: Database,
+    aliases: 'database db base datos data storage persistencia',
   },
 ];
 
