@@ -366,7 +366,7 @@ export function redistributeAzNodes(
   parentW: number,
   parentH: number,
   nodes: AppNode[],
-  insets = getVpcGatewayLayoutInsets(parentId, nodes),
+  insets = EMPTY_CONTAINER_INSETS,
 ): AppNode[] {
   const azChildren = nodes.filter(
     (n) => n.parentId === parentId && isAzNode(n),
