@@ -172,6 +172,9 @@ export default function NetworkContainerNode({
   const setNodes = useFlowStore((state) => state.setNodes);
   const commitGraphChange = useFlowStore((state) => state.commitGraphChange);
   const isDropTarget = useFlowStore((state) => state.dropTargetNodeId === id);
+  const dropBandSide = useFlowStore((state) =>
+    state.dropTargetNodeId === id ? state.dropBandSide : null,
+  );
   const previewChildType = useFlowStore((state) =>
     state.dropPreview?.parentId === id ? state.dropPreview.childType : null,
   );
@@ -237,10 +240,23 @@ export default function NetworkContainerNode({
       className={cn(
         containerNodeVariants({ tone: containerTone }),
         selected && "ring-2 ring-primary ring-offset-4 ring-offset-background",
-        isDropTarget && "ring-2 ring-emerald-400 ring-offset-2 ring-offset-background",
+        isDropTarget && !dropBandSide && "ring-2 ring-emerald-400 ring-offset-2 ring-offset-background",
+        isDropTarget && dropBandSide && "ring-2 ring-amber-400 ring-offset-2 ring-offset-background",
         data.pulseKey && "node-click-pulse",
       )}
     >
+      {isDropTarget && dropBandSide === "top" && (
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-1.5 rounded-t-[inherit] bg-amber-400/70 shadow-[0_0_10px_rgb(251_191_36_/_0.5)]" />
+      )}
+      {isDropTarget && dropBandSide === "bottom" && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1.5 rounded-b-[inherit] bg-amber-400/70 shadow-[0_0_10px_rgb(251_191_36_/_0.5)]" />
+      )}
+      {isDropTarget && dropBandSide === "left" && (
+        <div className="pointer-events-none absolute inset-y-0 left-0 w-1.5 rounded-l-[inherit] bg-amber-400/70 shadow-[0_0_10px_rgb(251_191_36_/_0.5)]" />
+      )}
+      {isDropTarget && dropBandSide === "right" && (
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-1.5 rounded-r-[inherit] bg-amber-400/70 shadow-[0_0_10px_rgb(251_191_36_/_0.5)]" />
+      )}
       {previewChildType && (
         <DropPreviewLayout
           childType={previewChildType}
