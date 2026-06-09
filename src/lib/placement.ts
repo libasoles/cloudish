@@ -12,7 +12,6 @@ import {
   getNodeSize,
   getNodeRect,
   getAbsolutePosition,
-  DEFAULT_NODE_WIDTH,
 } from "@/lib/graph-utils";
 
 // Numeric depth of the deepest allowed container per scope.
@@ -94,10 +93,13 @@ export function resolveBandSide(
 
 // ─── Band insets computation ──────────────────────────────────────────────────
 
-const BAND_NODE_SIZE = DEFAULT_NODE_WIDTH;   // 150 — nominal service node width
-// AwsServiceNode visual height: py-2(16) + icon(40) + gap-1(4) + label(~20) ≈ 80px
+// AwsServiceNode renders with min-w-20 (80px) and py-2+icon40+gap+label ≈ 80px tall
+const BAND_NODE_SIZE = 80;
 const BAND_NODE_H    = 80;
-const BAND_PAD       = 16;                   // padding around band nodes
+// Outer strip padding AND gap between consecutive nodes.
+// Sized so that after subtracting the 4px React Flow handle protrusion from each side,
+// the visible clearance (handle-tip to strip boundary) is ~28px — equal on both sides.
+const BAND_PAD       = 32;
 
 // Computes the insets (band widths) a container needs to reserve for scope-rejected
 // nodes currently parented to it via the band mechanism.

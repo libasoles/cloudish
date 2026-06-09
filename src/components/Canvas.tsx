@@ -1080,39 +1080,20 @@ export default function Canvas() {
               );
               parentedPosition = { position: safePos };
             } else {
-              // Check if drop landed deeper than allowed (the deepest intersecting container
-              // might be a subnet while allowed is the region)
-              const deepestContainer = getParentedPosition(nodePosition, { width: DEFAULT_NODE_WIDTH, height: DEFAULT_NODE_HEIGHT }, nodes);
-              const deepestContainerId = deepestContainer.parentId;
-              const isExpelled = deepestContainerId && deepestContainerId !== allowedAncestor.id;
-
-              if (isExpelled) {
-                // Place in the band of the allowed ancestor
-                const dropAbsCenter = {
-                  x: nodePosition.x + DEFAULT_NODE_WIDTH / 2,
-                  y: nodePosition.y + DEFAULT_NODE_HEIGHT / 2,
-                };
-                const nodesById2 = nodesById;
-                const ancRect = {
-                  ...getAbsolutePosition(allowedAncestor, nodesById2),
-                  width: (allowedAncestor.style as { width?: number })?.width ?? allowedAncestor.width ?? 720,
-                  height: (allowedAncestor.style as { height?: number })?.height ?? allowedAncestor.height ?? 480,
-                };
-                const side = resolveBandSide(dropAbsCenter, ancRect, scope, service.id);
-                const bandPos = computeBandPlacement(allowedAncestor, side, nodes);
-                parentedPosition = bandPos;
-                extraData = { bandSide: side };
-              } else {
-                // Drop is already within the allowed ancestor or directly on canvas — normal placement
-                const ancPos = getAbsolutePosition(allowedAncestor, nodesById);
-                parentedPosition = {
-                  parentId: allowedAncestor.id,
-                  position: {
-                    x: nodePosition.x - ancPos.x,
-                    y: nodePosition.y - ancPos.y,
-                  },
-                };
-              }
+              // Always place in the band of the allowed ancestor for non-subnet scope
+              const dropAbsCenter = {
+                x: nodePosition.x + DEFAULT_NODE_WIDTH / 2,
+                y: nodePosition.y + DEFAULT_NODE_HEIGHT / 2,
+              };
+              const ancRect = {
+                ...getAbsolutePosition(allowedAncestor, nodesById),
+                width: (allowedAncestor.style as { width?: number })?.width ?? allowedAncestor.width ?? 720,
+                height: (allowedAncestor.style as { height?: number })?.height ?? allowedAncestor.height ?? 480,
+              };
+              const side = resolveBandSide(dropAbsCenter, ancRect, scope, service.id);
+              const bandPos = computeBandPlacement(allowedAncestor, side, nodes);
+              parentedPosition = bandPos;
+              extraData = { bandSide: side };
             }
           }
 
@@ -1564,6 +1545,10 @@ export default function Canvas() {
   const onDrop = useCallback(
     (event: DragEvent) => {
       event.preventDefault();
+      if (dragOverRafRef.current !== null) {
+        cancelAnimationFrame(dragOverRafRef.current);
+        dragOverRafRef.current = null;
+      }
       activeDragToolRef.current = null;
       setDropTargetNodeId(null);
       setDropPreview(null);
@@ -1617,6 +1602,10 @@ export default function Canvas() {
   }, []);
 
   const handleToolDragEnd = useCallback(() => {
+    if (dragOverRafRef.current !== null) {
+      cancelAnimationFrame(dragOverRafRef.current);
+      dragOverRafRef.current = null;
+    }
     activeDragToolRef.current = null;
     setDropTargetNodeId(null);
     setDropPreview(null);

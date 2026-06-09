@@ -66,6 +66,18 @@ When count changes in Inspector:
 - `getParentedPosition(position, size, nodes)` converts a global drop position to parent-relative (used when dropping service nodes).
 - Node ordering for React Flow subflow rendering: `orderNodesForSubflows()` → Region → VPC → AZ → Subnet → Services.
 
+## Scope Bands (non-subnet-scope services)
+
+Services with `placementScope: "regional"` or `"vpc"` (e.g., S3, RDS, CloudFront) live in a **band** around their allowed ancestor container rather than inside the content area.
+
+- Implementation: `src/lib/placement.ts` — `computeBandPlacement`, `getBandNodePosition`, `getScopeBandInsets`, `redistributeScopeBandForContainer`.
+- Band sides: `"top" | "right" | "bottom" | "left"`. Determined by `resolveBandSide()` based on drop position relative to container bounds.
+- Band nodes have `data.bandSide` set; absent means free-floating inside the container.
+- `BAND_NODE_SIZE = BAND_NODE_H = 80` — matches the AwsServiceNode visual dimensions (`min-w-20`, `≈80px tall`). Do NOT set this to `DEFAULT_NODE_WIDTH` (150) — that's the hit-test size, not the visual size.
+- **Initial drop**: `addToolAtPosition` in Canvas.tsx always uses band placement for non-subnet-scope nodes when an allowed ancestor is found — regardless of whether the drop landed inside a deeper container. Free placement inside the ancestor is intentionally disallowed on initial drop.
+- **Drag reparenting**: `syncNodeSubnet` allows a user to drag a band node directly inside the allowed ancestor (removing `bandSide`). This is intentional: drag gives explicit control, initial drop does not.
+- Container grows outward via `redistributeScopeAffectedLayouts` after each band placement.
+
 ## Drag-and-Drop Reparenting
 
 `syncNodeSubnet` in `src/components/Canvas.tsx` runs on every `onNodeDragStop`.
