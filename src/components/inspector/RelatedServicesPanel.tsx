@@ -1,11 +1,17 @@
 import { useState } from "react";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, ArrowUp, ArrowDown } from "lucide-react";
 import { AwsServiceIcon } from "@/components/AwsServiceIcon";
 import { AWS_SERVICES } from "@/data/aws-services";
 import { SERVICE_RELATIONS } from "@/data/aws-service-relations";
 import { UI_TEXT, getBrowserLocale } from "@/i18n";
 import { getServiceId } from "@/lib/node-utils";
 import { useFlowStore } from "@/store/flowStore";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import type { AwsServiceNodeType } from "@/components/nodes/AwsServiceNode";
 
 type RelatedServicesPanelProps = {
@@ -36,20 +42,25 @@ export function RelatedServicesPanel({ node }: RelatedServicesPanelProps) {
       <p className="pb-4 text-xs font-medium text-muted-foreground">
         {t.relatedServices}
       </p>
+      <TooltipProvider>
       <ul className="space-y-0.5">
         {visible.map((service) => (
           <li
             key={service.id}
             className="flex items-center gap-1 rounded-md py-0.5 hover:bg-muted/20"
           >
-            <button
-              type="button"
-              title={t.addToLeft}
-              onClick={() => addRelatedNode(node.id, service.id, "left")}
-              className="flex-none rounded p-1 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground -ml-1.5"
-            >
-              <ArrowLeft className="h-3 w-3" />
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => addRelatedNode(node.id, service.id, "left")}
+                  className="flex-none rounded p-1 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground -ml-1.5"
+                >
+                  <ArrowLeft className="h-3 w-3" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top">{t.addToLeft}</TooltipContent>
+            </Tooltip>
             <AwsServiceIcon
               slug={service.slug}
               category={service.category}
@@ -59,17 +70,46 @@ export function RelatedServicesPanel({ node }: RelatedServicesPanelProps) {
             <span className="flex-1 truncate text-xs text-foreground">
               {service.name}
             </span>
-            <button
-              type="button"
-              title={t.addToRight}
-              onClick={() => addRelatedNode(node.id, service.id, "right")}
-              className="flex-none rounded p-1 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground -mr-1.5"
-            >
-              <ArrowRight className="h-3 w-3" />
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => addRelatedNode(node.id, service.id, "top")}
+                  className="flex-none rounded p-1 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+                >
+                  <ArrowUp className="h-3 w-3" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top">{t.addToTop}</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => addRelatedNode(node.id, service.id, "bottom")}
+                  className="flex-none rounded p-1 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+                >
+                  <ArrowDown className="h-3 w-3" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top">{t.addToBottom}</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => addRelatedNode(node.id, service.id, "right")}
+                  className="flex-none rounded p-1 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground -mr-1.5"
+                >
+                  <ArrowRight className="h-3 w-3" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top">{t.addToRight}</TooltipContent>
+            </Tooltip>
           </li>
         ))}
       </ul>
+      </TooltipProvider>
       {hasMore && (
         <button
           type="button"

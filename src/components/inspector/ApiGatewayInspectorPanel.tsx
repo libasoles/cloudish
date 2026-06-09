@@ -38,7 +38,7 @@ type Props = {
 export function ApiGatewayInspectorPanel({ node }: Props) {
   const setNodes = useFlowStore((s) => s.setNodes);
   const locale = getBrowserLocale();
-  const t = UI_TEXT[locale] as typeof UI_TEXT["en"];
+  const t = UI_TEXT[locale] as (typeof UI_TEXT)["en"];
 
   const [routes, setRoutes] = useState<ApiGatewayRoute[]>(() =>
     node.data.routes?.length
@@ -86,7 +86,9 @@ export function ApiGatewayInspectorPanel({ node }: Props) {
     <div className="space-y-4">
       <AwsServiceInspectorPanel node={node} />
       <div className="border-t border-border pt-4 space-y-3">
-        <p className="text-sm font-medium text-foreground">{t.apiGatewayRoutes}</p>
+        <p className="text-sm font-medium text-foreground pb-2">
+          {t.apiGatewayRoutes}
+        </p>
         {routes.map((route) => (
           <div key={route.id} className="flex items-center gap-2">
             <Select

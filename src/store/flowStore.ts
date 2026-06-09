@@ -15,6 +15,7 @@ import {
 } from "@/lib/az-sync";
 import {
   DEFAULT_NODE_WIDTH,
+  DEFAULT_NODE_HEIGHT,
   getNetworkContainerType,
   isNetworkContainerNode,
   redistributeGatewayAffectedVpcLayouts,
@@ -87,7 +88,7 @@ type FlowStore = {
   setDropBandSide: (side: BandSide | null) => void;
   setEditingEdgeId: (id: string | null) => void;
   toggleAzSync: (azId: string, synced: boolean) => void;
-  addRelatedNode: (sourceNodeId: string, serviceId: string, side: "left" | "right") => void;
+  addRelatedNode: (sourceNodeId: string, serviceId: string, side: "left" | "right" | "top" | "bottom") => void;
 };
 
 function resizeChangedContainers(
@@ -380,9 +381,19 @@ export const useFlowStore = create<FlowStore>()((set) => ({
           return x ? Math.max(m, parseInt(x[1])) : m;
         }, 0) + 1;
 
-      const GAP = 60;
-      const offsetX =
-        side === "left" ? -(DEFAULT_NODE_WIDTH + GAP) : DEFAULT_NODE_WIDTH + GAP;
+      const H_GAP = 60;
+      const V_GAP = 160;
+      const isHorizontal = side === "left" || side === "right";
+      const offsetX = isHorizontal
+        ? side === "left"
+          ? -(DEFAULT_NODE_WIDTH + H_GAP)
+          : DEFAULT_NODE_WIDTH + H_GAP
+        : 0;
+      const offsetY = isHorizontal
+        ? 0
+        : side === "top"
+          ? -(DEFAULT_NODE_HEIGHT + V_GAP)
+          : DEFAULT_NODE_HEIGHT + V_GAP;
       const newNodeId = `${serviceId}-${nextNum}`;
 
       const newNode: AppNode = {
@@ -392,18 +403,19 @@ export const useFlowStore = create<FlowStore>()((set) => ({
         selected: false,
         position: {
           x: sourceNode.position.x + offsetX,
-          y: sourceNode.position.y,
+          y: sourceNode.position.y + offsetY,
         },
         ...(sourceNode.parentId ? { parentId: sourceNode.parentId } : {}),
         data: getAwsServiceNodeData(service),
       };
 
+      const isSourceFirst = side === "right" || side === "bottom";
       const newEdge: AppEdge = {
         id: `edge-${nextEdgeNum}`,
-        source: side === "right" ? sourceNodeId : newNodeId,
-        sourceHandle: "right",
-        target: side === "right" ? newNodeId : sourceNodeId,
-        targetHandle: "left",
+        source: isSourceFirst ? sourceNodeId : newNodeId,
+        sourceHandle: isHorizontal ? "right" : "bottom",
+        target: isSourceFirst ? newNodeId : sourceNodeId,
+        targetHandle: isHorizontal ? "left" : "top",
         style: { stroke: "#ffffff", strokeWidth: 2.5 },
       };
 

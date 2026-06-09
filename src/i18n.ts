@@ -202,6 +202,8 @@ export const UI_TEXT = {
     relatedServices: "Add related services",
     loadMore: "Load more",
     addToLeft: "Add to the left",
+    addToTop: "Add above",
+    addToBottom: "Add below",
     addToRight: "Add to the right",
   },
   es: {
@@ -392,6 +394,8 @@ export const UI_TEXT = {
     relatedServices: "Agrega servicios relacionados",
     loadMore: "Cargar más",
     addToLeft: "Agregar a la izquierda",
+    addToTop: "Agregar arriba",
+    addToBottom: "Agregar abajo",
     addToRight: "Agregar a la derecha",
   },
 } as const;
