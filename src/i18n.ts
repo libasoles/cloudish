@@ -199,6 +199,10 @@ export const UI_TEXT = {
     apiGatewayAddRoute: "Add route",
     apiGatewayRemoveRoute: "Remove route",
     apiGatewayRoutePathPlaceholder: "/path",
+    relatedServices: "Related services",
+    loadMore: "Load more",
+    addToLeft: "Add to the left",
+    addToRight: "Add to the right",
   },
   es: {
     dragAndDrop: APP_TITLE,
@@ -385,6 +389,10 @@ export const UI_TEXT = {
     apiGatewayAddRoute: "Agregar ruta",
     apiGatewayRemoveRoute: "Eliminar ruta",
     apiGatewayRoutePathPlaceholder: "/path",
+    relatedServices: "Servicios relacionados",
+    loadMore: "Cargar más",
+    addToLeft: "Agregar a la izquierda",
+    addToRight: "Agregar a la derecha",
   },
 } as const;
 

@@ -7,16 +7,21 @@ import {
 import { create } from "zustand";
 import { initialNodes, initialEdges } from "@/data/initial-flow";
 import {
+  addEdgeWithAzSync,
+  addNodeWithAzSync,
   removeSyncedEdges,
   removeSyncedNodes,
   toggleAzSyncState,
 } from "@/lib/az-sync";
 import {
+  DEFAULT_NODE_WIDTH,
   getNetworkContainerType,
   isNetworkContainerNode,
   redistributeGatewayAffectedVpcLayouts,
   resizeContainerNode,
 } from "@/lib/graph-utils";
+import { getAwsServiceNodeData, getServiceNodeType } from "@/lib/node-utils";
+import { AWS_SERVICES } from "@/data/aws-services";
 import { duplicateSelectedGraph } from "@/lib/node-duplication";
 import type { BandSide } from "@/lib/placement";
 import type {
@@ -82,6 +87,7 @@ type FlowStore = {
   setDropBandSide: (side: BandSide | null) => void;
   setEditingEdgeId: (id: string | null) => void;
   toggleAzSync: (azId: string, synced: boolean) => void;
+  addRelatedNode: (sourceNodeId: string, serviceId: string, side: "left" | "right") => void;
 };
 
 function resizeChangedContainers(
@@ -352,6 +358,65 @@ export const useFlowStore = create<FlowStore>()((set) => ({
       return {
         ...next,
         ...getNodeDerivatives(next.nodes),
+        isDirty: true,
+      };
+    }),
+
+  addRelatedNode: (sourceNodeId, serviceId, side) =>
+    set((s) => {
+      const sourceNode = s.nodes.find((n) => n.id === sourceNodeId);
+      if (!sourceNode) return {};
+      const service = AWS_SERVICES.find((sv) => sv.id === serviceId);
+      if (!service) return {};
+
+      const nextNum =
+        s.nodes.reduce((m, n) => {
+          const x = n.id.match(/-(\d+)$/);
+          return x ? Math.max(m, parseInt(x[1])) : m;
+        }, 0) + 1;
+      const nextEdgeNum =
+        s.edges.reduce((m, e) => {
+          const x = e.id.match(/^edge-(\d+)$/);
+          return x ? Math.max(m, parseInt(x[1])) : m;
+        }, 0) + 1;
+
+      const GAP = 60;
+      const offsetX =
+        side === "left" ? -(DEFAULT_NODE_WIDTH + GAP) : DEFAULT_NODE_WIDTH + GAP;
+      const newNodeId = `${serviceId}-${nextNum}`;
+
+      const newNode: AppNode = {
+        id: newNodeId,
+        type: getServiceNodeType(serviceId),
+        zIndex: 10,
+        selected: false,
+        position: {
+          x: sourceNode.position.x + offsetX,
+          y: sourceNode.position.y,
+        },
+        ...(sourceNode.parentId ? { parentId: sourceNode.parentId } : {}),
+        data: getAwsServiceNodeData(service),
+      };
+
+      const newEdge: AppEdge = {
+        id: `edge-${nextEdgeNum}`,
+        source: side === "right" ? sourceNodeId : newNodeId,
+        sourceHandle: "right",
+        target: side === "right" ? newNodeId : sourceNodeId,
+        targetHandle: "left",
+        style: { stroke: "#ffffff", strokeWidth: 2.5 },
+      };
+
+      const entry = { before: { nodes: s.nodes, edges: s.edges } };
+      const history = [...s.history, entry].slice(-MAX_HISTORY);
+      const nextNodes = addNodeWithAzSync(newNode, s.nodes);
+      const nextEdges = addEdgeWithAzSync(newEdge, nextNodes, s.edges);
+
+      return {
+        nodes: nextNodes,
+        ...getNodeDerivatives(nextNodes),
+        edges: nextEdges,
+        history,
         isDirty: true,
       };
     }),
