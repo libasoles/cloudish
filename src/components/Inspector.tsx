@@ -30,6 +30,7 @@ import { PlainTextInspectorPanel } from "@/components/inspector/PlainTextInspect
 import { AwsServiceInspectorPanel } from "@/components/inspector/AwsServiceInspectorPanel";
 import { ApiGatewayInspectorPanel } from "@/components/inspector/ApiGatewayInspectorPanel";
 import { NoOptionsInspectorPanel } from "@/components/inspector/NoOptionsInspectorPanel";
+import { RelatedServicesPanel } from "@/components/inspector/RelatedServicesPanel";
 import { SavedProjectsList } from "@/components/inspector/SavedProjectsList";
 const AuthDialog = lazy(() => import("@/components/AuthDialog"));
 
@@ -150,6 +151,7 @@ export default function Inspector() {
             </div>
           )}
         </div>
+        {selectedAwsNode && <RelatedServicesPanel node={selectedAwsNode} />}
         {selectedAwsNode && selectedAwsDescription && (
           <div className="my-4 border-t border-border pt-4 text-sm leading-5 text-muted-foreground">
             {selectedAwsDescription}
