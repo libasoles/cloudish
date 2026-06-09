@@ -396,10 +396,10 @@ export function computeBandPlacement(
   const si: ContainerInsets = data.scopeInsets   ?? { top: 0, right: 0, bottom: 0, left: 0 };
   const gi: ContainerInsets = data.gatewayInsets ?? { top: 0, right: 0, bottom: 0, left: 0 };
 
-  // Use content dimensions so all nodes on the same band side stay aligned.
-  // Total width/height already includes accumulated insets — strip them out.
-  const contentW = cW - (si.left + gi.left) - (si.right  + gi.right);
-  const contentH = cH - (si.top  + gi.top)  - (si.bottom + gi.bottom);
+  const leftInset = si.left + gi.left;
+  const topInset  = si.top  + gi.top;
+  const contentW = cW - leftInset - (si.right  + gi.right);
+  const contentH = cH - topInset  - (si.bottom + gi.bottom);
 
   const existingSideNodes = nodes.filter(
     (n) => n.parentId === container.id && getBandSide(n) === side,
@@ -408,16 +408,27 @@ export function computeBandPlacement(
   const nodeSize = getBandNodeVisualSize(serviceId);
   const previousNodeSizes = existingSideNodes.map(getBandNodeVisualSize);
 
+  // Pass the content-area edge coordinates in container space so getBandNodePosition
+  // produces correct absolute-relative positions regardless of opposite-side insets.
+  // right band needs x = leftInset + contentW + BAND_PAD (not just contentW + BAND_PAD).
+  // bottom band needs y = topInset + contentH + BAND_PAD (not just contentH + BAND_PAD).
+  const rawPos = getBandNodePosition(
+    side,
+    slotIndex,
+    leftInset + contentW,
+    topInset + contentH,
+    nodeSize,
+    previousNodeSizes,
+  );
+
+  // Stacking origin for top/bottom bands (horizontal) must start at the content left edge.
+  // Stacking origin for left/right bands (vertical) must start at the content top edge.
+  const x = (side === "top" || side === "bottom") ? rawPos.x + leftInset : rawPos.x;
+  const y = (side === "left" || side === "right") ? rawPos.y + topInset  : rawPos.y;
+
   return {
     parentId: container.id,
-    position: getBandNodePosition(
-      side,
-      slotIndex,
-      contentW,
-      contentH,
-      nodeSize,
-      previousNodeSizes,
-    ),
+    position: { x, y },
   };
 }
 
