@@ -64,7 +64,7 @@ export default function GatewayServiceNode({
         position={Position.Left}
         id="left"
         className={vpnHandleClassName("left")}
-        style={{ top: 28, ...vpnHandleStyle("left") }}
+        style={{ top: 28, left: "calc(50% - 28px)", ...vpnHandleStyle("left") }}
       >
         {vpnHandleIds.has("left") && (
           <CustomerGatewayIcon className="size-7 text-purple-600 pointer-events-none" />
@@ -75,7 +75,7 @@ export default function GatewayServiceNode({
         position={Position.Right}
         id="right"
         className={vpnHandleClassName("right")}
-        style={{ top: 28, ...vpnHandleStyle("right") }}
+        style={{ top: 28, right: "calc(50% - 28px)", ...vpnHandleStyle("right") }}
       >
         {vpnHandleIds.has("right") && (
           <CustomerGatewayIcon className="size-7 text-purple-600 pointer-events-none" />
