@@ -16,8 +16,8 @@ export function SimpleContainerIcon({ className }: Props) {
     >
       {/* Main rectangle */}
       <rect x="3" y="6" width="18" height="14" rx="2" />
-      {/* Badge in top-left corner */}
-      <rect x="5" y="4" width="6" height="6" rx="1" fill="currentColor" />
+      {/* Badge in top-left corner - smaller vertically */}
+      <rect x="5" y="5" width="5" height="4" rx="1" fill="currentColor" />
     </svg>
   );
 }
