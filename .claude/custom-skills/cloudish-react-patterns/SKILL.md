@@ -10,6 +10,12 @@ description: React code style, state rules, and Zustand subscription patterns fo
 - **No nested ternaries** — use `if` statements or separate JSX conditions for clarity.
 - When choosing CSS classes from component state/props, prefer explicit variants (e.g. `class-variance-authority`) over long conditional class chains.
 
+## Node Composition
+
+- **Circular nodes compose `CircularNode`** (`src/components/nodes/CircularNode.tsx`), the single owner of circular node anatomy: wrapper, hover state, the white circle, selection ring/pulse, and all four React Flow `Handle`s with their geometry.
+- Node components must **not** declare `Handle`s for circular shapes. Per-handle visuals (e.g. the customer-gateway VPN overlay) are passed via the `handleDecorations` prop — see `buildVpnHandleDecorations` in `src/components/nodes/vpn-handle-decorations.tsx`.
+- `CircularNode` is icon-agnostic: pass any icon as `children` and the label through the `label` slot. Never couple it to a specific icon component.
+
 ## React State Rules
 
 - **Never call `setState` synchronously inside `useEffect`** to derive state from props, other state, or render-time calculations.

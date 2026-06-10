@@ -2,7 +2,7 @@ import { Handle, Position, type NodeProps, type Node } from "@xyflow/react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { AwsServiceIcon } from "@/components/AwsServiceIcon";
-import { CircularServiceIcon } from "@/components/CircularServiceIcon";
+import CircularNode from "@/components/nodes/CircularNode";
 import EditableNodeLabel from "@/components/EditableNodeLabel";
 import { CustomerGatewayIcon } from "@/components/icons/CustomerGatewayIcon";
 import type { AwsCategory, PlacementScope } from "@/data/aws-services";
@@ -160,53 +160,25 @@ export default function AwsServiceNode({
 
   if (data.meta?.shape === "circular") {
     return (
-      <div
-        className={cn(
-          "flex flex-col items-center gap-1.5 min-w-20",
-          isHovering && "node-hovering",
-        )}
-        onMouseEnter={() => setIsHovering(true)}
-        onMouseLeave={() => setIsHovering(false)}
+      <CircularNode
+        selected={selected}
+        pulseKey={data.pulseKey}
+        label={
+          <EditableNodeLabel
+            value={data.name}
+            editLabel={t.editNodeName}
+            className="text-white"
+            onCommit={renameNode}
+          />
+        }
       >
-        <Handle
-          type="source"
-          position={Position.Left}
-          id="left"
-          style={{ top: 28, left: "calc(50% - 28px)" }}
-        />
-        <Handle
-          type="source"
-          position={Position.Right}
-          id="right"
-          style={{ top: 28, right: "calc(50% - 28px)" }}
-        />
-        <Handle
-          type="source"
-          position={Position.Top}
-          id="top"
-          className="handle-vertical"
-        />
-        <Handle
-          type="source"
-          position={Position.Bottom}
-          id="bottom"
-          className="handle-vertical"
-          style={{ top: 56, bottom: "auto", transform: "translate(-50%, -50%)" }}
-        />
-        <CircularServiceIcon
+        <AwsServiceIcon
           slug={data.slug}
           category={data.category}
           name={data.name}
-          selected={selected}
-          pulseKey={data.pulseKey}
+          size={40}
         />
-        <EditableNodeLabel
-          value={data.name}
-          editLabel={t.editNodeName}
-          className="text-white"
-          onCommit={renameNode}
-        />
-      </div>
+      </CircularNode>
     );
   }
 

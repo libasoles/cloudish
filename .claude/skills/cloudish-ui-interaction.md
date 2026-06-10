@@ -64,8 +64,9 @@ await page.waitForTimeout(1000)
 
 ### Via search box
 
-The search results use `onMouseDown`, so use `dispatchEvent('mousedown')` — plain
-`click()` closes the dropdown before the handler fires.
+Search results are `li` elements added with a plain `click()`. (Older versions
+required `dispatchEvent('mousedown')`; as of June 2026 `mousedown` alone does
+**not** add the node — use `click()`.)
 
 ```typescript
 const search = page.locator('input[placeholder]').first()
@@ -74,7 +75,7 @@ await search.fill('Internet Gateway')
 await page.waitForTimeout(800) // wait for dropdown to render
 const result = page.locator('li').filter({ hasText: /Internet Gateway/i }).first()
 const prev = await page.locator('.react-flow__node').count()
-await result.dispatchEvent('mousedown')
+await result.click()
 await page.waitForFunction(
   (n: number) => document.querySelectorAll('.react-flow__node').length > n,
   prev,
