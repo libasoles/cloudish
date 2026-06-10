@@ -6,7 +6,9 @@ import {
   type AwsServiceNodeType,
   type AwsServiceNodeData,
 } from "@/components/nodes/AwsServiceNode";
+import { type MiscellaneousNodeData } from "@/components/nodes/MiscellaneousNode";
 import {
+  UI_TEXT,
   getBrowserLocale,
   getServiceDescription as getLocalizedServiceDescription,
 } from "@/i18n";
@@ -21,13 +23,33 @@ export const GATEWAY_SERVICE_IDS = new Set([
   "customer-gateway",
 ]);
 
-export const MISCELLANEOUS_SERVICE_IDS = new Set([
+export type MiscellaneousServiceId =
+  | "user"
+  | "internet"
+  | "web"
+  | "mobile"
+  | "database";
+
+export const MISCELLANEOUS_SERVICE_IDS = new Set<string>([
   "user",
   "internet",
   "web",
   "mobile",
   "database",
-]);
+] satisfies MiscellaneousServiceId[]);
+
+export function isMiscellaneousServiceId(
+  id: string,
+): id is MiscellaneousServiceId {
+  return MISCELLANEOUS_SERVICE_IDS.has(id);
+}
+
+export function getMiscNodeData(
+  serviceId: MiscellaneousServiceId,
+): MiscellaneousNodeData {
+  const label = UI_TEXT[getBrowserLocale()][serviceId];
+  return { label, fields: { label } };
+}
 
 export const CIRCULAR_SERVICE_IDS = new Set(["elb", "nacl", "gateway-endpoint"]);
 

@@ -21,8 +21,13 @@ import {
   redistributeGatewayAffectedVpcLayouts,
   resizeContainerNode,
 } from "@/lib/graph-utils";
-import { getAwsServiceNodeData, getServiceNodeType, MISCELLANEOUS_SERVICE_IDS, ALL_SERVICES } from "@/lib/node-utils";
-import { getBrowserLocale, UI_TEXT } from "@/i18n";
+import {
+  getAwsServiceNodeData,
+  getMiscNodeData,
+  getServiceNodeType,
+  isMiscellaneousServiceId,
+  ALL_SERVICES,
+} from "@/lib/node-utils";
 import { duplicateSelectedGraph } from "@/lib/node-duplication";
 import type { BandSide } from "@/lib/placement";
 import type {
@@ -426,12 +431,6 @@ export const useFlowStore = create<FlowStore>()((set) => ({
           : DEFAULT_NODE_HEIGHT + V_GAP;
       const newNodeId = `${serviceId}-${nextNum}`;
 
-      const isMisc = MISCELLANEOUS_SERVICE_IDS.has(serviceId);
-      const t = UI_TEXT[getBrowserLocale()];
-      const miscLabelMap: Record<string, string> = {
-        user: t.user, internet: t.internet, web: t.web, mobile: t.mobile, database: t.database,
-      };
-      const miscLabel = isMisc ? (miscLabelMap[serviceId] ?? service.name) : "";
       const newNode: AppNode = {
         id: newNodeId,
         type: getServiceNodeType(serviceId),
@@ -442,8 +441,8 @@ export const useFlowStore = create<FlowStore>()((set) => ({
           y: sourceNode.position.y + offsetY,
         },
         ...(sourceNode.parentId ? { parentId: sourceNode.parentId } : {}),
-        data: isMisc
-          ? { label: miscLabel, fields: { label: miscLabel } }
+        data: isMiscellaneousServiceId(serviceId)
+          ? getMiscNodeData(serviceId)
           : getAwsServiceNodeData(service),
       };
 

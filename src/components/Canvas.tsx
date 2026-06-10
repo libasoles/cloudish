@@ -114,7 +114,13 @@ import {
   addNodeWithAzSync,
   syncNodeGroupPosition,
 } from "@/lib/az-sync";
-import { getAwsServiceNodeData, getServiceNodeType, getNodePlacementScope } from "@/lib/node-utils";
+import {
+  getAwsServiceNodeData,
+  getMiscNodeData,
+  getServiceNodeType,
+  getNodePlacementScope,
+  isMiscellaneousServiceId,
+} from "@/lib/node-utils";
 import {
   findAllowedAncestorForScope,
   computeBandPlacement,
@@ -1346,7 +1352,9 @@ export default function Canvas() {
             zIndex: 10,
             selected: true,
             ...parentedPosition,
-            data: { ...serviceData, ...extraData, ...pulseData },
+            data: isMiscellaneousServiceId(service.id)
+              ? { ...getMiscNodeData(service.id), ...pulseData }
+              : { ...serviceData, ...extraData, ...pulseData },
           };
 
           const nextNodes = addNodeWithAzSync(
@@ -1365,8 +1373,9 @@ export default function Canvas() {
         return;
       }
 
-      if (tool.type === "user") {
-        const nodeId = `user-${serviceIdRef.current++}`;
+      if (isMiscellaneousServiceId(tool.type)) {
+        const miscType = tool.type;
+        const nodeId = `${miscType}-${serviceIdRef.current++}`;
         const nodePosition = {
           x: position.x - SERVICE_DROP_OFFSET.x,
           y: position.y - SERVICE_DROP_OFFSET.y,
@@ -1380,135 +1389,13 @@ export default function Canvas() {
 
           const newNode: AppNode = {
             id: nodeId,
-            type: "user",
+            type: miscType,
             zIndex: 10,
             selected: true,
             ...parentedPosition,
-            data: { label: t.user, fields: { label: t.user }, ...pulseData },
+            data: { ...getMiscNodeData(miscType), ...pulseData },
           };
 
-          return {
-            nodes: addNodeWithAzSync(
-              newNode,
-              nodes.map((n) => ({ ...n, selected: false })),
-            ),
-            edges,
-          };
-        });
-        return;
-      }
-
-      if (tool.type === "internet") {
-        const nodeId = `internet-${serviceIdRef.current++}`;
-        const nodePosition = {
-          x: position.x - SERVICE_DROP_OFFSET.x,
-          y: position.y - SERVICE_DROP_OFFSET.y,
-        };
-        commitGraphChange(({ nodes, edges }) => {
-          const parentedPosition = getParentedPosition(
-            avoidNodeOverlap(nodePosition, VISUAL_NODE_SIZE, nodes),
-            { width: DEFAULT_NODE_WIDTH, height: DEFAULT_NODE_HEIGHT },
-            nodes,
-          );
-
-          const newNode: AppNode = {
-            id: nodeId,
-            type: "internet",
-            zIndex: 10,
-            selected: true,
-            ...parentedPosition,
-            data: {
-              label: t.internet,
-              fields: { label: t.internet },
-              ...pulseData,
-            },
-          };
-
-          return {
-            nodes: addNodeWithAzSync(
-              newNode,
-              nodes.map((n) => ({ ...n, selected: false })),
-            ),
-            edges,
-          };
-        });
-        return;
-      }
-
-      if (tool.type === "web") {
-        const nodeId = `web-${serviceIdRef.current++}`;
-        const nodePosition = {
-          x: position.x - SERVICE_DROP_OFFSET.x,
-          y: position.y - SERVICE_DROP_OFFSET.y,
-        };
-        commitGraphChange(({ nodes, edges }) => {
-          const parentedPosition = getParentedPosition(
-            avoidNodeOverlap(nodePosition, VISUAL_NODE_SIZE, nodes),
-            { width: DEFAULT_NODE_WIDTH, height: DEFAULT_NODE_HEIGHT },
-            nodes,
-          );
-          const newNode: AppNode = {
-            id: nodeId,
-            type: "web",
-            zIndex: 10,
-            selected: true,
-            ...parentedPosition,
-            data: { label: t.web, fields: { label: t.web }, ...pulseData },
-          };
-          return { nodes: addNodeWithAzSync(newNode, nodes.map((n) => ({ ...n, selected: false }))), edges };
-        });
-        return;
-      }
-
-      if (tool.type === "mobile") {
-        const nodeId = `mobile-${serviceIdRef.current++}`;
-        const nodePosition = {
-          x: position.x - SERVICE_DROP_OFFSET.x,
-          y: position.y - SERVICE_DROP_OFFSET.y,
-        };
-        commitGraphChange(({ nodes, edges }) => {
-          const parentedPosition = getParentedPosition(
-            avoidNodeOverlap(nodePosition, VISUAL_NODE_SIZE, nodes),
-            { width: DEFAULT_NODE_WIDTH, height: DEFAULT_NODE_HEIGHT },
-            nodes,
-          );
-          const newNode: AppNode = {
-            id: nodeId,
-            type: "mobile",
-            zIndex: 10,
-            selected: true,
-            ...parentedPosition,
-            data: { label: t.mobile, fields: { label: t.mobile }, ...pulseData },
-          };
-          return { nodes: addNodeWithAzSync(newNode, nodes.map((n) => ({ ...n, selected: false }))), edges };
-        });
-        return;
-      }
-
-      if (tool.type === "database") {
-        const nodeId = `database-${serviceIdRef.current++}`;
-        const nodePosition = {
-          x: position.x - SERVICE_DROP_OFFSET.x,
-          y: position.y - SERVICE_DROP_OFFSET.y,
-        };
-        commitGraphChange(({ nodes, edges }) => {
-          const parentedPosition = getParentedPosition(
-            avoidNodeOverlap(nodePosition, VISUAL_NODE_SIZE, nodes),
-            { width: DEFAULT_NODE_WIDTH, height: DEFAULT_NODE_HEIGHT },
-            nodes,
-          );
-          const newNode: AppNode = {
-            id: nodeId,
-            type: "database",
-            zIndex: 10,
-            selected: true,
-            ...parentedPosition,
-            data: {
-              label: t.database,
-              fields: { label: t.database },
-              ...pulseData,
-            },
-          };
           return {
             nodes: addNodeWithAzSync(
               newNode,
