@@ -55,7 +55,7 @@ export default function GatewayServiceNode({
 
   return (
     <div
-      className={cn("flex flex-col items-center gap-1.5 w-14", isHovering && "node-hovering")}
+      className={cn("flex flex-col items-center gap-1.5 min-w-20", isHovering && "node-hovering")}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
     >
@@ -64,7 +64,7 @@ export default function GatewayServiceNode({
         position={Position.Left}
         id="left"
         className={vpnHandleClassName("left")}
-        style={vpnHandleStyle("left")}
+        style={{ top: 28, ...vpnHandleStyle("left") }}
       >
         {vpnHandleIds.has("left") && (
           <CustomerGatewayIcon className="size-7 text-purple-600 pointer-events-none" />
@@ -75,7 +75,7 @@ export default function GatewayServiceNode({
         position={Position.Right}
         id="right"
         className={vpnHandleClassName("right")}
-        style={vpnHandleStyle("right")}
+        style={{ top: 28, ...vpnHandleStyle("right") }}
       >
         {vpnHandleIds.has("right") && (
           <CustomerGatewayIcon className="size-7 text-purple-600 pointer-events-none" />
@@ -97,7 +97,12 @@ export default function GatewayServiceNode({
         position={Position.Bottom}
         id="bottom"
         className={vpnHandleClassName("bottom", "handle-vertical")}
-        style={vpnHandleStyle("bottom")}
+        style={{
+          top: 56,
+          bottom: "auto",
+          transform: "translate(-50%, -50%)",
+          ...(vpnHandleIds.has("bottom") ? VPN_HANDLE_BASE : undefined),
+        }}
       >
         {vpnHandleIds.has("bottom") && (
           <CustomerGatewayIcon className="size-7 text-purple-600 pointer-events-none" />
@@ -113,7 +118,7 @@ export default function GatewayServiceNode({
       <EditableNodeLabel
         value={data.name}
         editLabel={t.editNodeName}
-        className="text-white text-nowrap"
+        className="text-white"
         onCommit={renameNode}
       />
     </div>
