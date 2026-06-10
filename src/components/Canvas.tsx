@@ -101,6 +101,8 @@ import {
   CONTAINER_HEIGHT,
   DEFAULT_NODE_WIDTH,
   DEFAULT_NODE_HEIGHT,
+  VISUAL_NODE_SIZE,
+  avoidNodeOverlap,
   getGatewayNodeSize,
   snapGatewayNodeToVpcBorder,
   isVpcNode,
@@ -1265,7 +1267,12 @@ export default function Canvas() {
           let extraData: Record<string, unknown> = {};
 
           if (scope === "subnet") {
-            parentedPosition = getParentedPosition(nodePosition, { width: DEFAULT_NODE_WIDTH, height: DEFAULT_NODE_HEIGHT }, nodes);
+            const freePosition = avoidNodeOverlap(
+              nodePosition,
+              VISUAL_NODE_SIZE,
+              nodes,
+            );
+            parentedPosition = getParentedPosition(freePosition, { width: DEFAULT_NODE_WIDTH, height: DEFAULT_NODE_HEIGHT }, nodes);
           } else {
             const nodesById = new Map(nodes.map((n) => [n.id, n]));
             const allowedAncestor = findAllowedAncestorForScope(nodeRect, scope, nodes);
@@ -1366,7 +1373,7 @@ export default function Canvas() {
         };
         commitGraphChange(({ nodes, edges }) => {
           const parentedPosition = getParentedPosition(
-            nodePosition,
+            avoidNodeOverlap(nodePosition, VISUAL_NODE_SIZE, nodes),
             { width: DEFAULT_NODE_WIDTH, height: DEFAULT_NODE_HEIGHT },
             nodes,
           );
@@ -1399,7 +1406,7 @@ export default function Canvas() {
         };
         commitGraphChange(({ nodes, edges }) => {
           const parentedPosition = getParentedPosition(
-            nodePosition,
+            avoidNodeOverlap(nodePosition, VISUAL_NODE_SIZE, nodes),
             { width: DEFAULT_NODE_WIDTH, height: DEFAULT_NODE_HEIGHT },
             nodes,
           );
@@ -1436,7 +1443,7 @@ export default function Canvas() {
         };
         commitGraphChange(({ nodes, edges }) => {
           const parentedPosition = getParentedPosition(
-            nodePosition,
+            avoidNodeOverlap(nodePosition, VISUAL_NODE_SIZE, nodes),
             { width: DEFAULT_NODE_WIDTH, height: DEFAULT_NODE_HEIGHT },
             nodes,
           );
@@ -1461,7 +1468,7 @@ export default function Canvas() {
         };
         commitGraphChange(({ nodes, edges }) => {
           const parentedPosition = getParentedPosition(
-            nodePosition,
+            avoidNodeOverlap(nodePosition, VISUAL_NODE_SIZE, nodes),
             { width: DEFAULT_NODE_WIDTH, height: DEFAULT_NODE_HEIGHT },
             nodes,
           );
@@ -1486,7 +1493,7 @@ export default function Canvas() {
         };
         commitGraphChange(({ nodes, edges }) => {
           const parentedPosition = getParentedPosition(
-            nodePosition,
+            avoidNodeOverlap(nodePosition, VISUAL_NODE_SIZE, nodes),
             { width: DEFAULT_NODE_WIDTH, height: DEFAULT_NODE_HEIGHT },
             nodes,
           );
