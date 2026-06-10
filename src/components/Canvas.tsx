@@ -2512,7 +2512,14 @@ export default function Canvas() {
         tabIndex={-1}
         style={{ flex: 1, position: "relative" }}
         onPointerDownCapture={(event) => {
-          event.currentTarget.focus({ preventScroll: true });
+          // Only grab keyboard focus when the pointer is inside the canvas itself.
+          // Radix portals (Popover, Dialog…) are appended to document.body, so their
+          // targets are NOT DOM-descendants of this container even though React
+          // bubbles synthetic events up through the component tree.  Stealing focus
+          // there would trigger Radix's onFocusOutside and close open overlays.
+          if (containerRef.current?.contains(event.target as Node)) {
+            event.currentTarget.focus({ preventScroll: true });
+          }
           handleContainerPointerDown(event);
         }}
         onClickCapture={handleContainerClick}
