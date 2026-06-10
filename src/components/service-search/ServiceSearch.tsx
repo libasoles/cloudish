@@ -223,7 +223,7 @@ export default function ServiceSearch({ onToolClick }: ServiceSearchProps) {
                     slug={item.slug}
                     category={item.category}
                     name={item.name}
-                    size={24}
+                    size="small"
                   />
                 )}
                 <div className="flex min-w-0 flex-1 flex-col">

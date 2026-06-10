@@ -80,7 +80,7 @@ export function RelatedServicesPanel({ nodeId, serviceId }: RelatedServicesPanel
                 slug={service.slug}
                 category={service.category}
                 name={service.name}
-                size={24}
+                size="small"
               />
             )}
             <span className="flex-1 truncate text-xs text-foreground">

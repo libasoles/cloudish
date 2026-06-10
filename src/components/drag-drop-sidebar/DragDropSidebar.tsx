@@ -223,7 +223,7 @@ export default function DragDropSidebar({
               slug={service.slug}
               category={service.category}
               name={service.name}
-              size={40}
+              size="medium"
             />
           </SidebarToolButton>
         ))}
