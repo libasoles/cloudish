@@ -109,6 +109,11 @@ export function getNodeSize(node: AppNode) {
 export const GATEWAY_NODE_FALLBACK_W = 56;
 export const GATEWAY_NODE_FALLBACK_H = 80;
 
+// Vertical distance from the top of any service node to the center of its icon.
+// Circular nodes: size-14 circle (56px) → center at 28px.
+// Rectangular nodes: py-2 (8px) top padding + size-10 icon (40px) / 2 = 28px.
+export const NODE_ICON_CENTER_Y = 28;
+
 export function getGatewayNodeSize(node: AppNode) {
   const style = node.style as { width?: number; height?: number } | undefined;
   return {

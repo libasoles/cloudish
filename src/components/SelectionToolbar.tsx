@@ -1,6 +1,6 @@
 import { useStore, useReactFlow } from "@xyflow/react";
 import { useFlowStore } from "@/store/flowStore";
-import { getAbsolutePosition, getNodeSize } from "@/lib/graph-utils";
+import { getAbsolutePosition, getNodeSize, NODE_ICON_CENTER_Y } from "@/lib/graph-utils";
 import { SELECTION_BOX_PADDING } from "@/lib/selection-constants";
 import { HoverOnlyTooltip } from "@/components/HoverOnlyTooltip";
 import { Button } from "@/components/ui/button";
@@ -48,21 +48,22 @@ export function SelectionToolbar({ hidden = false }: { hidden?: boolean }) {
   }
 
   function alignMiddleV() {
-    const targetY = bounds.y + bounds.height / 2;
+    const byId = new Map(nodes.map((n) => [n.id, n]));
+    const iconCenterYs = selectedNodes.map((n) => getAbsolutePosition(n, byId).y + NODE_ICON_CENTER_Y);
+    const targetIconCenterY = (Math.min(...iconCenterYs) + Math.max(...iconCenterYs)) / 2;
+
     commitGraphChange(({ nodes: current, edges }) => {
-      const byId = new Map(current.map((n) => [n.id, n]));
+      const currentById = new Map(current.map((n) => [n.id, n]));
       return {
         edges,
         nodes: current.map((node) => {
           if (!node.selected || node.type === "networkContainer") return node;
-          const { height } = getNodeSize(node);
-          const newAbsY = targetY - height / 2;
           const parentAbs = node.parentId
-            ? getAbsolutePosition(byId.get(node.parentId)!, byId)
+            ? getAbsolutePosition(currentById.get(node.parentId)!, currentById)
             : { x: 0, y: 0 };
           return {
             ...node,
-            position: { x: node.position.x, y: newAbsY - parentAbs.y },
+            position: { x: node.position.x, y: targetIconCenterY - NODE_ICON_CENTER_Y - parentAbs.y },
           };
         }),
       };
