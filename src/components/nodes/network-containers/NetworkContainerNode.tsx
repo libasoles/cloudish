@@ -6,6 +6,7 @@ import {
 import { cva } from "class-variance-authority";
 import { Link } from "lucide-react";
 import EditableNodeLabel from "@/components/EditableNodeLabel";
+import { AwsLogoIcon } from "@/components/icons/AwsLogoIcon";
 import { cn } from "@/lib/utils";
 import { UI_TEXT, getBrowserLocale } from "@/i18n";
 import { useFlowStore } from "@/store/flowStore";
@@ -306,17 +307,23 @@ export default function NetworkContainerNode({
           handleClassName={resizeHandleVariants({ tone: containerTone })}
         />
       )}
-      <div className={labelVariants({ tone: containerTone })}>
-        <EditableNodeLabel
-          value={displayLabel}
-          editLabel={t.editNodeName}
-          className="max-w-48 text-current font-semibold"
-          onCommit={renameNode}
-        />
-        {isAz && data.synced && (
-          <Link className="h-3 w-3 shrink-0 text-indigo-300/80" />
-        )}
-      </div>
+      {isAws ? (
+        <div className="absolute left-3 top-3 flex items-center gap-1.5 rounded px-2 py-1 bg-[#1564a0]">
+          <AwsLogoIcon className="h-3.5 w-auto text-white" />
+        </div>
+      ) : (
+        <div className={labelVariants({ tone: containerTone })}>
+          <EditableNodeLabel
+            value={displayLabel}
+            editLabel={t.editNodeName}
+            className="max-w-48 text-current font-semibold"
+            onCommit={renameNode}
+          />
+          {isAz && data.synced && (
+            <Link className="h-3 w-3 shrink-0 text-indigo-300/80" />
+          )}
+        </div>
+      )}
     </div>
   );
 }
