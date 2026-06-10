@@ -162,7 +162,7 @@ export default function AwsServiceNode({
     return (
       <div
         className={cn(
-          "flex flex-col items-center gap-1.5 w-14",
+          "flex flex-col items-center gap-1.5 min-w-20",
           isHovering && "node-hovering",
         )}
         onMouseEnter={() => setIsHovering(true)}
@@ -172,13 +172,13 @@ export default function AwsServiceNode({
           type="source"
           position={Position.Left}
           id="left"
-          style={{ top: 28 }}
+          style={{ top: 28, left: "calc(50% - 28px)" }}
         />
         <Handle
           type="source"
           position={Position.Right}
           id="right"
-          style={{ top: 28 }}
+          style={{ top: 28, right: "calc(50% - 28px)" }}
         />
         <Handle
           type="source"
@@ -203,7 +203,7 @@ export default function AwsServiceNode({
         <EditableNodeLabel
           value={data.name}
           editLabel={t.editNodeName}
-          className="text-white text-nowrap"
+          className="text-white"
           onCommit={renameNode}
         />
       </div>
