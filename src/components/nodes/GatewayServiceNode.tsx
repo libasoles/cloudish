@@ -44,7 +44,10 @@ export default function GatewayServiceNode({
       : undefined;
   }
 
-  function vpnHandleClassName(handleId: string, className?: string): string | undefined {
+  function vpnHandleClassName(
+    handleId: string,
+    className?: string,
+  ): string | undefined {
     if (!vpnHandleIds.has(handleId)) return className;
     return cn(className, "customer-gateway-handle");
   }
@@ -55,7 +58,10 @@ export default function GatewayServiceNode({
 
   return (
     <div
-      className={cn("flex flex-col items-center gap-1.5 min-w-20", isHovering && "node-hovering")}
+      className={cn(
+        "flex flex-col items-center gap-1.5 min-w-20",
+        isHovering && "node-hovering",
+      )}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
     >
@@ -64,7 +70,7 @@ export default function GatewayServiceNode({
         position={Position.Left}
         id="left"
         className={vpnHandleClassName("left")}
-        style={{ top: 28, left: "calc(50% - 28px)", ...vpnHandleStyle("left") }}
+        style={{ top: 32, left: "calc(50% - 32px)", ...vpnHandleStyle("left") }}
       >
         {vpnHandleIds.has("left") && (
           <CustomerGatewayIcon className="size-7 text-purple-600 pointer-events-none" />
@@ -75,7 +81,11 @@ export default function GatewayServiceNode({
         position={Position.Right}
         id="right"
         className={vpnHandleClassName("right")}
-        style={{ top: 28, right: "calc(50% - 28px)", ...vpnHandleStyle("right") }}
+        style={{
+          top: 32,
+          right: "calc(50% - 32px)",
+          ...vpnHandleStyle("right"),
+        }}
       >
         {vpnHandleIds.has("right") && (
           <CustomerGatewayIcon className="size-7 text-purple-600 pointer-events-none" />
@@ -98,7 +108,7 @@ export default function GatewayServiceNode({
         id="bottom"
         className={vpnHandleClassName("bottom", "handle-vertical")}
         style={{
-          top: 56,
+          top: 62,
           bottom: "auto",
           transform: "translate(-50%, -50%)",
           ...(vpnHandleIds.has("bottom") ? VPN_HANDLE_BASE : undefined),
