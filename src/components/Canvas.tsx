@@ -735,14 +735,8 @@ export default function Canvas() {
           existingIds.add(nodeId);
 
           const nodePosition = {
-            x:
-              position.x -
-              image.width / 2 +
-              index * IMAGE_PASTE_OFFSET.x,
-            y:
-              position.y -
-              image.height / 2 +
-              index * IMAGE_PASTE_OFFSET.y,
+            x: position.x - image.width / 2 + index * IMAGE_PASTE_OFFSET.x,
+            y: position.y - image.height / 2 + index * IMAGE_PASTE_OFFSET.y,
           };
           const parentedPosition = getParentedPosition(
             nodePosition,
@@ -997,158 +991,169 @@ export default function Canvas() {
       dragOverRafRef.current = requestAnimationFrame(() => {
         dragOverRafRef.current = null;
 
-      const position = reactFlowInstance.screenToFlowPosition({
-        x: clientX,
-        y: clientY,
-      });
-      const { nodes: currentNodes, nodesById } = useFlowStore.getState();
+        const position = reactFlowInstance.screenToFlowPosition({
+          x: clientX,
+          y: clientY,
+        });
+        const { nodes: currentNodes, nodesById } = useFlowStore.getState();
 
-      if (
-        droppedTool.type === AWS_SERVICE_NODE_TYPE &&
-        droppedTool.serviceId === VPC_SERVICE_ID
-      ) {
-        const vpcPosition = {
-          x: position.x - VPC_WIDTH / 2,
-          y: position.y - VPC_HEIGHT / 2,
-        };
-        const target = findIntersectingContainer(
-          { ...vpcPosition, width: VPC_WIDTH, height: VPC_HEIGHT },
-          currentNodes,
-          nodesById,
-          {
-            id: "drop-preview-vpc",
-            type: "networkContainer",
-            position: vpcPosition,
-            data: { containerType: "vpc", label: "VPC" },
-          },
-        );
+        if (
+          droppedTool.type === AWS_SERVICE_NODE_TYPE &&
+          droppedTool.serviceId === VPC_SERVICE_ID
+        ) {
+          const vpcPosition = {
+            x: position.x - VPC_WIDTH / 2,
+            y: position.y - VPC_HEIGHT / 2,
+          };
+          const target = findIntersectingContainer(
+            { ...vpcPosition, width: VPC_WIDTH, height: VPC_HEIGHT },
+            currentNodes,
+            nodesById,
+            {
+              id: "drop-preview-vpc",
+              type: "networkContainer",
+              position: vpcPosition,
+              data: { containerType: "vpc", label: "VPC" },
+            },
+          );
 
-        setDropTargetNodeId(target?.id ?? null);
-        setDropPreview(
-          target ? { parentId: target.id, childType: "vpc" } : null,
-        );
-        setDropBandSide(null);
-        return;
-      }
+          setDropTargetNodeId(target?.id ?? null);
+          setDropPreview(
+            target ? { parentId: target.id, childType: "vpc" } : null,
+          );
+          setDropBandSide(null);
+          return;
+        }
 
-      if (droppedTool.type === "az") {
-        const azPosition = {
-          x: position.x - AZ_WIDTH / 2,
-          y: position.y - AZ_HEIGHT / 2,
-        };
-        const target = findIntersectingContainer(
-          { ...azPosition, width: AZ_WIDTH, height: AZ_HEIGHT },
-          currentNodes,
-          nodesById,
-          {
-            id: "drop-preview-az",
-            type: "networkContainer",
-            position: azPosition,
-            data: { containerType: "az", label: t.availabilityZone },
-          },
-        );
+        if (droppedTool.type === "az") {
+          const azPosition = {
+            x: position.x - AZ_WIDTH / 2,
+            y: position.y - AZ_HEIGHT / 2,
+          };
+          const target = findIntersectingContainer(
+            { ...azPosition, width: AZ_WIDTH, height: AZ_HEIGHT },
+            currentNodes,
+            nodesById,
+            {
+              id: "drop-preview-az",
+              type: "networkContainer",
+              position: azPosition,
+              data: { containerType: "az", label: t.availabilityZone },
+            },
+          );
 
-        setDropTargetNodeId(target?.id ?? null);
-        setDropPreview(
-          target ? { parentId: target.id, childType: "az" } : null,
-        );
-        setDropBandSide(null);
-        return;
-      }
+          setDropTargetNodeId(target?.id ?? null);
+          setDropPreview(
+            target ? { parentId: target.id, childType: "az" } : null,
+          );
+          setDropBandSide(null);
+          return;
+        }
 
-      if (droppedTool.type === "container") {
-        const subnetPosition = {
-          x: position.x - CONTAINER_WIDTH / 2,
-          y: position.y - CONTAINER_HEIGHT / 2,
-        };
-        const target = findIntersectingContainer(
-          {
-            ...subnetPosition,
-            width: CONTAINER_WIDTH,
-            height: CONTAINER_HEIGHT,
-          },
-          currentNodes,
-          nodesById,
-          {
-            id: "drop-preview-subnet",
-            type: "networkContainer",
-            position: subnetPosition,
-            data: { containerType: "subnet", label: t.subnet },
-          },
-        );
+        if (droppedTool.type === "container") {
+          const subnetPosition = {
+            x: position.x - CONTAINER_WIDTH / 2,
+            y: position.y - CONTAINER_HEIGHT / 2,
+          };
+          const target = findIntersectingContainer(
+            {
+              ...subnetPosition,
+              width: CONTAINER_WIDTH,
+              height: CONTAINER_HEIGHT,
+            },
+            currentNodes,
+            nodesById,
+            {
+              id: "drop-preview-subnet",
+              type: "networkContainer",
+              position: subnetPosition,
+              data: { containerType: "subnet", label: t.subnet },
+            },
+          );
 
-        setDropTargetNodeId(target?.id ?? null);
-        setDropPreview(
-          target ? { parentId: target.id, childType: "subnet" } : null,
-        );
-        setDropBandSide(null);
-        return;
-      }
+          setDropTargetNodeId(target?.id ?? null);
+          setDropPreview(
+            target ? { parentId: target.id, childType: "subnet" } : null,
+          );
+          setDropBandSide(null);
+          return;
+        }
 
-      if (droppedTool.type === "asg") {
-        setDropTargetNodeId(null);
-        setDropPreview(null);
-        setDropBandSide(null);
-        return;
-      }
+        if (droppedTool.type === "asg") {
+          setDropTargetNodeId(null);
+          setDropPreview(null);
+          setDropBandSide(null);
+          return;
+        }
 
-      // AWS service node (non-VPC): show band-side preview for scope-restricted services
-      if (droppedTool.type === AWS_SERVICE_NODE_TYPE) {
-        const service = AWS_SERVICES.find((s) => s.id === droppedTool.serviceId);
-        const scope = service?.placementScope ?? "subnet";
+        // AWS service node (non-VPC): show band-side preview for scope-restricted services
+        if (droppedTool.type === AWS_SERVICE_NODE_TYPE) {
+          const service = AWS_SERVICES.find(
+            (s) => s.id === droppedTool.serviceId,
+          );
+          const scope = service?.placementScope ?? "subnet";
 
-        if (scope !== "subnet") {
+          if (scope !== "subnet") {
+            const nodeRect = {
+              x: position.x - SERVICE_DROP_OFFSET.x,
+              y: position.y - SERVICE_DROP_OFFSET.y,
+              width: DEFAULT_NODE_WIDTH,
+              height: DEFAULT_NODE_HEIGHT,
+            };
+            const allowedAncestor = findAllowedAncestorForScope(
+              nodeRect,
+              scope,
+              currentNodes,
+            );
+            if (allowedAncestor) {
+              if (scope === "az") {
+                setDropTargetNodeId(allowedAncestor.id);
+                setDropBandSide(null);
+                setDropPreview(null);
+                return;
+              }
+
+              const ancPos = getAbsolutePosition(allowedAncestor, nodesById);
+              const { width: ancW, height: ancH } =
+                getNodeSize(allowedAncestor);
+              const ancRect = { ...ancPos, width: ancW, height: ancH };
+              const side = resolveBandSide(
+                { x: position.x, y: position.y },
+                ancRect,
+                scope,
+                service?.id,
+              );
+              setDropTargetNodeId(allowedAncestor.id);
+              setDropBandSide(side);
+            } else {
+              setDropTargetNodeId(null);
+              setDropBandSide(null);
+            }
+            setDropPreview(null);
+            return;
+          }
+
+          // subnet-scope: highlight the deepest valid container as a standard drop target
           const nodeRect = {
             x: position.x - SERVICE_DROP_OFFSET.x,
             y: position.y - SERVICE_DROP_OFFSET.y,
             width: DEFAULT_NODE_WIDTH,
             height: DEFAULT_NODE_HEIGHT,
           };
-          const allowedAncestor = findAllowedAncestorForScope(nodeRect, scope, currentNodes);
-          if (allowedAncestor) {
-            if (scope === "az") {
-              setDropTargetNodeId(allowedAncestor.id);
-              setDropBandSide(null);
-              setDropPreview(null);
-              return;
-            }
-
-            const ancPos = getAbsolutePosition(allowedAncestor, nodesById);
-            const { width: ancW, height: ancH } = getNodeSize(allowedAncestor);
-            const ancRect = { ...ancPos, width: ancW, height: ancH };
-            const side = resolveBandSide(
-              { x: position.x, y: position.y },
-              ancRect,
-              scope,
-              service?.id,
-            );
-            setDropTargetNodeId(allowedAncestor.id);
-            setDropBandSide(side);
-          } else {
-            setDropTargetNodeId(null);
-            setDropBandSide(null);
-          }
+          const target = findIntersectingContainer(
+            nodeRect,
+            currentNodes,
+            nodesById,
+          );
+          setDropTargetNodeId(target?.id ?? null);
           setDropPreview(null);
+          setDropBandSide(null);
           return;
         }
 
-        // subnet-scope: highlight the deepest valid container as a standard drop target
-        const nodeRect = {
-          x: position.x - SERVICE_DROP_OFFSET.x,
-          y: position.y - SERVICE_DROP_OFFSET.y,
-          width: DEFAULT_NODE_WIDTH,
-          height: DEFAULT_NODE_HEIGHT,
-        };
-        const target = findIntersectingContainer(nodeRect, currentNodes, nodesById);
-        setDropTargetNodeId(target?.id ?? null);
+        setDropTargetNodeId(null);
         setDropPreview(null);
         setDropBandSide(null);
-        return;
-      }
-
-      setDropTargetNodeId(null);
-      setDropPreview(null);
-      setDropBandSide(null);
       }); // end rAF
     },
     [
@@ -1251,7 +1256,10 @@ export default function Canvas() {
                 edges,
               };
             }
-            return { nodes: redistributeGatewayAffectedVpcLayouts(allNodes), edges };
+            return {
+              nodes: redistributeGatewayAffectedVpcLayouts(allNodes),
+              edges,
+            };
           });
           return;
         }
@@ -1265,9 +1273,14 @@ export default function Canvas() {
         let placementToastScope: PlacementScope | null = null;
 
         commitGraphChange(({ nodes, edges }) => {
-          const nodeRect = { ...nodePosition, width: DEFAULT_NODE_WIDTH, height: DEFAULT_NODE_HEIGHT };
+          const nodeRect = {
+            ...nodePosition,
+            width: DEFAULT_NODE_WIDTH,
+            height: DEFAULT_NODE_HEIGHT,
+          };
           const serviceData = getAwsServiceNodeData(service);
-          const scope = service.placementScope ?? serviceData.placementScope ?? "subnet";
+          const scope =
+            service.placementScope ?? serviceData.placementScope ?? "subnet";
 
           let parentedPosition: ReturnType<typeof getParentedPosition>;
           let extraData: Record<string, unknown> = {};
@@ -1278,15 +1291,26 @@ export default function Canvas() {
               VISUAL_NODE_SIZE,
               nodes,
             );
-            parentedPosition = getParentedPosition(freePosition, { width: DEFAULT_NODE_WIDTH, height: DEFAULT_NODE_HEIGHT }, nodes);
+            parentedPosition = getParentedPosition(
+              freePosition,
+              { width: DEFAULT_NODE_WIDTH, height: DEFAULT_NODE_HEIGHT },
+              nodes,
+            );
           } else {
             const nodesById = new Map(nodes.map((n) => [n.id, n]));
-            const allowedAncestor = findAllowedAncestorForScope(nodeRect, scope, nodes);
+            const allowedAncestor = findAllowedAncestorForScope(
+              nodeRect,
+              scope,
+              nodes,
+            );
 
             if (!allowedAncestor) {
               // global scope or no valid ancestor — place at canvas top-level, expelled from any region
               const safePos = expelGlobalNodePosition(
-                nodePosition, DEFAULT_NODE_WIDTH, DEFAULT_NODE_HEIGHT, nodes,
+                nodePosition,
+                DEFAULT_NODE_WIDTH,
+                DEFAULT_NODE_HEIGHT,
+                nodes,
               );
               if (
                 scope === "global" ||
@@ -1317,29 +1341,52 @@ export default function Canvas() {
               };
               const ancRect = {
                 ...getAbsolutePosition(allowedAncestor, nodesById),
-                width: (allowedAncestor.style as { width?: number })?.width ?? allowedAncestor.width ?? 720,
-                height: (allowedAncestor.style as { height?: number })?.height ?? allowedAncestor.height ?? 480,
+                width:
+                  (allowedAncestor.style as { width?: number })?.width ??
+                  allowedAncestor.width ??
+                  720,
+                height:
+                  (allowedAncestor.style as { height?: number })?.height ??
+                  allowedAncestor.height ??
+                  480,
               };
-              const side = resolveBandSide(dropAbsCenter, ancRect, scope, service.id);
+              const side = resolveBandSide(
+                dropAbsCenter,
+                ancRect,
+                scope,
+                service.id,
+              );
 
               if (getServiceNodeType(service.id) === "gatewayService") {
                 // Gateway nodes live on a VPC border (50% in / 50% out), not in the band.
                 const ancPos = getAbsolutePosition(allowedAncestor, nodesById);
-                const { width: vpcW, height: vpcH } = getNodeSize(allowedAncestor);
+                const { width: vpcW, height: vpcH } =
+                  getNodeSize(allowedAncestor);
                 const nW = GATEWAY_NODE_FALLBACK_W;
                 const nH = GATEWAY_NODE_FALLBACK_H;
                 const dropRelX = dropAbsCenter.x - ancPos.x;
                 const dropRelY = dropAbsCenter.y - ancPos.y;
                 const borderPos =
-                  side === "right"  ? { x: vpcW - nW / 2, y: dropRelY - nH / 2 } :
-                  side === "left"   ? { x: -nW / 2,       y: dropRelY - nH / 2 } :
-                  side === "top"    ? { x: dropRelX - nW / 2, y: -nH / 2 }       :
-                                      { x: dropRelX - nW / 2, y: vpcH - nH / 2 };
-                parentedPosition = { parentId: allowedAncestor.id, position: borderPos };
+                  side === "right"
+                    ? { x: vpcW - nW / 2, y: dropRelY - nH / 2 }
+                    : side === "left"
+                      ? { x: -nW / 2, y: dropRelY - nH / 2 }
+                      : side === "top"
+                        ? { x: dropRelX - nW / 2, y: -nH / 2 }
+                        : { x: dropRelX - nW / 2, y: vpcH - nH / 2 };
+                parentedPosition = {
+                  parentId: allowedAncestor.id,
+                  position: borderPos,
+                };
                 // No bandSide — gateway nodes are positioned at the VPC border, not the band.
               } else {
                 // Regular vpc/regional-scope service nodes go into the band.
-                const bandPos = computeBandPlacement(allowedAncestor, side, nodes, service.id);
+                const bandPos = computeBandPlacement(
+                  allowedAncestor,
+                  side,
+                  nodes,
+                  service.id,
+                );
                 parentedPosition = bandPos;
                 extraData = { bandSide: side };
               }
@@ -1363,7 +1410,9 @@ export default function Canvas() {
           );
 
           return {
-            nodes: redistributeScopeAffectedLayouts(redistributeGatewayAffectedVpcLayouts(nextNodes)),
+            nodes: redistributeScopeAffectedLayouts(
+              redistributeGatewayAffectedVpcLayouts(nextNodes),
+            ),
             edges,
           };
         });
@@ -1396,6 +1445,144 @@ export default function Canvas() {
             data: { ...getMiscNodeData(miscType), ...pulseData },
           };
 
+          return {
+            nodes: addNodeWithAzSync(
+              newNode,
+              nodes.map((n) => ({ ...n, selected: false })),
+            ),
+            edges,
+          };
+        });
+        return;
+      }
+
+      if (tool.type === "internet") {
+        const nodeId = `internet-${serviceIdRef.current++}`;
+        const nodePosition = {
+          x: position.x - SERVICE_DROP_OFFSET.x,
+          y: position.y - SERVICE_DROP_OFFSET.y,
+        };
+        commitGraphChange(({ nodes, edges }) => {
+          const parentedPosition = getParentedPosition(
+            nodePosition,
+            { width: DEFAULT_NODE_WIDTH, height: DEFAULT_NODE_HEIGHT },
+            nodes,
+          );
+
+          const newNode: AppNode = {
+            id: nodeId,
+            type: "internet",
+            zIndex: 10,
+            selected: true,
+            ...parentedPosition,
+            data: {
+              label: t.internet,
+              fields: { label: t.internet },
+              ...pulseData,
+            },
+          };
+
+          return {
+            nodes: addNodeWithAzSync(
+              newNode,
+              nodes.map((n) => ({ ...n, selected: false })),
+            ),
+            edges,
+          };
+        });
+        return;
+      }
+
+      if (tool.type === "web") {
+        const nodeId = `web-${serviceIdRef.current++}`;
+        const nodePosition = {
+          x: position.x - SERVICE_DROP_OFFSET.x,
+          y: position.y - SERVICE_DROP_OFFSET.y,
+        };
+        commitGraphChange(({ nodes, edges }) => {
+          const parentedPosition = getParentedPosition(
+            nodePosition,
+            { width: DEFAULT_NODE_WIDTH, height: DEFAULT_NODE_HEIGHT },
+            nodes,
+          );
+          const newNode: AppNode = {
+            id: nodeId,
+            type: "web",
+            zIndex: 10,
+            selected: true,
+            ...parentedPosition,
+            data: { label: t.web, fields: { label: t.web }, ...pulseData },
+          };
+          return {
+            nodes: addNodeWithAzSync(
+              newNode,
+              nodes.map((n) => ({ ...n, selected: false })),
+            ),
+            edges,
+          };
+        });
+        return;
+      }
+
+      if (tool.type === "mobile") {
+        const nodeId = `mobile-${serviceIdRef.current++}`;
+        const nodePosition = {
+          x: position.x - SERVICE_DROP_OFFSET.x,
+          y: position.y - SERVICE_DROP_OFFSET.y,
+        };
+        commitGraphChange(({ nodes, edges }) => {
+          const parentedPosition = getParentedPosition(
+            nodePosition,
+            { width: DEFAULT_NODE_WIDTH, height: DEFAULT_NODE_HEIGHT },
+            nodes,
+          );
+          const newNode: AppNode = {
+            id: nodeId,
+            type: "mobile",
+            zIndex: 10,
+            selected: true,
+            ...parentedPosition,
+            data: {
+              label: t.mobile,
+              fields: { label: t.mobile },
+              ...pulseData,
+            },
+          };
+          return {
+            nodes: addNodeWithAzSync(
+              newNode,
+              nodes.map((n) => ({ ...n, selected: false })),
+            ),
+            edges,
+          };
+        });
+        return;
+      }
+
+      if (tool.type === "database") {
+        const nodeId = `database-${serviceIdRef.current++}`;
+        const nodePosition = {
+          x: position.x - SERVICE_DROP_OFFSET.x,
+          y: position.y - SERVICE_DROP_OFFSET.y,
+        };
+        commitGraphChange(({ nodes, edges }) => {
+          const parentedPosition = getParentedPosition(
+            nodePosition,
+            { width: DEFAULT_NODE_WIDTH, height: DEFAULT_NODE_HEIGHT },
+            nodes,
+          );
+          const newNode: AppNode = {
+            id: nodeId,
+            type: "database",
+            zIndex: 10,
+            selected: true,
+            ...parentedPosition,
+            data: {
+              label: t.database,
+              fields: { label: t.database },
+              ...pulseData,
+            },
+          };
           return {
             nodes: addNodeWithAzSync(
               newNode,
@@ -1791,7 +1978,13 @@ export default function Canvas() {
         }
       }
     },
-    [addToolAtPosition, reactFlowInstance, setDropBandSide, setDropPreview, setDropTargetNodeId],
+    [
+      addToolAtPosition,
+      reactFlowInstance,
+      setDropBandSide,
+      setDropPreview,
+      setDropTargetNodeId,
+    ],
   );
 
   const handleToolDragStart = useCallback((tool: DragTool) => {
@@ -1881,11 +2074,16 @@ export default function Canvas() {
 
           // For service nodes with a placement scope, enforce placement rules on drag.
           if (!isNetworkContainerNode(node) && node.type === "awsService") {
-            const awsNode = node as import("@/components/nodes/AwsServiceNode").AwsServiceNodeType;
+            const awsNode =
+              node as import("@/components/nodes/AwsServiceNode").AwsServiceNodeType;
             const scope = getNodePlacementScope(awsNode);
 
             if (scope !== "subnet") {
-              const allowedAncestor = findAllowedAncestorForScope(nodeRect, scope, nodes);
+              const allowedAncestor = findAllowedAncestorForScope(
+                nodeRect,
+                scope,
+                nodes,
+              );
 
               if (scope === "global" || !allowedAncestor) {
                 // Expel to canvas top-level, moving outside any region bounds
@@ -1895,7 +2093,8 @@ export default function Canvas() {
                   nodeRect.height,
                   nodes,
                 );
-                const posChanged = safePos.x !== nodeRect.x || safePos.y !== nodeRect.y;
+                const posChanged =
+                  safePos.x !== nodeRect.x || safePos.y !== nodeRect.y;
                 if (node.parentId || posChanged) {
                   updates.set(node.id, {
                     ...node,
@@ -1912,7 +2111,10 @@ export default function Canvas() {
                   node.parentId !== allowedAncestor.id ||
                   (node.data as { bandSide?: string }).bandSide
                 ) {
-                  const ancPos = getAbsolutePosition(allowedAncestor, nodesById);
+                  const ancPos = getAbsolutePosition(
+                    allowedAncestor,
+                    nodesById,
+                  );
                   updates.set(node.id, {
                     ...node,
                     parentId: allowedAncestor.id,
@@ -1927,8 +2129,14 @@ export default function Canvas() {
               }
 
               // Determine if it's being dropped deeper than allowed
-              const deepestContainer = findIntersectingContainer(nodeRect, containerNodes, nodesById, node);
-              const isExpelled = deepestContainer && deepestContainer.id !== allowedAncestor.id;
+              const deepestContainer = findIntersectingContainer(
+                nodeRect,
+                containerNodes,
+                nodesById,
+                node,
+              );
+              const isExpelled =
+                deepestContainer && deepestContainer.id !== allowedAncestor.id;
 
               if (isExpelled) {
                 const dropAbsCenter = {
@@ -1937,10 +2145,21 @@ export default function Canvas() {
                 };
                 const ancRect = {
                   ...getAbsolutePosition(allowedAncestor, nodesById),
-                  width: (allowedAncestor.style as { width?: number })?.width ?? allowedAncestor.width ?? 720,
-                  height: (allowedAncestor.style as { height?: number })?.height ?? allowedAncestor.height ?? 480,
+                  width:
+                    (allowedAncestor.style as { width?: number })?.width ??
+                    allowedAncestor.width ??
+                    720,
+                  height:
+                    (allowedAncestor.style as { height?: number })?.height ??
+                    allowedAncestor.height ??
+                    480,
                 };
-                const side = resolveBandSide(dropAbsCenter, ancRect, scope, awsNode.data.serviceId);
+                const side = resolveBandSide(
+                  dropAbsCenter,
+                  ancRect,
+                  scope,
+                  awsNode.data.serviceId,
+                );
                 const existingNodes = nodes.filter((n) => n.id !== node.id);
                 const bandPlacement = computeBandPlacement(
                   allowedAncestor,
@@ -1964,7 +2183,10 @@ export default function Canvas() {
                   ...node,
                   parentId: allowedAncestor.id,
                   data: { ...node.data, bandSide: undefined },
-                  position: { x: nodeRect.x - ancPos.x, y: nodeRect.y - ancPos.y },
+                  position: {
+                    x: nodeRect.x - ancPos.x,
+                    y: nodeRect.y - ancPos.y,
+                  },
                 });
               }
               return;
@@ -2061,20 +2283,25 @@ export default function Canvas() {
 
           // 1) Direct intersection with any VPC.
           let parentVpc: AppNode | undefined = nodes.find(
-            (n) => isVpcNode(n) && isRectIntersecting(absRect, getNodeRect(n, nodesById)),
+            (n) =>
+              isVpcNode(n) &&
+              isRectIntersecting(absRect, getNodeRect(n, nodesById)),
           );
 
           // 2) Expanded-radius search (gateway may have overshot the border by a few pixels).
           if (!parentVpc) {
-            const { width: fallbackW, height: fallbackH } = getGatewayNodeSize(draggedNode);
+            const { width: fallbackW, height: fallbackH } =
+              getGatewayNodeSize(draggedNode);
             const expandedRect = {
               x: absRect.x - fallbackW,
               y: absRect.y - fallbackH,
-              width:  absRect.width  + fallbackW * 2,
+              width: absRect.width + fallbackW * 2,
               height: absRect.height + fallbackH * 2,
             };
             parentVpc = nodes.find(
-              (n) => isVpcNode(n) && isRectIntersecting(expandedRect, getNodeRect(n, nodesById)),
+              (n) =>
+                isVpcNode(n) &&
+                isRectIntersecting(expandedRect, getNodeRect(n, nodesById)),
             );
           }
 
@@ -2088,7 +2315,8 @@ export default function Canvas() {
             // No reachable VPC — detach gateway to canvas if it had a parent.
             if (draggedNode.parentId) {
               updates.set(draggedNode.id, {
-                ...draggedNode, parentId: undefined,
+                ...draggedNode,
+                parentId: undefined,
                 position: { x: absRect.x, y: absRect.y },
               });
             }
@@ -2096,12 +2324,26 @@ export default function Canvas() {
           }
 
           const containerPos = getAbsolutePosition(parentVpc, nodesById);
-          const relPos = { x: absRect.x - containerPos.x, y: absRect.y - containerPos.y };
-          const { width: nodeW, height: nodeH } = getGatewayNodeSize(draggedNode);
+          const relPos = {
+            x: absRect.x - containerPos.x,
+            y: absRect.y - containerPos.y,
+          };
+          const { width: nodeW, height: nodeH } =
+            getGatewayNodeSize(draggedNode);
           const { width: vpcW, height: vpcH } = getNodeSize(parentVpc);
-          const snapped = snapGatewayNodeToVpcBorder(relPos, nodeW, nodeH, vpcW, vpcH);
+          const snapped = snapGatewayNodeToVpcBorder(
+            relPos,
+            nodeW,
+            nodeH,
+            vpcW,
+            vpcH,
+          );
 
-          updates.set(draggedNode.id, { ...draggedNode, parentId: parentVpc.id, position: snapped });
+          updates.set(draggedNode.id, {
+            ...draggedNode,
+            parentId: parentVpc.id,
+            position: snapped,
+          });
         }
 
         let result = orderNodesForSubflows(
@@ -2134,7 +2376,9 @@ export default function Canvas() {
           result,
         );
 
-        return redistributeScopeAffectedLayoutsWithPropagation(redistributeGatewayAffectedVpcLayouts(syncedNodes));
+        return redistributeScopeAffectedLayoutsWithPropagation(
+          redistributeGatewayAffectedVpcLayouts(syncedNodes),
+        );
       });
     },
     [setNodes],
@@ -2144,13 +2388,18 @@ export default function Canvas() {
     (_event, node) => {
       if (!isNetworkContainerNode(node)) {
         if (node.type === "awsService") {
-          const awsNode = node as import("@/components/nodes/AwsServiceNode").AwsServiceNodeType;
+          const awsNode =
+            node as import("@/components/nodes/AwsServiceNode").AwsServiceNodeType;
           const scope = getNodePlacementScope(awsNode);
 
           if (scope !== "subnet") {
             const { nodes: currentNodes, nodesById } = useFlowStore.getState();
             const nodeRect = getNodeRect(node, nodesById);
-            const allowedAncestor = findAllowedAncestorForScope(nodeRect, scope, currentNodes);
+            const allowedAncestor = findAllowedAncestorForScope(
+              nodeRect,
+              scope,
+              currentNodes,
+            );
 
             if (allowedAncestor) {
               if (scope === "az") {
@@ -2161,7 +2410,8 @@ export default function Canvas() {
               }
 
               const ancPos = getAbsolutePosition(allowedAncestor, nodesById);
-              const { width: ancW, height: ancH } = getNodeSize(allowedAncestor);
+              const { width: ancW, height: ancH } =
+                getNodeSize(allowedAncestor);
               const side = resolveBandSide(
                 {
                   x: nodeRect.x + nodeRect.width / 2,
@@ -2174,7 +2424,9 @@ export default function Canvas() {
 
               // Fix 1: suppress amber highlight when the node is already on this band
               const currentBandSide = getBandSide(node as AppNode);
-              const isSameBand = node.parentId === allowedAncestor.id && currentBandSide === side;
+              const isSameBand =
+                node.parentId === allowedAncestor.id &&
+                currentBandSide === side;
               if (!isSameBand) {
                 setDropTargetNodeId(allowedAncestor.id);
                 setDropBandSide(side);
@@ -2187,20 +2439,32 @@ export default function Canvas() {
               const patchedNodes = currentNodes.map((n) =>
                 n.id === node.id ? { ...n, position: node.position } : n,
               );
-              const newInsets = getScopeBandInsets(allowedAncestor.id, patchedNodes);
-              const prevInsets = (allowedAncestor.data as import("@/types/flow").NetworkContainerNodeData).scopeInsets;
+              const newInsets = getScopeBandInsets(
+                allowedAncestor.id,
+                patchedNodes,
+              );
+              const prevInsets = (
+                allowedAncestor.data as import("@/types/flow").NetworkContainerNodeData
+              ).scopeInsets;
               if (
-                newInsets.top    !== (prevInsets?.top    ?? 0) ||
-                newInsets.right  !== (prevInsets?.right  ?? 0) ||
+                newInsets.top !== (prevInsets?.top ?? 0) ||
+                newInsets.right !== (prevInsets?.right ?? 0) ||
                 newInsets.bottom !== (prevInsets?.bottom ?? 0) ||
-                newInsets.left   !== (prevInsets?.left   ?? 0)
+                newInsets.left !== (prevInsets?.left ?? 0)
               ) {
-                useFlowStore.getState().setNodes((prev) =>
-                  propagateBandGrowthToAncestors(
-                    allowedAncestor.id,
-                    applyInsetResizeOnly(allowedAncestor.id, newInsets, prev, node.id),
-                  ),
-                );
+                useFlowStore
+                  .getState()
+                  .setNodes((prev) =>
+                    propagateBandGrowthToAncestors(
+                      allowedAncestor.id,
+                      applyInsetResizeOnly(
+                        allowedAncestor.id,
+                        newInsets,
+                        prev,
+                        node.id,
+                      ),
+                    ),
+                  );
               }
 
               setDropPreview(null);
@@ -2212,10 +2476,13 @@ export default function Canvas() {
         }
         // Gateway nodes: highlight the VPC they're hovering over (green ring, no band side).
         if (node.type === "gatewayService") {
-          const { nodes: currentNodes, nodesById: storeNodesById } = useFlowStore.getState();
+          const { nodes: currentNodes, nodesById: storeNodesById } =
+            useFlowStore.getState();
           const nodeRect = getNodeRect(node, storeNodesById);
           const hoveredVpc = currentNodes.find(
-            (n) => isVpcNode(n) && isRectIntersecting(nodeRect, getNodeRect(n, storeNodesById)),
+            (n) =>
+              isVpcNode(n) &&
+              isRectIntersecting(nodeRect, getNodeRect(n, storeNodesById)),
           );
           if (hoveredVpc) {
             setDropTargetNodeId(hoveredVpc.id);
@@ -2232,10 +2499,7 @@ export default function Canvas() {
         return;
       }
 
-      const {
-        nodesById,
-        containerNodes,
-      } = useFlowStore.getState();
+      const { nodesById, containerNodes } = useFlowStore.getState();
 
       const nodeRect = getNodeRect(node, nodesById);
       const target = findIntersectingContainer(
@@ -2260,14 +2524,13 @@ export default function Canvas() {
     (_event, node, draggedNodes) => {
       // Capture the hovered VPC id BEFORE clearing so the snap code can use
       // it as a fallback when the gateway is dropped just outside the VPC border.
-      const hintTargetId = useFlowStore.getState().dropTargetNodeId ?? undefined;
+      const hintTargetId =
+        useFlowStore.getState().dropTargetNodeId ?? undefined;
       setDropTargetNodeId(null);
       setDropPreview(null);
       setDropBandSide(null);
       syncNodeSubnet(
-        draggedNodes.length
-          ? draggedNodes.map((n) => n.id)
-          : [node.id],
+        draggedNodes.length ? draggedNodes.map((n) => n.id) : [node.id],
         hintTargetId,
       );
     },
