@@ -124,7 +124,7 @@ export default function AwsServiceNode({
             slug={data.slug}
             category={data.category}
             name={data.name}
-            size={40}
+            size="medium"
           />
           <EditableNodeLabel
             value={data.name}
@@ -176,7 +176,7 @@ export default function AwsServiceNode({
           slug={data.slug}
           category={data.category}
           name={data.name}
-          size={40}
+          size="medium"
         />
       </CircularNode>
     );
@@ -243,7 +243,7 @@ export default function AwsServiceNode({
         slug={data.slug}
         category={data.category}
         name={data.name}
-        size={40}
+        size="medium"
       />
       <EditableNodeLabel
         value={data.name}

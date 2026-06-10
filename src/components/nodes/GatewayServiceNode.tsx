@@ -45,7 +45,7 @@ export default function GatewayServiceNode({
         slug={data.slug}
         category={data.category}
         name={data.name}
-        size={40}
+        size="large"
       />
     </CircularNode>
   );
