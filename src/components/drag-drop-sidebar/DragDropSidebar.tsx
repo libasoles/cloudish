@@ -237,6 +237,17 @@ export default function DragDropSidebar({
             onToolDragEnd,
           }),
         )}
+        {CONTAINERS.filter((item) => item.id === "infra-generic-container").map(
+          (item) =>
+            renderInfrastructureTool(item, {
+              labels,
+              infraLabels,
+              iconClassName: "size-10 text-muted-foreground",
+              onToolClick,
+              onToolDragStart,
+              onToolDragEnd,
+            }),
+        )}
       </div>
     </aside>
   );

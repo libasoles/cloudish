@@ -167,7 +167,7 @@ export const UI_TEXT = {
       "This will permanently delete the project and clear the current canvas. This action cannot be undone.",
     deleteArchitectureConfirmAction: "Delete project",
     deleteArchitectureConfirmCancel: "Cancel",
-    deleteArchitectureDeleted: "Project deleted",
+    deleteArchitectureDeleted: "Done",
     deleteArchitectureDeletedDescription: "The project was deleted.",
     deleteArchitectureFailed: "Could not delete project",
     deleteArchitectureFailedDescription:
@@ -359,7 +359,7 @@ export const UI_TEXT = {
       "Se borrará permanentemente el proyecto y limpiará el lienzo actual. Esta acción es irreversible.",
     deleteArchitectureConfirmAction: "Borrar proyecto",
     deleteArchitectureConfirmCancel: "Cancelar",
-    deleteArchitectureDeleted: "Proyecto borrado",
+    deleteArchitectureDeleted: "Listo",
     deleteArchitectureDeletedDescription: "El proyecto se eliminó.",
     deleteArchitectureFailed: "No se pudo borrar el proyecto",
     deleteArchitectureFailedDescription:

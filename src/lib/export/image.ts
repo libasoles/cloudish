@@ -110,7 +110,15 @@ function composeWithFrame(
           );
           ctx.restore();
 
-          resolve(canvas.toDataURL("image/png"));
+          // Use toBlob → object URL so the download works even when called from
+          // deep async chains where the original user-gesture activation has expired.
+          canvas.toBlob((blob) => {
+            if (!blob) {
+              reject(new Error("canvas.toBlob produced no output"));
+              return;
+            }
+            resolve(URL.createObjectURL(blob));
+          }, "image/png");
         })
         .catch(reject);
     };
@@ -218,16 +226,15 @@ export async function exportFlowAsImage(
     document.head.removeChild(exportStyle);
   }
 
-  const composedDataUrl = await composeWithFrame(
-    rawDataUrl,
-    contentW,
-    contentH,
-  );
+  // composeWithFrame returns a blob URL — more reliable than a data URL for
+  // programmatic downloads triggered from deep async chains.
+  const blobUrl = await composeWithFrame(rawDataUrl, contentW, contentH);
 
   const a = document.createElement("a");
-  a.href = composedDataUrl;
+  a.href = blobUrl;
   a.download = `${projectName || "architecture"}.png`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 10_000);
 }

@@ -25,7 +25,7 @@ export const SERVICE_RELATIONS: Record<string, string[]> = {
   "api-gateway": ["lambda", "cognito", "waf", "cloudwatch", "route53"],
   ecs: ["ecr", "elb", "rds", "secrets-manager", "cloudwatch", "iam", "fargate"],
   eks: ["elb", "rds", "s3", "cloudwatch", "iam", "fargate"],
-  cloudfront: ["user", "s3", "api-gateway", "waf", "route53", "acm"],
+  cloudfront: ["user", "s3", "api-gateway", "waf", "route53", "acm", "elb"],
   dynamodb: ["lambda", "ec2", "cloudwatch", "iam", "kinesis"],
   aurora: ["rds", "lambda", "cloudwatch", "kms", "secrets-manager"],
   sqs: ["lambda", "sns", "ec2", "cloudwatch", "iam"],
@@ -56,4 +56,6 @@ export const SERVICE_RELATIONS: Record<string, string[]> = {
   codebuild: ["codecommit", "s3", "ecr", "cloudwatch", "iam"],
   internet: ["user", "route53", "nat-gateway", "internet-gateway"],
   user: ["internet", "route53", "cloudfront", "cognito"],
+  web: ["internet", "route53", "cloudfront", "cognito"],
+  mobile: ["internet", "route53", "cloudfront", "cognito"],
 };

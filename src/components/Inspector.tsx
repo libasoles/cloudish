@@ -70,7 +70,10 @@ export default function Inspector() {
       ? (selectedNode as AwsServiceNodeType)
       : null;
   const selectedMiscNodeServiceId =
-    selectedNode?.type === "user" || selectedNode?.type === "internet"
+    selectedNode?.type === "user" ||
+    selectedNode?.type === "internet" ||
+    selectedNode?.type === "web" ||
+    selectedNode?.type === "mobile"
       ? selectedNode.type
       : null;
   const selectedPlainTextNode =
