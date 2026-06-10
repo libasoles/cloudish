@@ -39,7 +39,7 @@ const containerNodeVariants = cva(
   {
     variants: {
       tone: {
-        aws: "border-amber-500/40 bg-amber-500/[0.04]",
+        aws: "border-[#1564a0]/50 bg-[#1564a0]/[0.06]",
         region: "border-purple-400/35 bg-purple-400/5",
         vpc: "border-violet-400/45 bg-violet-400/8",
         az: "border-indigo-400/45 bg-indigo-400/4 border-dashed",
@@ -55,7 +55,7 @@ const containerNodeVariants = cva(
 const resizeLineVariants = cva("!border-2", {
   variants: {
     tone: {
-      aws: "!border-amber-500/70",
+      aws: "!border-[#1564a0]/70",
       region: "!border-purple-400/70",
       vpc: "!border-violet-500/70",
       az: "!border-indigo-400/70",
@@ -72,7 +72,7 @@ const resizeHandleVariants = cva(
   {
     variants: {
       tone: {
-        aws: "!border-amber-500",
+        aws: "!border-[#1564a0]",
         region: "!border-purple-400",
         vpc: "!border-violet-500",
         az: "!border-indigo-400",
@@ -308,8 +308,8 @@ export default function NetworkContainerNode({
         />
       )}
       {isAws ? (
-        <div className="absolute left-3 top-3 flex items-center gap-1.5 rounded px-2 py-1 bg-[#1564a0]">
-          <AwsLogoIcon className="h-3.5 w-auto text-white" />
+        <div className="absolute left-0 top-0 flex items-center rounded-tl-lg px-3 py-2 bg-[#1564a0]">
+          <AwsLogoIcon className="h-5 w-auto text-white" />
         </div>
       ) : (
         <div className={labelVariants({ tone: containerTone })}>
