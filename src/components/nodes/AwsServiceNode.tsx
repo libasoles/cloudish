@@ -67,7 +67,10 @@ export default function AwsServiceNode({
       : undefined;
   }
 
-  function vpnHandleClassName(handleId: string, className?: string): string | undefined {
+  function vpnHandleClassName(
+    handleId: string,
+    className?: string,
+  ): string | undefined {
     if (!vpnHandleIds.has(handleId)) return className;
     return cn(className, "customer-gateway-handle");
   }
@@ -77,7 +80,9 @@ export default function AwsServiceNode({
   }
 
   if (data.serviceId === "api-gateway") {
-    const visibleRoutes = (data.routes ?? []).filter((r) => r.path.trim() !== "");
+    const visibleRoutes = (data.routes ?? []).filter(
+      (r) => r.path.trim() !== "",
+    );
     return (
       <div
         className={cn(
@@ -176,7 +181,7 @@ export default function AwsServiceNode({
           slug={data.slug}
           category={data.category}
           name={data.name}
-          size="medium"
+          size="large"
         />
       </CircularNode>
     );
