@@ -26,6 +26,15 @@ This project is a React Flow (`@xyflow/react`) platform for designing AWS archit
 
 If it makes `App.tsx` larger, it should be its own module.
 
+## Node Data Construction
+
+**Never duplicate node data construction inline.** Every code path that creates a node (drag-drop, search, related-services panel, templates) must build its `data` through the shared helpers in `src/lib/node-utils.ts`:
+
+- `getAwsServiceNodeData(service)` — AWS service nodes (`name`/`slug`/`category`/`serviceId`)
+- `getMiscNodeData(serviceId)` — miscellaneous nodes (User, Internet, Web, Mobile, Database), which use `label`/`fields.label` and render via `MiscellaneousNode`
+
+A node whose `type` resolves to `MiscellaneousNode` but carries AWS-service-shaped data (or vice versa) renders a broken label (`undefined`). Use `isMiscellaneousServiceId()` to pick the right shape.
+
 ## Styling Rules
 
 - `src/index.css` defines a CSS custom-property design system (colors, typography, shadows) with dark-mode via `@media (prefers-color-scheme: dark)`.

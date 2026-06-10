@@ -78,6 +78,14 @@ When count changes in Inspector:
 - `getParentedPosition(position, size, nodes)` converts a global drop position to parent-relative (used when dropping service nodes).
 - Node ordering for React Flow subflow rendering: `orderNodesForSubflows()` → Region → VPC → AZ → Subnet → Services.
 
+## Overlap Avoidance on Add
+
+When a node is **added** (sidebar/search click or drop), it must not land on top of an existing node. `avoidNodeOverlap(desired, size, nodes, excludeId?)` in `src/lib/graph-utils.ts` nudges the desired **absolute** position to the nearest free spot (spiral search) before `getParentedPosition` runs. It treats only **leaf nodes** as obstacles — containers are skipped, since nodes nest inside them.
+
+- Use `VISUAL_NODE_SIZE` (the rendered icon-node footprint), **not** `DEFAULT_NODE_WIDTH/HEIGHT` (the hit-test rect), as the collision size — otherwise tall icon nodes still overlap vertically.
+- Applies to free-placed leaf nodes only: subnet-scope services, user/internet/web/mobile/database. Band/gateway/auto-distributed nodes keep their own layout logic; text and pasted images are intentionally left alone (annotations placed deliberately).
+- **Drag does not avoid overlap** — `syncNodeSubnet` leaves dragged nodes where the user drops them. Overlap avoidance is initial-placement only.
+
 ## Scope Bands (non-subnet-scope services)
 
 Services with `placementScope: "regional"` or `"vpc"` (e.g., S3, RDS, CloudFront) live in a **band** around their allowed ancestor container rather than inside the content area.

@@ -11,6 +11,11 @@ export const CONTAINER_HEIGHT = 264;
 export const DEFAULT_NODE_WIDTH = 150;
 export const DEFAULT_NODE_HEIGHT = 40;
 
+// Approximate *visual* footprint of an icon-style leaf node (icon + label).
+// DEFAULT_NODE_WIDTH/HEIGHT is the hit-test rect, not what gets rendered, so
+// overlap avoidance uses this instead to keep nodes visually clear.
+export const VISUAL_NODE_SIZE = { width: 96, height: 96 } as const;
+
 export const AWS_WIDTH = 1360;
 export const AWS_HEIGHT = 920;
 
@@ -430,6 +435,92 @@ export function getParentedPosition(
       y: position.y - parentPosition.y,
     },
   };
+}
+
+// Minimum clearance kept between a freshly placed node and its neighbours.
+const OVERLAP_AVOID_GAP = 12;
+// How far the spiral search will wander (in rings) before giving up.
+const OVERLAP_AVOID_MAX_RINGS = 24;
+
+function rectsOverlapWithGap(a: Rect, b: Rect, gap: number) {
+  return isRectIntersecting(
+    { x: a.x - gap, y: a.y - gap, width: a.width + gap * 2, height: a.height + gap * 2 },
+    b,
+  );
+}
+
+/**
+ * Finds an absolute position near `desired` where a node of `size` does not
+ * overlap any of `obstacles`. Returns `desired` unchanged when it is already
+ * clear. Otherwise spirals outward and returns the nearest free spot.
+ *
+ * Used only when *adding* a node — existing nodes can still be dragged on top
+ * of one another. `obstacles` should be the absolute rects of leaf nodes
+ * (containers are intentionally excluded, since nodes nest inside them).
+ */
+export function findNonOverlappingPosition(
+  desired: FlowPosition,
+  size: { width: number; height: number },
+  obstacles: Rect[],
+): FlowPosition {
+  const isFree = (pos: FlowPosition) => {
+    const rect = { ...pos, ...size };
+    return !obstacles.some((o) => rectsOverlapWithGap(rect, o, OVERLAP_AVOID_GAP));
+  };
+
+  if (isFree(desired)) {
+    return desired;
+  }
+
+  const stepX = size.width + OVERLAP_AVOID_GAP;
+  const stepY = size.height + OVERLAP_AVOID_GAP;
+
+  for (let ring = 1; ring <= OVERLAP_AVOID_MAX_RINGS; ring++) {
+    let best: FlowPosition | null = null;
+    let bestDist = Infinity;
+
+    for (let dx = -ring; dx <= ring; dx++) {
+      for (let dy = -ring; dy <= ring; dy++) {
+        // Only the outer perimeter of this ring is new.
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== ring) continue;
+
+        const candidate = {
+          x: desired.x + dx * stepX,
+          y: desired.y + dy * stepY,
+        };
+        if (!isFree(candidate)) continue;
+
+        const dist = (candidate.x - desired.x) ** 2 + (candidate.y - desired.y) ** 2;
+        if (dist < bestDist) {
+          bestDist = dist;
+          best = candidate;
+        }
+      }
+    }
+
+    if (best) return best;
+  }
+
+  return desired;
+}
+
+/**
+ * Convenience wrapper over `findNonOverlappingPosition` that derives obstacle
+ * rects from the current graph: all non-container leaf nodes, in absolute
+ * coordinates. `excludeId` skips a node (e.g. one being repositioned).
+ */
+export function avoidNodeOverlap(
+  desired: FlowPosition,
+  size: { width: number; height: number },
+  nodes: AppNode[],
+  excludeId?: string,
+): FlowPosition {
+  const nodesById = new Map(nodes.map((node) => [node.id, node]));
+  const obstacles = nodes
+    .filter((node) => node.id !== excludeId && !isNetworkContainerNode(node))
+    .map((node) => getNodeRect(node, nodesById));
+
+  return findNonOverlappingPosition(desired, size, obstacles);
 }
 
 const REGION_HEADER_H = 36;

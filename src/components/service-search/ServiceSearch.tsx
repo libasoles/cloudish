@@ -13,6 +13,7 @@ import {
   type Locale,
 } from "@/i18n";
 import { AWS_SERVICE_NODE_TYPE, type DragTool } from "@/lib/drag-tools";
+import { isMiscellaneousServiceId } from "@/lib/node-utils";
 
 const VPC_SERVICE_ID = "vpc";
 
@@ -55,7 +56,9 @@ function getSearchResults(
   }
 
   const serviceResults: ServiceSearchItem[] = AWS_SERVICES.filter((service) => {
-    if (service.id === VPC_SERVICE_ID) {
+    // VPC and miscellaneous nodes (User, Internet, Web, Mobile, Database)
+    // are offered as infrastructure items below — skip the catalog duplicates.
+    if (service.id === VPC_SERVICE_ID || isMiscellaneousServiceId(service.id)) {
       return false;
     }
 
