@@ -1,0 +1,23 @@
+name: Cleanup Firebase Hosting preview on PR close
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  cleanup_preview:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+      - name: Delete Firebase Hosting preview channel
+        run: |
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-service-account.json"
+          npx --yes firebase-tools hosting:channel:delete "pr-${{ github.event.pull_request.number }}" \
+            --project cloudish-feb6a \
+            --force \
+            --non-interactive
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_CLOUDISH_FEB6A }}
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
