@@ -1,4 +1,5 @@
 import { Handle, Position, type NodeProps, type Node } from "@xyflow/react";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { CircularServiceIcon } from "@/components/CircularServiceIcon";
 import EditableNodeLabel from "@/components/EditableNodeLabel";
@@ -34,6 +35,7 @@ export default function GatewayServiceNode({
   const t = UI_TEXT[getBrowserLocale()];
   const commitNodeUpdate = useNodeCommit(id);
 
+  const [isHovering, setIsHovering] = useState(false);
   const vpnHandleIds = getCustomerGatewayHandleIds(id, edges, nodes);
 
   function vpnHandleStyle(handleId: string): React.CSSProperties | undefined {
@@ -52,13 +54,17 @@ export default function GatewayServiceNode({
   }
 
   return (
-    <div className="flex flex-col items-center gap-1.5 w-14">
+    <div
+      className={cn("flex flex-col items-center gap-1.5 w-14", isHovering && "node-hovering")}
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => setIsHovering(false)}
+    >
       <Handle
         type="source"
         position={Position.Left}
         id="left"
         className={vpnHandleClassName("left")}
-        style={{ top: 28, ...vpnHandleStyle("left") }}
+        style={vpnHandleStyle("left")}
       >
         {vpnHandleIds.has("left") && (
           <CustomerGatewayIcon className="size-7 text-purple-600 pointer-events-none" />
@@ -69,7 +75,7 @@ export default function GatewayServiceNode({
         position={Position.Right}
         id="right"
         className={vpnHandleClassName("right")}
-        style={{ top: 28, ...vpnHandleStyle("right") }}
+        style={vpnHandleStyle("right")}
       >
         {vpnHandleIds.has("right") && (
           <CustomerGatewayIcon className="size-7 text-purple-600 pointer-events-none" />
@@ -80,7 +86,7 @@ export default function GatewayServiceNode({
         position={Position.Top}
         id="top"
         className={vpnHandleClassName("top", "handle-vertical")}
-        style={{ left: 28, ...vpnHandleStyle("top") }}
+        style={vpnHandleStyle("top")}
       >
         {vpnHandleIds.has("top") && (
           <CustomerGatewayIcon className="size-7 text-purple-600 pointer-events-none" />
@@ -91,7 +97,7 @@ export default function GatewayServiceNode({
         position={Position.Bottom}
         id="bottom"
         className={vpnHandleClassName("bottom", "handle-vertical")}
-        style={{ left: 28, top: 56, ...vpnHandleStyle("bottom") }}
+        style={vpnHandleStyle("bottom")}
       >
         {vpnHandleIds.has("bottom") && (
           <CustomerGatewayIcon className="size-7 text-purple-600 pointer-events-none" />
@@ -107,7 +113,7 @@ export default function GatewayServiceNode({
       <EditableNodeLabel
         value={data.name}
         editLabel={t.editNodeName}
-        className="text-white"
+        className="text-white text-nowrap"
         onCommit={renameNode}
       />
     </div>
