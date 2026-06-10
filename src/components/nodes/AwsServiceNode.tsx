@@ -1,4 +1,5 @@
 import { Handle, Position, type NodeProps, type Node } from "@xyflow/react";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { AwsServiceIcon } from "@/components/AwsServiceIcon";
 import { CircularServiceIcon } from "@/components/CircularServiceIcon";
@@ -52,6 +53,7 @@ export default function AwsServiceNode({
   data,
   selected,
 }: NodeProps<AwsServiceNodeType>) {
+  const [isHovering, setIsHovering] = useState(false);
   const edges = useFlowStore((s) => s.edges);
   const nodes = useFlowStore((s) => s.nodes);
   const t = UI_TEXT[getBrowserLocale()];
@@ -84,7 +86,10 @@ export default function AwsServiceNode({
           selected
             ? "border-blue-500 shadow-md ring-2 ring-primary ring-offset-4 ring-offset-background"
             : "border-gray-200",
+          isHovering && "node-hovering",
         )}
+        onMouseEnter={() => setIsHovering(true)}
+        onMouseLeave={() => setIsHovering(false)}
       >
         <Handle
           type="source"
@@ -155,32 +160,39 @@ export default function AwsServiceNode({
 
   if (data.meta?.shape === "circular") {
     return (
-      <div className="flex flex-col items-center gap-1.5 w-14">
+      <div
+        className={cn(
+          "flex flex-col items-center gap-1.5 w-14",
+          isHovering && "node-hovering",
+        )}
+        onMouseEnter={() => setIsHovering(true)}
+        onMouseLeave={() => setIsHovering(false)}
+      >
         <Handle
           type="source"
           position={Position.Left}
           id="left"
-          style={{ top: 28 }}
+          style={{ top: "50%", transform: "translateY(-50%)" }}
         />
         <Handle
           type="source"
           position={Position.Right}
           id="right"
-          style={{ top: 28 }}
+          style={{ top: "50%", transform: "translateY(-50%)" }}
         />
         <Handle
           type="source"
           position={Position.Top}
           id="top"
           className="handle-vertical"
-          style={{ left: 28 }}
+          style={{ left: "50%", transform: "translateX(-50%)" }}
         />
         <Handle
           type="source"
           position={Position.Bottom}
           id="bottom"
           className="handle-vertical"
-          style={{ left: 28, top: 56 }}
+          style={{ left: "50%", transform: "translateX(-50%)" }}
         />
         <CircularServiceIcon
           slug={data.slug}
@@ -192,7 +204,7 @@ export default function AwsServiceNode({
         <EditableNodeLabel
           value={data.name}
           editLabel={t.editNodeName}
-          className="text-white"
+          className="text-white text-nowrap"
           onCommit={renameNode}
         />
       </div>
@@ -207,7 +219,10 @@ export default function AwsServiceNode({
         selected
           ? "border-blue-500 shadow-md ring-2 ring-primary ring-offset-4 ring-offset-background"
           : "border-gray-200",
+        isHovering && "node-hovering",
       )}
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => setIsHovering(false)}
     >
       <Handle
         type="source"
