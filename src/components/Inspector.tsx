@@ -117,7 +117,7 @@ export default function Inspector() {
   })();
 
   return (
-    <Card className="hidden h-full w-72 flex-col rounded-none border-y-0 border-r-0 max-md:!hidden md:flex">
+    <Card className="hidden h-full w-72 flex-col rounded-none border-y-0 border-r-0 max-md:!hidden md:flex border-border">
       <CardHeader className="px-4 py-4">
         <CardTitle className="text-sm font-medium">{inspectorTitle}</CardTitle>
         {selectedAwsNode && selectedAwsDescription && (

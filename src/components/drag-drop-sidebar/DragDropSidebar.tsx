@@ -242,6 +242,7 @@ export default function DragDropSidebar({
             renderInfrastructureTool(item, {
               labels,
               infraLabels,
+              variant: "container",
               iconClassName: "size-10 text-muted-foreground",
               onToolClick,
               onToolDragStart,

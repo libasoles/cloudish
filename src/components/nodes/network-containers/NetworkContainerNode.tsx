@@ -1,8 +1,4 @@
-import {
-  NodeResizer,
-  type Node,
-  type NodeProps,
-} from "@xyflow/react";
+import { NodeResizer, type Node, type NodeProps } from "@xyflow/react";
 import { cva } from "class-variance-authority";
 import { Link } from "lucide-react";
 import EditableNodeLabel from "@/components/EditableNodeLabel";
@@ -198,8 +194,8 @@ export default function NetworkContainerNode({
       state.nodes.filter(
         (node) =>
           node.parentId === id &&
-          (node.data as { containerType?: NetworkContainerType }).containerType ===
-            childType,
+          (node.data as { containerType?: NetworkContainerType })
+            .containerType === childType,
       ).length + 1
     );
   });
@@ -215,11 +211,11 @@ export default function NetworkContainerNode({
   const STRIP_DEFAULT = 20;
   const si = data.scopeInsets;
   const stripW = {
-    right:  si?.right  ? si.right  : STRIP_DEFAULT,
-    left:   si?.left   ? si.left   : STRIP_DEFAULT,
+    right: si?.right ? si.right : STRIP_DEFAULT,
+    left: si?.left ? si.left : STRIP_DEFAULT,
   };
   const stripH = {
-    top:    si?.top    ? si.top    : STRIP_DEFAULT,
+    top: si?.top ? si.top : STRIP_DEFAULT,
     bottom: si?.bottom ? si.bottom : STRIP_DEFAULT,
   };
 
@@ -228,12 +224,21 @@ export default function NetworkContainerNode({
     params: { width: number; height: number },
   ) => {
     if (isRegion || isVpc) {
-      setNodes((prev) => resizeContainerNode(id, params.width, params.height, prev));
+      setNodes((prev) =>
+        resizeContainerNode(id, params.width, params.height, prev),
+      );
     } else if (isAsg || isGeneric || isAws) {
       setNodes((prev) =>
         prev.map((n) =>
           n.id === id
-            ? { ...n, style: { ...n.style, width: params.width, height: params.height } }
+            ? {
+                ...n,
+                style: {
+                  ...n.style,
+                  width: params.width,
+                  height: params.height,
+                },
+              }
             : n,
         ),
       );
@@ -262,8 +267,12 @@ export default function NetworkContainerNode({
       className={cn(
         containerNodeVariants({ tone: containerTone }),
         selected && "ring-2 ring-primary ring-offset-4 ring-offset-background",
-        isDropTarget && !dropBandSide && "ring-2 ring-emerald-400 ring-offset-2 ring-offset-background",
-        isDropTarget && dropBandSide && "ring-2 ring-amber-400 ring-offset-2 ring-offset-background",
+        isDropTarget &&
+          !dropBandSide &&
+          "ring-2 ring-emerald-400 ring-offset-2 ring-offset-background",
+        isDropTarget &&
+          dropBandSide &&
+          "ring-2 ring-amber-400 ring-offset-2 ring-offset-background",
         data.pulseKey && "node-click-pulse",
       )}
     >
@@ -308,7 +317,7 @@ export default function NetworkContainerNode({
         />
       )}
       {isAws ? (
-        <div className="absolute left-0 top-0 flex items-center rounded-tl-lg px-3 py-2 bg-[#1564a0]">
+        <div className="absolute left-0 top-0 flex items-center rounded-tl-lg px-3 py-2 bg-[#1564a0] rounded-br-lg">
           <AwsLogoIcon className="h-5 w-auto text-white" />
         </div>
       ) : (
