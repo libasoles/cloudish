@@ -5,13 +5,13 @@ import {
   Layers,
   Network,
   TrendingUp,
-  Box,
   Monitor,
   Smartphone,
-  Database,
 } from "lucide-react";
 import { VpcIcon } from "@/components/icons/VpcIcon";
 import { AwsLogoIcon } from "@/components/icons/AwsLogoIcon";
+import { SimpleDatabaseIcon } from "@/components/icons/SimpleDatabaseIcon";
+import { SimpleContainerIcon } from "@/components/icons/SimpleContainerIcon";
 import { AWS_SERVICE_NODE_TYPE, type DragTool } from "@/lib/drag-tools";
 
 export type InfrastructureItem = {
@@ -87,7 +87,7 @@ export const CONTAINERS: InfrastructureItem[] = [
     descriptionKey: 'genericContainerDescription',
     tooltipKey: 'genericContainer',
     tool: { type: 'genericContainer' },
-    Icon: Box,
+    Icon: SimpleContainerIcon,
     aliases: 'container grupo group box agrupador genérico generic contenedor',
     searchOnly: true,
   },
@@ -118,7 +118,7 @@ export const CLIENTS: InfrastructureItem[] = [
     descriptionKey: 'databaseDescription',
     tooltipKey: 'database',
     tool: { type: 'database' },
-    Icon: Database,
+    Icon: SimpleDatabaseIcon,
     aliases: 'database db base datos data storage persistencia',
   },
 ];
