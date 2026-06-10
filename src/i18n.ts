@@ -101,6 +101,9 @@ export const UI_TEXT = {
     dragGenericContainer: "Drag Container",
     genericContainerDescription:
       "Generic container to visually group any set of nodes without AWS hierarchy constraints.",
+    awsCloud: "AWS Cloud",
+    awsCloudDescription:
+      "Top-level AWS Cloud container that wraps Regions and all account resources.",
     asgMinCapacity: "Min instances",
     asgDesiredCapacity: "Desired instances",
     asgMaxCapacity: "Max instances",
@@ -167,7 +170,7 @@ export const UI_TEXT = {
       "This will permanently delete the project and clear the current canvas. This action cannot be undone.",
     deleteArchitectureConfirmAction: "Delete project",
     deleteArchitectureConfirmCancel: "Cancel",
-    deleteArchitectureDeleted: "Project deleted",
+    deleteArchitectureDeleted: "Done",
     deleteArchitectureDeletedDescription: "The project was deleted.",
     deleteArchitectureFailed: "Could not delete project",
     deleteArchitectureFailedDescription:
@@ -292,6 +295,9 @@ export const UI_TEXT = {
     dragGenericContainer: "Arrastrar Contenedor",
     genericContainerDescription:
       "Contenedor genérico para agrupar visualmente nodos sin restricciones de jerarquía AWS.",
+    awsCloud: "AWS Cloud",
+    awsCloudDescription:
+      "Contenedor de nivel superior de AWS que envuelve regiones y todos los recursos de la cuenta.",
     asgMinCapacity: "Instancias mínimas",
     asgDesiredCapacity: "Instancias deseadas",
     asgMaxCapacity: "Instancias máximas",
@@ -359,7 +365,7 @@ export const UI_TEXT = {
       "Se borrará permanentemente el proyecto y limpiará el lienzo actual. Esta acción es irreversible.",
     deleteArchitectureConfirmAction: "Borrar proyecto",
     deleteArchitectureConfirmCancel: "Cancelar",
-    deleteArchitectureDeleted: "Proyecto borrado",
+    deleteArchitectureDeleted: "Listo",
     deleteArchitectureDeletedDescription: "El proyecto se eliminó.",
     deleteArchitectureFailed: "No se pudo borrar el proyecto",
     deleteArchitectureFailedDescription:

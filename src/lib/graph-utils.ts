@@ -11,6 +11,9 @@ export const CONTAINER_HEIGHT = 264;
 export const DEFAULT_NODE_WIDTH = 150;
 export const DEFAULT_NODE_HEIGHT = 40;
 
+export const AWS_WIDTH = 1360;
+export const AWS_HEIGHT = 920;
+
 export const REGION_WIDTH = 1160;
 export const REGION_HEIGHT = 760;
 export const VPC_WIDTH = 760;
@@ -26,6 +29,7 @@ export const ASG_HEIGHT = 312;
 export const ASG_STYLE = { width: ASG_WIDTH, height: ASG_HEIGHT } as const;
 export const GATEWAY_EDGE_CLEARANCE = 16;
 
+export const AWS_STYLE = { width: AWS_WIDTH, height: AWS_HEIGHT } as const;
 export const REGION_STYLE = { width: REGION_WIDTH, height: REGION_HEIGHT } as const;
 export const VPC_STYLE = { width: VPC_WIDTH, height: VPC_HEIGHT } as const;
 export const AZ_STYLE = { width: AZ_WIDTH, height: AZ_HEIGHT } as const;
@@ -78,6 +82,13 @@ export function isAzNode(node: AppNode) {
   );
 }
 
+export function isAwsNode(node: AppNode) {
+  return (
+    isNetworkContainerNode(node) &&
+    (node.data as NetworkContainerNodeData).containerType === "aws"
+  );
+}
+
 export function getNetworkContainerType(node: AppNode) {
   if (!isNetworkContainerNode(node)) return null;
   return (node.data as NetworkContainerNodeData).containerType;
@@ -85,12 +96,13 @@ export function getNetworkContainerType(node: AppNode) {
 
 export function orderNodesForSubflows(nodes: AppNode[]) {
   const getContainerOrder = (node: AppNode): number => {
-    if (!isNetworkContainerNode(node)) return 5;
-    if (isRegionNode(node)) return 0;
-    if (isVpcNode(node)) return 1;
-    if (isAzNode(node)) return 2;
-    if (isSubnetNode(node)) return 3;
-    return 4;
+    if (!isNetworkContainerNode(node)) return 6;
+    if (isAwsNode(node)) return 0;
+    if (isRegionNode(node)) return 1;
+    if (isVpcNode(node)) return 2;
+    if (isAzNode(node)) return 3;
+    if (isSubnetNode(node)) return 4;
+    return 5;
   };
 
   return [...nodes].sort((a, b) => getContainerOrder(a) - getContainerOrder(b));
@@ -371,8 +383,11 @@ export function findIntersectingContainer(
         return false;
       }
 
-      // Region is always top-level: cannot have a parent
-      if (childNode && isRegionNode(childNode)) return false;
+      // AWS is always top-level: cannot have a parent
+      if (childNode && isAwsNode(childNode)) return false;
+
+      // Region can only parent to an AWS container
+      if (childNode && isRegionNode(childNode) && !isAwsNode(node)) return false;
 
       // VPC can only parent to Region
       if (childNode && isVpcNode(childNode) && !isRegionNode(node)) return false;
