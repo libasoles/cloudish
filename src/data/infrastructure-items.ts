@@ -11,6 +11,7 @@ import {
   Database,
 } from "lucide-react";
 import { VpcIcon } from "@/components/icons/VpcIcon";
+import { AwsLogoIcon } from "@/components/icons/AwsLogoIcon";
 import { AWS_SERVICE_NODE_TYPE, type DragTool } from "@/lib/drag-tools";
 
 export type InfrastructureItem = {
@@ -25,6 +26,16 @@ export type InfrastructureItem = {
 };
 
 export const CONTAINERS: InfrastructureItem[] = [
+  {
+    id: 'infra-aws',
+    name: 'AWS Cloud',
+    descriptionKey: 'awsCloudDescription',
+    tooltipKey: 'awsCloud',
+    tool: { type: 'aws' },
+    Icon: AwsLogoIcon,
+    aliases: 'aws amazon web services cloud nube cuenta account',
+    searchOnly: true,
+  },
   {
     id: 'infra-region',
     name: 'Region',

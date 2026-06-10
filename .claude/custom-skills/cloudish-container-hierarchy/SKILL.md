@@ -8,16 +8,19 @@ description: AWS container topology, nesting rules, node sizes, auto-subdivision
 ## Topology
 
 ```text
-Region → VPC → AZ → Subnet → Service nodes
+AWS → Region → VPC → AZ → Subnet → Service nodes
 ```
 
-All containers use node type `"networkContainer"` with `data.containerType` set to `"region"`, `"vpc"`, `"az"`, or `"subnet"`.
+All containers use node type `"networkContainer"` with `data.containerType` set to `"aws"`, `"region"`, `"vpc"`, `"az"`, or `"subnet"`.
+
+The `"aws"` container is the top-level "AWS Cloud" wrapper. It is a **simple resizable container** (like `"generic"`/`"asg"`): no auto-subdivision, no dedicated Inspector panel, resized via plain style updates in `NetworkContainerNode.handleResize`. It only constrains nesting (Region must live inside it; it cannot itself be nested). It is `searchOnly` in the sidebar catalog and rendered last in `DragDropSidebar`.
 
 ## Nesting Rules
 
 | Child | Valid parents |
 |---|---|
-| Region | none (top-level only) |
+| AWS | none (top-level only) |
+| Region | AWS only |
 | VPC | Region |
 | AZ | VPC or Region |
 | Subnet | AZ or VPC |
@@ -31,12 +34,13 @@ Defined as named constants in `src/lib/graph-utils.ts`:
 
 | Container | Width | Height |
 |---|---|---|
+| AWS | 1360 | 920 |
 | Region | 1160 | 760 |
 | VPC | 760 | 520 |
 | AZ | 580 | 400 |
 | Subnet | 384 | 264 |
 
-Use `REGION_STYLE`, `VPC_STYLE`, `AZ_STYLE`, `SUBNET_STYLE` (or legacy `CONTAINER_STYLE`) when constructing nodes.
+Use `AWS_STYLE`, `REGION_STYLE`, `VPC_STYLE`, `AZ_STYLE`, `SUBNET_STYLE` (or legacy `CONTAINER_STYLE`) when constructing nodes.
 
 ## Container Spacing
 

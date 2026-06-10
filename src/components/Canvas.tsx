@@ -81,6 +81,9 @@ import {
   redistributeChildContainers,
   redistributeGatewayAffectedVpcLayouts,
   getNetworkContainerType,
+  AWS_STYLE,
+  AWS_WIDTH,
+  AWS_HEIGHT,
   REGION_STYLE,
   REGION_WIDTH,
   REGION_HEIGHT,
@@ -1552,6 +1555,35 @@ export default function Canvas() {
             edges,
           };
         });
+        return;
+      }
+
+      if (tool.type === "aws") {
+        const containerNumber = containerIdRef.current++;
+        const awsPosition = {
+          x: position.x - AWS_WIDTH / 2,
+          y: position.y - AWS_HEIGHT / 2,
+        };
+        const awsId = `aws-${containerNumber}`;
+
+        commitGraphChange(({ nodes, edges }) => ({
+          nodes: orderNodesForSubflows([
+            ...nodes.map((n) => ({ ...n, selected: false })),
+            {
+              id: awsId,
+              type: "networkContainer",
+              selected: true,
+              position: awsPosition,
+              data: {
+                containerType: "aws",
+                label: t.awsCloud,
+                ...pulseData,
+              },
+              style: AWS_STYLE,
+            },
+          ]),
+          edges,
+        }));
         return;
       }
 

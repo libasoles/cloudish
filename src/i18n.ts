@@ -101,6 +101,9 @@ export const UI_TEXT = {
     dragGenericContainer: "Drag Container",
     genericContainerDescription:
       "Generic container to visually group any set of nodes without AWS hierarchy constraints.",
+    awsCloud: "AWS Cloud",
+    awsCloudDescription:
+      "Top-level AWS Cloud container that wraps Regions and all account resources.",
     asgMinCapacity: "Min instances",
     asgDesiredCapacity: "Desired instances",
     asgMaxCapacity: "Max instances",
@@ -292,6 +295,9 @@ export const UI_TEXT = {
     dragGenericContainer: "Arrastrar Contenedor",
     genericContainerDescription:
       "Contenedor genérico para agrupar visualmente nodos sin restricciones de jerarquía AWS.",
+    awsCloud: "AWS Cloud",
+    awsCloudDescription:
+      "Contenedor de nivel superior de AWS que envuelve regiones y todos los recursos de la cuenta.",
     asgMinCapacity: "Instancias mínimas",
     asgDesiredCapacity: "Instancias deseadas",
     asgMaxCapacity: "Instancias máximas",
