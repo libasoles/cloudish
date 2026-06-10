@@ -1,8 +1,9 @@
 import { Handle, Position, type NodeProps, type Node } from "@xyflow/react";
-import { User, Cloud, Monitor, Smartphone, Database } from "lucide-react";
+import { User, Cloud, Monitor, Smartphone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import EditableNodeLabel from "@/components/EditableNodeLabel";
 import { CustomerGatewayIcon } from "@/components/icons/CustomerGatewayIcon";
+import { SimpleDatabaseIcon } from "@/components/icons/SimpleDatabaseIcon";
 import { getCustomerGatewayHandleIds } from "@/lib/vpn-gateway-edges";
 import { useFlowStore } from "@/store/flowStore";
 import { UI_TEXT, getBrowserLocale } from "@/i18n";
@@ -13,7 +14,7 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   internet: Cloud,
   web: Monitor,
   mobile: Smartphone,
-  database: Database,
+  database: SimpleDatabaseIcon,
 };
 
 const VPN_HANDLE_BASE: React.CSSProperties = {
@@ -80,11 +81,9 @@ export default function MiscellaneousNode({
   return (
     <div
       className={cn(
-        "flex flex-col items-center gap-1 px-3 py-2 bg-white rounded-xl border-2 shadow-sm min-w-20",
+        "flex flex-col items-center gap-1 px-2 py-1 rounded-xl min-w-20",
         data.pulseKey && "node-click-pulse",
-        selected
-          ? "border-blue-500 shadow-md ring-2 ring-primary ring-offset-4 ring-offset-background"
-          : "border-gray-200",
+        selected && "ring-2 ring-primary ring-offset-4 ring-offset-background",
       )}
     >
       <Handle
@@ -131,10 +130,11 @@ export default function MiscellaneousNode({
           <CustomerGatewayIcon className="size-7 text-purple-600 pointer-events-none" />
         )}
       </Handle>
-      <IconComponent className="size-10 text-gray-500" />
+      <IconComponent className="size-14 text-white" />
       <EditableNodeLabel
         value={label}
         editLabel={t.editNodeName}
+        className="text-white"
         onCommit={renameNode}
       />
     </div>
