@@ -101,6 +101,8 @@ import {
   getGatewayNodeSize,
   snapGatewayNodeToVpcBorder,
   isVpcNode,
+  GATEWAY_NODE_FALLBACK_W,
+  GATEWAY_NODE_FALLBACK_H,
 } from "@/lib/graph-utils";
 import {
   addEdgeWithAzSync,
@@ -1292,7 +1294,6 @@ export default function Canvas() {
                 },
               };
             } else {
-              // Always place in the band of the allowed ancestor for non-subnet scope
               placementToastScope = scope;
               const dropAbsCenter = {
                 x: nodePosition.x + DEFAULT_NODE_WIDTH / 2,
@@ -1304,9 +1305,28 @@ export default function Canvas() {
                 height: (allowedAncestor.style as { height?: number })?.height ?? allowedAncestor.height ?? 480,
               };
               const side = resolveBandSide(dropAbsCenter, ancRect, scope, service.id);
-              const bandPos = computeBandPlacement(allowedAncestor, side, nodes, service.id);
-              parentedPosition = bandPos;
-              extraData = { bandSide: side };
+
+              if (getServiceNodeType(service.id) === "gatewayService") {
+                // Gateway nodes live on a VPC border (50% in / 50% out), not in the band.
+                const ancPos = getAbsolutePosition(allowedAncestor, nodesById);
+                const { width: vpcW, height: vpcH } = getNodeSize(allowedAncestor);
+                const nW = GATEWAY_NODE_FALLBACK_W;
+                const nH = GATEWAY_NODE_FALLBACK_H;
+                const dropRelX = dropAbsCenter.x - ancPos.x;
+                const dropRelY = dropAbsCenter.y - ancPos.y;
+                const borderPos =
+                  side === "right"  ? { x: vpcW - nW / 2, y: dropRelY - nH / 2 } :
+                  side === "left"   ? { x: -nW / 2,       y: dropRelY - nH / 2 } :
+                  side === "top"    ? { x: dropRelX - nW / 2, y: -nH / 2 }       :
+                                      { x: dropRelX - nW / 2, y: vpcH - nH / 2 };
+                parentedPosition = { parentId: allowedAncestor.id, position: borderPos };
+                // No bandSide — gateway nodes are positioned at the VPC border, not the band.
+              } else {
+                // Regular vpc/regional-scope service nodes go into the band.
+                const bandPos = computeBandPlacement(allowedAncestor, side, nodes, service.id);
+                parentedPosition = bandPos;
+                extraData = { bandSide: side };
+              }
             }
           }
 
@@ -1902,7 +1922,7 @@ export default function Canvas() {
   );
 
   const syncNodeSubnet = useCallback(
-    (draggedNodeIds: string[]) => {
+    (draggedNodeIds: string[], hintTargetId?: string) => {
       setNodes((nodes) => {
         const nodesById = new Map(nodes.map((node) => [node.id, node]));
         const draggedNodes = draggedNodeIds
@@ -2097,24 +2117,65 @@ export default function Canvas() {
             return;
           }
 
-          updateContainerForNode(draggedNode);
+          // Gateway nodes are handled entirely in the snap loop below.
+          if (draggedNode.type !== "gatewayService") {
+            updateContainerForNode(draggedNode);
+          }
         });
 
-        // Snap gateway nodes to exactly 50/50 on whichever VPC border they're crossing.
+        // Snap gateway nodes to exactly 50/50 on whichever VPC border they're nearest to.
+        // We bypass updateContainerForNode for gateways (skipped above) to avoid depth-ordered
+        // container assignment routing gateways into subnets/AZs. Instead we find the target
+        // VPC directly and compute the snapped border position in one pass.
         for (const draggedNode of draggedNodes) {
           if (draggedNode.type !== "gatewayService") continue;
-          const updated = updates.get(draggedNode.id) ?? draggedNode;
-          if (!updated.parentId) continue;
-          const parentVpc = nodesById.get(updated.parentId);
-          if (!parentVpc || !isVpcNode(parentVpc)) continue;
 
-          const { width: nodeW, height: nodeH } = getGatewayNodeSize(updated);
-          const { width: vpcW, height: vpcH } = getNodeSize(parentVpc);
-          const snapped = snapGatewayNodeToVpcBorder(updated.position, nodeW, nodeH, vpcW, vpcH);
+          // Absolute rect of the gateway at drop position.
+          const absRect = getNodeRect(draggedNode, nodesById);
 
-          if (snapped.x !== updated.position.x || snapped.y !== updated.position.y) {
-            updates.set(updated.id, { ...updated, position: snapped });
+          // 1) Direct intersection with any VPC.
+          let parentVpc: AppNode | undefined = nodes.find(
+            (n) => isVpcNode(n) && isRectIntersecting(absRect, getNodeRect(n, nodesById)),
+          );
+
+          // 2) Expanded-radius search (gateway may have overshot the border by a few pixels).
+          if (!parentVpc) {
+            const { width: fallbackW, height: fallbackH } = getGatewayNodeSize(draggedNode);
+            const expandedRect = {
+              x: absRect.x - fallbackW,
+              y: absRect.y - fallbackH,
+              width:  absRect.width  + fallbackW * 2,
+              height: absRect.height + fallbackH * 2,
+            };
+            parentVpc = nodes.find(
+              (n) => isVpcNode(n) && isRectIntersecting(expandedRect, getNodeRect(n, nodesById)),
+            );
           }
+
+          // 3) Hint VPC from the drag-preview green ring (dropTargetNodeId captured before clear).
+          if (!parentVpc && hintTargetId) {
+            const hint = nodesById.get(hintTargetId);
+            if (hint && isVpcNode(hint)) parentVpc = hint;
+          }
+
+          if (!parentVpc) {
+            // No reachable VPC — detach gateway to canvas if it had a parent.
+            if (draggedNode.parentId) {
+              updates.set(draggedNode.id, {
+                ...draggedNode, parentId: undefined,
+                position: { x: absRect.x, y: absRect.y },
+              });
+            }
+            continue;
+          }
+
+          const containerPos = getAbsolutePosition(parentVpc, nodesById);
+          const relPos = { x: absRect.x - containerPos.x, y: absRect.y - containerPos.y };
+          const { width: nodeW, height: nodeH } = getGatewayNodeSize(draggedNode);
+          const { width: vpcW, height: vpcH } = getNodeSize(parentVpc);
+          const snapped = snapGatewayNodeToVpcBorder(relPos, nodeW, nodeH, vpcW, vpcH);
+
+          updates.set(draggedNode.id, { ...draggedNode, parentId: parentVpc.id, position: snapped });
         }
 
         let result = orderNodesForSubflows(
@@ -2223,6 +2284,23 @@ export default function Canvas() {
             setDropBandSide(null);
           }
         }
+        // Gateway nodes: highlight the VPC they're hovering over (green ring, no band side).
+        if (node.type === "gatewayService") {
+          const { nodes: currentNodes, nodesById: storeNodesById } = useFlowStore.getState();
+          const nodeRect = getNodeRect(node, storeNodesById);
+          const hoveredVpc = currentNodes.find(
+            (n) => isVpcNode(n) && isRectIntersecting(nodeRect, getNodeRect(n, storeNodesById)),
+          );
+          if (hoveredVpc) {
+            setDropTargetNodeId(hoveredVpc.id);
+          } else if (dropTargetNodeId !== null) {
+            setDropTargetNodeId(null);
+          }
+          setDropBandSide(null);
+          setDropPreview(null);
+          return;
+        }
+
         if (dropTargetNodeId !== null) setDropTargetNodeId(null);
         setDropPreview(null);
         return;
@@ -2254,13 +2332,17 @@ export default function Canvas() {
 
   const onNodeDragStop: OnNodeDrag<AppNode> = useCallback(
     (_event, node, draggedNodes) => {
+      // Capture the hovered VPC id BEFORE clearing so the snap code can use
+      // it as a fallback when the gateway is dropped just outside the VPC border.
+      const hintTargetId = useFlowStore.getState().dropTargetNodeId ?? undefined;
       setDropTargetNodeId(null);
       setDropPreview(null);
       setDropBandSide(null);
       syncNodeSubnet(
         draggedNodes.length
-          ? draggedNodes.map((draggedNode) => draggedNode.id)
+          ? draggedNodes.map((n) => n.id)
           : [node.id],
+        hintTargetId,
       );
     },
     [syncNodeSubnet, setDropBandSide, setDropPreview, setDropTargetNodeId],
