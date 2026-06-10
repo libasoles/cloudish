@@ -1319,7 +1319,7 @@ export default function Canvas() {
               ) {
                 placementToastScope = scope;
               }
-              parentedPosition = { position: safePos };
+              parentedPosition = { position: avoidNodeOverlap(safePos, VISUAL_NODE_SIZE, nodes) };
             } else if (scope === "az") {
               placementToastScope = scope;
               const ancestorPosition = getAbsolutePosition(
