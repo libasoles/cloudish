@@ -1,4 +1,5 @@
 import { Handle, Position, type NodeProps, type Node } from "@xyflow/react";
+import { useState } from "react";
 import { User, Cloud, Monitor, Smartphone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import EditableNodeLabel from "@/components/EditableNodeLabel";
@@ -52,6 +53,7 @@ export default function MiscellaneousNode({
   const t = UI_TEXT[getBrowserLocale()];
   const commitNodeUpdate = useNodeCommit(id);
 
+  const [isHovering, setIsHovering] = useState(false);
   const label = String(data.fields?.label ?? data.label);
   const vpnHandleIds = getCustomerGatewayHandleIds(id, edges, nodes);
   const IconComponent = ICON_MAP[type ?? "user"] ?? User;
@@ -84,7 +86,10 @@ export default function MiscellaneousNode({
         "flex flex-col items-center gap-1 px-2 py-1 rounded-xl min-w-20",
         data.pulseKey && "node-click-pulse",
         selected && "ring-2 ring-primary ring-offset-4 ring-offset-background",
+        isHovering && "node-hovering",
       )}
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => setIsHovering(false)}
     >
       <Handle
         type="source"

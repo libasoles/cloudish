@@ -185,14 +185,14 @@ export default function AwsServiceNode({
           position={Position.Top}
           id="top"
           className="handle-vertical"
-          style={{ left: "50%", transform: "translateX(-50%)" }}
+          style={{ left: "50%", transform: "translate(-50%, -50%)" }}
         />
         <Handle
           type="source"
           position={Position.Bottom}
           id="bottom"
           className="handle-vertical"
-          style={{ left: "50%", transform: "translateX(-50%)" }}
+          style={{ left: "50%", transform: "translate(-50%, 50%)" }}
         />
         <CircularServiceIcon
           slug={data.slug}
