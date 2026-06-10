@@ -4,12 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Architecture and Agent Rules
 
+- **CRITICAL:** Use git worktrees for ALL development. Never edit files directly in main branch. Create a worktree with `git worktree add --track -b <branch-name> .claude/worktrees/<name> origin/main`, then work in that directory. This prevents accidentally losing work or disrupting ongoing changes.
 - **IMPORTANT:** Before making any code changes or proposing new features, you MUST read and strictly follow the definitions and patterns established in `AGENTS.md`.
 - All agent logic, base prompts, and response structures must align with the standards defined in `AGENTS.md`.
 - Consistency with the existing agent architecture is a top priority.
 - Keep `src/App.tsx` focused on canvas orchestration and state wiring — do not bloat it with UI logic.
 - Before committing: run `npm run lint`.
 - Avoid `setState` synchronously inside `useEffect`; prefer render-time derivation.
+- **NEVER** use `git reset --hard` on main. If you need to revert, use `git revert` to create a new commit. This preserves history and prevents data loss.
 
 ## Project Overview
 
