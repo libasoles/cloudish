@@ -6,126 +6,8 @@ const PADDING_X = 80;
 const PADDING_Y = 60;
 const MAX_DIM = 2560;
 const MIN_DIM = 600;
-// Frame border drawn around the final image
-const BORDER = 52;
-// Unified background for the entire exported image (frame + canvas content)
+// Unified background for the exported image
 const BG = "#1c1d21";
-// AWS logo badge — AWS dark blue
-const LOGO_BADGE_BG = "#1564a0";
-
-function loadImage(src: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = reject;
-    img.src = src;
-  });
-}
-
-/** Renders any SVG/image as a flat white silhouette onto a new canvas. */
-function toWhiteSilhouette(
-  img: HTMLImageElement,
-  w: number,
-  h: number,
-): HTMLCanvasElement {
-  const tmp = document.createElement("canvas");
-  tmp.width = w * 2; // 2× for sharpness
-  tmp.height = h * 2;
-  const tc = tmp.getContext("2d")!;
-  // 1. Fill with white
-  tc.fillStyle = "white";
-  tc.fillRect(0, 0, tmp.width, tmp.height);
-  // 2. destination-in keeps white only where the logo has opaque pixels
-  tc.globalCompositeOperation = "destination-in";
-  tc.drawImage(img, 0, 0, tmp.width, tmp.height);
-  return tmp;
-}
-
-function composeWithFrame(
-  baseDataUrl: string,
-  contentW: number,
-  contentH: number,
-): Promise<string> {
-  const totalW = contentW + BORDER * 2;
-  const totalH = contentH + BORDER * 2;
-
-  return new Promise((resolve, reject) => {
-    const canvas = document.createElement("canvas");
-    canvas.width = totalW;
-    canvas.height = totalH;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) {
-      reject(new Error("Could not get canvas context"));
-      return;
-    }
-
-    // Unified background for the entire image
-    ctx.fillStyle = BG;
-    ctx.fillRect(0, 0, totalW, totalH);
-
-    const base = new Image();
-    base.onload = () => {
-      // Diagram content inset by BORDER on each side
-      ctx.drawImage(base, BORDER, BORDER, contentW, contentH);
-
-      loadImage(`${window.location.origin}/aws-logo.svg`)
-        .then((awsImg) => {
-          const aspectRatio = awsImg.naturalWidth / awsImg.naturalHeight;
-          // Logo height fits inside a badge centered in the top border strip
-          const logoH = Math.round(BORDER * 0.44);
-          const logoW = Math.round(logoH * aspectRatio);
-          const badgePadX = Math.round(BORDER * 0.22);
-          const badgePadY = Math.round(BORDER * 0.18);
-          const badgeW = logoW + badgePadX * 2;
-          const badgeH = logoH + badgePadY * 2;
-          const badgeX = 0;
-          const badgeY = 0;
-
-          // Blue rounded badge
-          ctx.fillStyle = LOGO_BADGE_BG;
-          ctx.beginPath();
-          ctx.roundRect(badgeX, badgeY, badgeW, badgeH, [0, 0, 0, 0]);
-          ctx.fill();
-
-          const silhouette = toWhiteSilhouette(awsImg, logoW, logoH);
-          ctx.drawImage(
-            silhouette,
-            badgeX + badgePadX,
-            badgeY + badgePadY,
-            logoW,
-            logoH,
-          );
-
-          // "cloudish.com.ar" — bottom-right of frame, muted
-          const fontSize = Math.round(BORDER * 0.24);
-          ctx.save();
-          ctx.font = `500 ${fontSize}px -apple-system, "Segoe UI", sans-serif`;
-          ctx.fillStyle = "rgba(148,163,184,0.65)";
-          ctx.textAlign = "right";
-          ctx.textBaseline = "middle";
-          ctx.fillText(
-            "cloudish.com.ar",
-            totalW - Math.round(BORDER * 0.35),
-            totalH - BORDER / 2,
-          );
-          ctx.restore();
-
-          // Use toBlob → object URL so the download works even when called from
-          // deep async chains where the original user-gesture activation has expired.
-          canvas.toBlob((blob) => {
-            if (!blob) {
-              reject(new Error("canvas.toBlob produced no output"));
-              return;
-            }
-            resolve(URL.createObjectURL(blob));
-          }, "image/png");
-        })
-        .catch(reject);
-    };
-    base.onerror = reject;
-    base.src = baseDataUrl;
-  });
-}
 
 /** Builds a set of "nodeId__handleId" keys for every endpoint that has an edge. */
 function buildConnectedHandles(edges: AppEdge[]): Set<string> {
@@ -217,18 +99,20 @@ export async function exportFlowAsImage(
     },
   };
 
-  let rawDataUrl: string;
+  let dataUrl: string;
   try {
     // First call primes the image cache so external CDN icons load on the second pass.
     await toPng(viewport, toPngOptions);
-    rawDataUrl = await toPng(viewport, toPngOptions);
+    dataUrl = await toPng(viewport, toPngOptions);
   } finally {
     document.head.removeChild(exportStyle);
   }
 
-  // composeWithFrame returns a blob URL — more reliable than a data URL for
-  // programmatic downloads triggered from deep async chains.
-  const blobUrl = await composeWithFrame(rawDataUrl, contentW, contentH);
+  // Convert the data URL to a blob URL — more reliable than a data URL for
+  // programmatic downloads triggered from deep async chains where the original
+  // user-gesture activation may have expired.
+  const blob = await (await fetch(dataUrl)).blob();
+  const blobUrl = URL.createObjectURL(blob);
 
   const a = document.createElement("a");
   a.href = blobUrl;

@@ -20,7 +20,7 @@ export type AppEdge = Edge;
 
 export type SubnetType = "Public" | "Private";
 
-export type NetworkContainerType = "subnet" | "vpc" | "region" | "az" | "asg" | "generic";
+export type NetworkContainerType = "aws" | "subnet" | "vpc" | "region" | "az" | "asg" | "generic";
 
 export type ContainerDropPreview = {
   parentId: string;

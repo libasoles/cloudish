@@ -6,6 +6,7 @@ import {
 import { cva } from "class-variance-authority";
 import { Link } from "lucide-react";
 import EditableNodeLabel from "@/components/EditableNodeLabel";
+import { AwsLogoIcon } from "@/components/icons/AwsLogoIcon";
 import { cn } from "@/lib/utils";
 import { UI_TEXT, getBrowserLocale } from "@/i18n";
 import { useFlowStore } from "@/store/flowStore";
@@ -24,6 +25,7 @@ const MIN_CONTAINER_WIDTH = 264;
 const MIN_CONTAINER_HEIGHT = 168;
 
 type ContainerTone =
+  | "aws"
   | "region"
   | "vpc"
   | "az"
@@ -37,6 +39,7 @@ const containerNodeVariants = cva(
   {
     variants: {
       tone: {
+        aws: "border-amber-500/40 bg-amber-500/[0.04]",
         region: "border-purple-400/35 bg-purple-400/5",
         vpc: "border-violet-400/45 bg-violet-400/8",
         az: "border-indigo-400/45 bg-indigo-400/4 border-dashed",
@@ -52,6 +55,7 @@ const containerNodeVariants = cva(
 const resizeLineVariants = cva("!border-2", {
   variants: {
     tone: {
+      aws: "!border-amber-500/70",
       region: "!border-purple-400/70",
       vpc: "!border-violet-500/70",
       az: "!border-indigo-400/70",
@@ -68,6 +72,7 @@ const resizeHandleVariants = cva(
   {
     variants: {
       tone: {
+        aws: "!border-amber-500",
         region: "!border-purple-400",
         vpc: "!border-violet-500",
         az: "!border-indigo-400",
@@ -85,6 +90,7 @@ const labelVariants = cva(
   {
     variants: {
       tone: {
+        aws: "border-amber-500/60 bg-background text-amber-300",
         region: "border-purple-500/50 bg-background text-purple-200",
         vpc: "border-violet-500/60 bg-background text-violet-200",
         az: "border-indigo-400/60 bg-background text-indigo-200",
@@ -98,6 +104,10 @@ const labelVariants = cva(
 );
 
 function getContainerTone(data: NetworkContainerNodeData): ContainerTone {
+  if (data.containerType === "aws") {
+    return "aws";
+  }
+
   if (data.containerType === "region") {
     return "region";
   }
@@ -198,6 +208,7 @@ export default function NetworkContainerNode({
   const isAz = data.containerType === "az";
   const isAsg = data.containerType === "asg";
   const isGeneric = data.containerType === "generic";
+  const isAws = data.containerType === "aws";
   const containerTone = getContainerTone(data);
   const displayLabel = String(data.label);
 
@@ -218,7 +229,7 @@ export default function NetworkContainerNode({
   ) => {
     if (isRegion || isVpc) {
       setNodes((prev) => resizeContainerNode(id, params.width, params.height, prev));
-    } else if (isAsg || isGeneric) {
+    } else if (isAsg || isGeneric || isAws) {
       setNodes((prev) =>
         prev.map((n) =>
           n.id === id
@@ -296,17 +307,23 @@ export default function NetworkContainerNode({
           handleClassName={resizeHandleVariants({ tone: containerTone })}
         />
       )}
-      <div className={labelVariants({ tone: containerTone })}>
-        <EditableNodeLabel
-          value={displayLabel}
-          editLabel={t.editNodeName}
-          className="max-w-48 text-current font-semibold"
-          onCommit={renameNode}
-        />
-        {isAz && data.synced && (
-          <Link className="h-3 w-3 shrink-0 text-indigo-300/80" />
-        )}
-      </div>
+      {isAws ? (
+        <div className="absolute left-3 top-3 flex items-center gap-1.5 rounded px-2 py-1 bg-[#1564a0]">
+          <AwsLogoIcon className="h-3.5 w-auto text-white" />
+        </div>
+      ) : (
+        <div className={labelVariants({ tone: containerTone })}>
+          <EditableNodeLabel
+            value={displayLabel}
+            editLabel={t.editNodeName}
+            className="max-w-48 text-current font-semibold"
+            onCommit={renameNode}
+          />
+          {isAz && data.synced && (
+            <Link className="h-3 w-3 shrink-0 text-indigo-300/80" />
+          )}
+        </div>
+      )}
     </div>
   );
 }
