@@ -138,6 +138,12 @@ Rules that keep the gateway-inset layout a fixed point (no infinite resize loops
 - Each border gateway stores its border in `data.gatewayBorderSide` (set on drop, on drag-stop snap, and derived at load by `normalizeLoadedNodes`). `repinVpcEdgeGateways` re-glues VPC-child gateways to that border before every inset measurement (`redistributeVpcInnerLayout`, `resizeContainerNode`), so insets stay constant across VPC resizes.
 - Legacy saved diagrams are migrated in `src/lib/flow-normalization.ts` (called from `flowStore.loadArchitecture`): old NAT `gatewayService` nodes become circular `awsService`, and border gateways without a stored side get one derived from their saved position.
 
+The border snap is **soft**: repin applies only to settled gateways, never to one the user is dragging.
+
+- `flowStore.draggingNodeIds` (set by Canvas `onNodeDragStart`, cleared in `onNodeDragStop` **after** `syncNodeSubnet`) is threaded as an exclusion set through `redistributeGatewayAffectedVpcLayouts` / `redistributeVpcInnerLayout` / `resizeChangedContainers` / `resizeContainerNode` → `repinVpcEdgeGateways`. Without it, the per-frame `onNodesChange` redistribution yanks the gateway back to its stored border on every drag frame and it can never leave (absolute-snap bug). The clear MUST happen after the drop re-snap: React Flow's final `dragging: false` position change lands before `onNodeDragStop`, so clearing earlier re-pins the gateway to the OLD side right before `syncNodeSubnet` reads its drop position.
+- On drop, `snapGatewayNodeToVpcBorder` projects the drop position to the **nearest** border — including drops fully inside the VPC (border gateways never settle floating in the interior). Dragging toward another edge re-pins there; dragging away from any VPC detaches the gateway (`parentId`/`gatewayBorderSide` cleared).
+- A dragged gateway still feeds insets at its live position (live embrace, analogous to band growth). This is bounded — the inset contribution never exceeds the gateway size + clearance — so no runaway growth is possible.
+
 ## AZ Sync Scope Filter
 
 `isSyncableNode` in `src/lib/az-sync.ts` mirrors only subnets and nodes whose placement scope is `"az"` or `"subnet"`. Regional/vpc/global services (S3, Internet Gateway, CloudFront…) are never duplicated across synced AZs; `addNodeWithAzSync` applies the same filter for newly added nodes.

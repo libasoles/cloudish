@@ -2582,6 +2582,20 @@ export default function Canvas() {
     ],
   );
 
+  // Mark dragged nodes as "in hand" so gateway repin skips them: border
+  // gateways then follow the pointer (soft snap) instead of staying glued
+  // to their stored border on every drag frame.
+  const onNodeDragStart: OnNodeDrag<AppNode> = useCallback(
+    (_event, node, draggedNodes) => {
+      useFlowStore
+        .getState()
+        .setDraggingNodeIds(
+          draggedNodes.length ? draggedNodes.map((n) => n.id) : [node.id],
+        );
+    },
+    [],
+  );
+
   const onNodeDragStop: OnNodeDrag<AppNode> = useCallback(
     (_event, node, draggedNodes) => {
       // Capture the hovered VPC id BEFORE clearing so the snap code can use
@@ -2599,6 +2613,10 @@ export default function Canvas() {
         draggedNodes.length ? draggedNodes.map((n) => n.id) : [node.id],
         hintTargetId,
       );
+      // Clear AFTER syncNodeSubnet: the re-snap must run while the gateway is
+      // still exempt from repin, otherwise the final dragging:false position
+      // change already yanked it back to its old border.
+      useFlowStore.getState().setDraggingNodeIds(null);
     },
     [syncNodeSubnet, setDropBandSide, setDropPreview, setDropTargetNodeId],
   );
@@ -2760,6 +2778,7 @@ export default function Canvas() {
           onInit={handleInit}
           onMoveEnd={handleMoveEnd}
           onNodeDrag={onNodeDrag}
+          onNodeDragStart={onNodeDragStart}
           onNodeDragStop={onNodeDragStop}
           onEdgeDoubleClick={(event, edge) => {
             event.stopPropagation();
