@@ -384,11 +384,13 @@ export type VirtualBandMember = {
 // Returns a copy of the node list where the dragged node is VIRTUALLY a band
 // child of the container: reparented with bandSide set to the hovered side,
 // or — when no nodeId is given — an appended ghost node. The virtual position
-// is where the node WOULD land if dropped now (clampPositionToBand), not the
-// raw pointer position: feeding raw pointer coordinates would make the band
-// chase the node outward indefinitely, growing the container under it and
-// never letting it escape. Feed the result to getScopeBandInsets only; never
-// store it.
+// is where the node WOULD land if dropped now (clampPositionToBand reach), not
+// the raw pointer position: feeding unbounded pointer coordinates would make
+// the band chase the node outward indefinitely, growing the container under it
+// and never letting it escape. Within the reach, the raw position passes
+// through — that is what makes the container resize IN REAL TIME while a node
+// is repositioned inside a band that already has nodes. Feed the result to
+// getScopeBandInsets only; never store it.
 export function withVirtualBandMember(
   nodes: AppNode[],
   containerId: string,
@@ -407,6 +409,7 @@ export function withVirtualBandMember(
     member.absTopLeft,
     nodes,
     existing ?? member.serviceId,
+    member.nodeId,
   );
 
   if (existing) {
@@ -434,36 +437,29 @@ export function withVirtualBandMember(
 
 // ─── Placing a node into the band by drop position ───────────────────────────
 
-// Clamp within the range that extends from `anchor` toward `limit` in direction
-// `dir`. When the band is at (or below) its minimum one-column width the range
-// is degenerate and the anchor — the settled column/row position — wins.
-function clampFromAnchor(
-  value: number,
-  anchor: number,
-  limit: number,
-  dir: 1 | -1,
-): number {
-  if (dir === 1) {
-    return Math.min(Math.max(value, anchor), Math.max(anchor, limit));
-  }
-  return Math.max(Math.min(value, anchor), Math.min(anchor, limit));
-}
-
-// Keeps the node where the user dropped it, projected into the band strip of
-// the resolved side. The cross-axis anchor sits just outside the content edge —
-// the position getScopeBandInsets treats as the settled single column/row — so
-// the follow-up redistribute wraps the band around the node without moving it.
+// Keeps the node where the user dropped it, projected into the band's REACH:
+// the area the band can grow to wrap. The cross-axis anchor sits just outside
+// the content edge — the position getScopeBandInsets treats as the settled
+// single column/row. The reach extends one column/row past the furthest OTHER
+// node on the same side (plus a one-row overflow allowance past the far
+// content edge), so when the band already has nodes the dragged one can be
+// placed side-by-side or stacked beyond them and the container resizes to
+// wrap it. Bounds derive only from the content box and the OTHER nodes'
+// settled positions — never from the container's current (possibly grown)
+// size — so live growth has a fixed point and cannot chase the node.
 //
 // `nodeOrServiceId` MUST be the same source getScopeBandInsets will measure
 // (pass the AppNode for existing nodes): a size mismatch between the clamped
 // position and the inset computation makes live growth diverge by the
-// difference on every drag frame.
+// difference on every drag frame. `excludeNodeId` keeps the dragged node's
+// own stored position from extending its own reach.
 export function clampPositionToBand(
   container: AppNode,
   side: BandSide,
   absTopLeft: { x: number; y: number },
   nodes: AppNode[],
   nodeOrServiceId?: AppNode | string,
+  excludeNodeId?: string,
 ): { parentId: string; position: { x: number; y: number } } {
   const nodesById = new Map(nodes.map((n) => [n.id, n]));
   const frame = getContainerInsetFrame(container);
@@ -475,41 +471,90 @@ export function clampPositionToBand(
     y: absTopLeft.y - containerAbs.y,
   };
 
-  const clampMainY = (v: number) =>
-    Math.min(
-      Math.max(v, frame.contentTop + BAND_PAD),
-      Math.max(frame.contentTop + BAND_PAD, frame.contentBottom - BAND_PAD - h),
+  const sameSide = nodes.filter(
+    (n) =>
+      n.parentId === container.id &&
+      n.id !== excludeNodeId &&
+      getBandSide(n) === side,
+  );
+  const otherMaxX = Math.max(
+    ...sameSide.map((n) => n.position.x + getBandNodeVisualSize(n).width),
+    -Infinity,
+  );
+  const otherMinX = Math.min(...sameSide.map((n) => n.position.x), Infinity);
+  const otherMaxY = Math.max(
+    ...sameSide.map((n) => n.position.y + getBandNodeVisualSize(n).height),
+    -Infinity,
+  );
+  const otherMinY = Math.min(...sameSide.map((n) => n.position.y), Infinity);
+
+  const clamp = (v: number, lo: number, hi: number) =>
+    Math.min(Math.max(v, lo), Math.max(lo, hi));
+
+  // Main axis: within the content span, extendable past the far edge by the
+  // other nodes' overflow extent or a one-row/column allowance — both are
+  // growth directions getScopeBandInsets supports (height/width overflow).
+  const mainY = (v: number) =>
+    clamp(
+      v,
+      frame.contentTop + BAND_PAD,
+      Math.max(
+        frame.contentBottom - BAND_PAD - h,
+        frame.contentBottom,
+        otherMaxY + BAND_PAD,
+      ),
     );
-  const clampMainX = (v: number) =>
-    Math.min(
-      Math.max(v, frame.contentLeft + BAND_PAD),
-      Math.max(frame.contentLeft + BAND_PAD, frame.contentRight - BAND_PAD - w),
+  const mainX = (v: number) =>
+    clamp(
+      v,
+      frame.contentLeft + BAND_PAD,
+      Math.max(
+        frame.contentRight - BAND_PAD - w,
+        frame.contentRight,
+        otherMaxX + BAND_PAD,
+      ),
     );
 
   let position: { x: number; y: number };
   switch (side) {
     case "right":
       position = {
-        x: clampFromAnchor(rel.x, frame.contentRight + BAND_PAD, frame.cW - BAND_PAD - w, 1),
-        y: clampMainY(rel.y),
+        x: clamp(
+          rel.x,
+          frame.contentRight + BAND_PAD,
+          Math.max(frame.contentRight + BAND_PAD, otherMaxX + BAND_PAD),
+        ),
+        y: mainY(rel.y),
       };
       break;
     case "left":
       position = {
-        x: clampFromAnchor(rel.x, frame.contentLeft - BAND_PAD - w, frame.gi.left + BAND_PAD, -1),
-        y: clampMainY(rel.y),
+        x: clamp(
+          rel.x,
+          Math.min(frame.contentLeft - BAND_PAD - w, otherMinX - BAND_PAD - w),
+          frame.contentLeft - BAND_PAD - w,
+        ),
+        y: mainY(rel.y),
       };
       break;
     case "top":
       position = {
-        x: clampMainX(rel.x),
-        y: clampFromAnchor(rel.y, frame.contentTop - BAND_PAD - h, frame.gi.top + BAND_PAD, -1),
+        x: mainX(rel.x),
+        y: clamp(
+          rel.y,
+          Math.min(frame.contentTop - BAND_PAD - h, otherMinY - BAND_PAD - h),
+          frame.contentTop - BAND_PAD - h,
+        ),
       };
       break;
     case "bottom":
       position = {
-        x: clampMainX(rel.x),
-        y: clampFromAnchor(rel.y, frame.contentBottom + BAND_PAD, frame.cH - BAND_PAD - h, 1),
+        x: mainX(rel.x),
+        y: clamp(
+          rel.y,
+          frame.contentBottom + BAND_PAD,
+          Math.max(frame.contentBottom + BAND_PAD, otherMaxY + BAND_PAD),
+        ),
       };
       break;
   }
