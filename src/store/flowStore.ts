@@ -59,6 +59,13 @@ type FlowStore = {
   dropTargetNodeId: string | null;
   dropPreview: ContainerDropPreview | null;
   dropBandSide: BandSide | null;
+  // Nodes currently being dragged ("in hand"). While set, gateway repin skips
+  // them so border gateways follow the pointer instead of staying glued
+  // (soft snap). Canvas sets it on drag start and clears it AFTER
+  // syncNodeSubnet re-snaps on drag stop — React Flow's final position change
+  // (dragging: false) lands before onNodeDragStop, so clearing earlier would
+  // yank the gateway back to its old border right before the re-snap.
+  draggingNodeIds: ReadonlySet<string> | null;
   editingEdgeId: string | null;
   selectionBoxActive: boolean;
   setSelectionBoxActive: (v: boolean) => void;
@@ -91,6 +98,7 @@ type FlowStore = {
   markSaved: () => void;
   setInspectorOpen: (updater: boolean | ((prev: boolean) => boolean)) => void;
   setDropTargetNodeId: (id: string | null) => void;
+  setDraggingNodeIds: (ids: string[] | null) => void;
   setDropPreview: (preview: ContainerDropPreview | null) => void;
   setDropBandSide: (side: BandSide | null) => void;
   setEditingEdgeId: (id: string | null) => void;
@@ -102,6 +110,7 @@ type FlowStore = {
 function resizeChangedContainers(
   changes: NodeChange<AppNode>[],
   nodes: AppNode[],
+  excludeFromRepin?: ReadonlySet<string>,
 ) {
   return changes.reduce((result, change) => {
     if (change.type !== "dimensions" || !change.dimensions) {
@@ -118,6 +127,7 @@ function resizeChangedContainers(
       change.dimensions.width,
       change.dimensions.height,
       result,
+      excludeFromRepin,
     );
   }, nodes);
 }
@@ -181,8 +191,12 @@ export const useFlowStore = create<FlowStore>()((set) => ({
       const nextNodes = resizeChangedContainers(
         changes,
         applyNodeChanges(changes, s.nodes),
+        s.draggingNodeIds ?? undefined,
       );
-      const gatewayAdjustedNodes = redistributeGatewayAffectedVpcLayouts(nextNodes);
+      const gatewayAdjustedNodes = redistributeGatewayAffectedVpcLayouts(
+        nextNodes,
+        s.draggingNodeIds ?? undefined,
+      );
       const removedNodeIds = changes.flatMap((change) =>
         change.type === "remove" ? [change.id] : [],
       );
@@ -207,7 +221,10 @@ export const useFlowStore = create<FlowStore>()((set) => ({
         gatewayAdjustedNodes,
         s.edges,
       );
-      const nodes = redistributeGatewayAffectedVpcLayouts(next.nodes);
+      const nodes = redistributeGatewayAffectedVpcLayouts(
+        next.nodes,
+        s.draggingNodeIds ?? undefined,
+      );
       return {
         ...next,
         nodes,
@@ -352,6 +369,10 @@ export const useFlowStore = create<FlowStore>()((set) => ({
   dropTargetNodeId: null,
   setDropTargetNodeId: (id) =>
     set((s) => (s.dropTargetNodeId === id ? s : { dropTargetNodeId: id })),
+
+  draggingNodeIds: null,
+  setDraggingNodeIds: (ids) =>
+    set({ draggingNodeIds: ids && ids.length ? new Set(ids) : null }),
   dropBandSide: null,
   setDropBandSide: (side) => set({ dropBandSide: side }),
   dropPreview: null,

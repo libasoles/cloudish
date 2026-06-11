@@ -141,7 +141,8 @@ export function getGatewayNodeSize(node: AppNode) {
 
 // Snaps a gateway node's position so it sits exactly 50% inside / 50% outside
 // the VPC border it is crossing or nearest to. Also handles gateways that are
-// fully outside the VPC (e.g., after an overshoot drag) by projecting to the
+// fully outside the VPC (e.g., after an overshoot drag) or fully inside it
+// (dragged across the interior toward another edge) by projecting to the
 // nearest border. The parallel axis stays free so the user can slide along the edge.
 // When the node crosses two borders at once (corner drop), the border whose edge
 // is closest to the node center wins.
@@ -157,7 +158,7 @@ export function snapGatewayNodeToVpcBorder(
   const crossTop    = pos.y < 0 && pos.y + nodeH > 0;
   const crossBottom = pos.y < vpcH && pos.y + nodeH > vpcH;
 
-  // Fully outside — snap to the nearest border.
+  // No border crossed — fully outside or fully inside: snap to the nearest border.
   if (!crossLeft && !crossRight && !crossTop && !crossBottom) {
     const fullyRight  = pos.x >= vpcW;
     const fullyLeft   = pos.x + nodeW <= 0;
@@ -169,22 +170,20 @@ export function snapGatewayNodeToVpcBorder(
     if (fullyBottom && !fullyLeft && !fullyRight) return { x: pos.x, y: vpcH - nodeH / 2 };
     if (fullyTop   && !fullyLeft && !fullyRight) return { x: pos.x, y: -nodeH / 2 };
 
-    // Corner overshoot: pick closest border by center distance.
-    if (fullyRight || fullyLeft || fullyBottom || fullyTop) {
-      const cx = pos.x + nodeW / 2;
-      const cy = pos.y + nodeH / 2;
-      const dLeft   = Math.abs(cx);
-      const dRight  = Math.abs(cx - vpcW);
-      const dTop    = Math.abs(cy);
-      const dBottom = Math.abs(cy - vpcH);
-      const minD = Math.min(dLeft, dRight, dTop, dBottom);
-      if (minD === dRight)  return { x: vpcW - nodeW / 2, y: pos.y };
-      if (minD === dLeft)   return { x: -nodeW / 2, y: pos.y };
-      if (minD === dBottom) return { x: pos.x, y: vpcH - nodeH / 2 };
-      return { x: pos.x, y: -nodeH / 2 };
-    }
-
-    return pos; // fully inside — no snap needed
+    // Corner overshoot or fully inside: pick closest border by center distance.
+    // Border gateways always live on a border — a drop in the VPC interior
+    // re-resolves to whichever edge is nearest (soft snap, repositionable).
+    const cx = pos.x + nodeW / 2;
+    const cy = pos.y + nodeH / 2;
+    const dLeft   = Math.abs(cx);
+    const dRight  = Math.abs(cx - vpcW);
+    const dTop    = Math.abs(cy);
+    const dBottom = Math.abs(cy - vpcH);
+    const minD = Math.min(dLeft, dRight, dTop, dBottom);
+    if (minD === dRight)  return { x: vpcW - nodeW / 2, y: pos.y };
+    if (minD === dLeft)   return { x: -nodeW / 2, y: pos.y };
+    if (minD === dBottom) return { x: pos.x, y: vpcH - nodeH / 2 };
+    return { x: pos.x, y: -nodeH / 2 };
   }
 
   let x = pos.x;
@@ -240,7 +239,14 @@ export function deriveGatewayBorderSide(
 // leaves border gateways floating (fully inside or outside), which makes the
 // gateway-inset calculation oscillate between layout passes instead of
 // reaching a fixed point. Returns the input array untouched when nothing moves.
-export function repinVpcEdgeGateways(vpcId: string, nodes: AppNode[]): AppNode[] {
+// `excludeIds` (the nodes currently being dragged) makes the snap soft: a
+// gateway "in hand" follows the pointer freely instead of being yanked back to
+// its stored border on every drag frame; syncNodeSubnet re-snaps it on drop.
+export function repinVpcEdgeGateways(
+  vpcId: string,
+  nodes: AppNode[],
+  excludeIds?: ReadonlySet<string>,
+): AppNode[] {
   const vpc = nodes.find((n) => n.id === vpcId);
   if (!vpc || !isVpcNode(vpc)) return nodes;
 
@@ -249,6 +255,7 @@ export function repinVpcEdgeGateways(vpcId: string, nodes: AppNode[]): AppNode[]
 
   const result = nodes.map((node) => {
     if (!isGatewayServiceNode(node) || node.parentId !== vpcId) return node;
+    if (excludeIds?.has(node.id)) return node;
 
     const { width: nodeW, height: nodeH } = getGatewayNodeSize(node);
     const data = node.data as { gatewayBorderSide?: GatewayBorderSide };
@@ -935,13 +942,17 @@ export function redistributeVpcNodes(
   });
 }
 
-export function redistributeVpcInnerLayout(vpcId: string, nodes: AppNode[]) {
+export function redistributeVpcInnerLayout(
+  vpcId: string,
+  nodes: AppNode[],
+  excludeFromRepin?: ReadonlySet<string>,
+) {
   const vpc = nodes.find((node) => node.id === vpcId);
   if (!vpc || !isVpcNode(vpc)) return nodes;
 
   // Glue border gateways to the current VPC size BEFORE measuring insets, so
   // the inset calculation sees the settled 50/50 positions and stays constant.
-  const pinnedNodes = repinVpcEdgeGateways(vpcId, nodes);
+  const pinnedNodes = repinVpcEdgeGateways(vpcId, nodes, excludeFromRepin);
 
   const { width, height } = getNodeSize(vpc);
   let result = redistributeAzNodes(vpcId, width, height, pinnedNodes);
@@ -961,7 +972,14 @@ export function redistributeVpcInnerLayout(vpcId: string, nodes: AppNode[]) {
   return result;
 }
 
-export function redistributeGatewayAffectedVpcLayouts(nodes: AppNode[]) {
+// `draggingNodeIds`: nodes currently in a drag — excluded from the repin step
+// so a dragged border gateway can escape its border (soft snap). Inset growth
+// still sees the live position, but it is bounded (penetration depth never
+// exceeds the gateway size + clearance), so no runaway feedback is possible.
+export function redistributeGatewayAffectedVpcLayouts(
+  nodes: AppNode[],
+  draggingNodeIds?: ReadonlySet<string>,
+) {
   let result = nodes;
 
   // First, grow VPC nodes outward to embrace edge gateways.
@@ -978,7 +996,7 @@ export function redistributeGatewayAffectedVpcLayouts(nodes: AppNode[]) {
   // Then, push VPC children (AZs) inward to avoid overlapping gateways.
   const vpcNodes = result.filter(isVpcNode);
   for (const vpc of vpcNodes) {
-    result = redistributeVpcInnerLayout(vpc.id, result);
+    result = redistributeVpcInnerLayout(vpc.id, result, draggingNodeIds);
   }
 
   return result;
@@ -1041,6 +1059,7 @@ export function resizeContainerNode(
   width: number,
   height: number,
   nodes: AppNode[],
+  excludeFromRepin?: ReadonlySet<string>,
 ): AppNode[] {
   const containerNode = nodes.find((node) => node.id === nodeId);
   const containerType = containerNode
@@ -1062,14 +1081,20 @@ export function resizeContainerNode(
       const currentVpc = result.find((node) => node.id === vpc.id);
       if (!currentVpc) continue;
       const { width: vpcW, height: vpcH } = getNodeSize(currentVpc);
-      result = resizeContainerNode(currentVpc.id, vpcW, vpcH, result);
+      result = resizeContainerNode(
+        currentVpc.id,
+        vpcW,
+        vpcH,
+        result,
+        excludeFromRepin,
+      );
     }
 
     return result;
   }
 
   if (containerType === "vpc") {
-    result = repinVpcEdgeGateways(nodeId, result);
+    result = repinVpcEdgeGateways(nodeId, result, excludeFromRepin);
     result = redistributeAzNodes(nodeId, width, height, result);
     result = redistributeSubnetNodes(nodeId, width, height, result);
 
