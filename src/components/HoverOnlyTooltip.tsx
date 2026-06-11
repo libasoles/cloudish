@@ -1,4 +1,4 @@
-import { useState, type ComponentPropsWithoutRef, type ReactNode } from "react";
+import { useRef, useState, type ComponentPropsWithoutRef, type ReactNode } from "react";
 import {
   Tooltip,
   TooltipContent,
@@ -26,16 +26,18 @@ export function HoverOnlyTooltip({
   disabled,
 }: HoverOnlyTooltipProps) {
   const [open, setOpen] = useState(false);
+  const dragging = useRef(false);
 
   return (
     <Tooltip open={!disabled && open}>
       <TooltipTrigger asChild>
         <span
           className={cn("inline-flex", triggerClassName)}
-          onPointerEnter={() => setOpen(true)}
+          onPointerEnter={() => { if (!dragging.current) setOpen(true); }}
           onPointerLeave={() => setOpen(false)}
           onPointerDown={() => setOpen(false)}
-          onDragStart={() => setOpen(false)}
+          onDragStart={() => { dragging.current = true; setOpen(false); }}
+          onDragEnd={() => { setTimeout(() => { dragging.current = false; }, 50); }}
           onClick={() => setOpen(false)}
         >
           {children}
