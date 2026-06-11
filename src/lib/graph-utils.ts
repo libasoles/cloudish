@@ -215,6 +215,77 @@ export function snapGatewayNodeToVpcBorder(
   return { x, y };
 }
 
+export type GatewayBorderSide = "top" | "right" | "bottom" | "left";
+
+// Which VPC border a gateway at `pos` belongs to, resolved with the exact same
+// rules as snapGatewayNodeToVpcBorder. Returns null when the node is fully
+// inside the VPC (no border to pin to).
+export function deriveGatewayBorderSide(
+  pos: { x: number; y: number },
+  nodeW: number,
+  nodeH: number,
+  vpcW: number,
+  vpcH: number,
+): GatewayBorderSide | null {
+  const snapped = snapGatewayNodeToVpcBorder(pos, nodeW, nodeH, vpcW, vpcH);
+  if (snapped.x === -nodeW / 2) return "left";
+  if (snapped.x === vpcW - nodeW / 2) return "right";
+  if (snapped.y === -nodeH / 2) return "top";
+  if (snapped.y === vpcH - nodeH / 2) return "bottom";
+  return null;
+}
+
+// Re-glues every gateway child of a VPC to its stored border after the VPC
+// changes size, keeping the 50% in / 50% out invariant. Without this, a resize
+// leaves border gateways floating (fully inside or outside), which makes the
+// gateway-inset calculation oscillate between layout passes instead of
+// reaching a fixed point. Returns the input array untouched when nothing moves.
+export function repinVpcEdgeGateways(vpcId: string, nodes: AppNode[]): AppNode[] {
+  const vpc = nodes.find((n) => n.id === vpcId);
+  if (!vpc || !isVpcNode(vpc)) return nodes;
+
+  const { width: vpcW, height: vpcH } = getNodeSize(vpc);
+  let changed = false;
+
+  const result = nodes.map((node) => {
+    if (!isGatewayServiceNode(node) || node.parentId !== vpcId) return node;
+
+    const { width: nodeW, height: nodeH } = getGatewayNodeSize(node);
+    const data = node.data as { gatewayBorderSide?: GatewayBorderSide };
+    const side =
+      data.gatewayBorderSide ??
+      deriveGatewayBorderSide(node.position, nodeW, nodeH, vpcW, vpcH);
+    if (!side) return node;
+
+    const pinned = { ...node.position };
+    if (side === "left")   pinned.x = -nodeW / 2;
+    if (side === "right")  pinned.x = vpcW - nodeW / 2;
+    if (side === "top")    pinned.y = -nodeH / 2;
+    if (side === "bottom") pinned.y = vpcH - nodeH / 2;
+
+    // Keep the free axis within the border span so a shrinking VPC never
+    // strands the gateway past a corner.
+    if (side === "left" || side === "right") {
+      pinned.y = Math.min(Math.max(pinned.y, 0), Math.max(0, vpcH - nodeH));
+    } else {
+      pinned.x = Math.min(Math.max(pinned.x, 0), Math.max(0, vpcW - nodeW));
+    }
+
+    const samePosition =
+      pinned.x === node.position.x && pinned.y === node.position.y;
+    if (samePosition && data.gatewayBorderSide) return node;
+
+    changed = true;
+    return {
+      ...node,
+      position: pinned,
+      data: { ...node.data, gatewayBorderSide: side },
+    };
+  });
+
+  return changed ? result : nodes;
+}
+
 export function getAbsolutePosition(
   node: AppNode,
   nodesById: Map<string, AppNode>,
@@ -300,9 +371,15 @@ function getRegionGatewayOuterInsets(
 
   // VPC children — used to detect which gateways are VPC-edge gateways.
   const vpcChildren = nodes.filter((n) => n.parentId === regionId && isVpcNode(n));
+  const vpcIds = new Set(vpcChildren.map((vpc) => vpc.id));
 
   const result = nodes.reduce<ContainerInsets>((insets, node) => {
-    if (!isGatewayServiceNode(node)) return insets;
+    // Only gateways parented directly to a VPC count. A gateway nested in an
+    // AZ/subnet moves whenever this very redistribution resizes its container,
+    // so feeding it back into the insets would oscillate forever.
+    if (!isGatewayServiceNode(node) || !node.parentId || !vpcIds.has(node.parentId)) {
+      return insets;
+    }
 
     const gatewayRect = getNodeRect(node, nodesById);
     const isEdgeGateway = vpcChildren.some((vpc) =>
@@ -339,7 +416,9 @@ export function getVpcGatewayLayoutInsets(
   const vpcBottom = vpcRect.y + vpcRect.height;
 
   return nodes.reduce<ContainerInsets>((insets, node) => {
-    if (!isGatewayServiceNode(node)) {
+    // Same parent filter as getRegionGatewayOuterInsets: only direct VPC
+    // children are border gateways; nested gateways must never feed insets.
+    if (!isGatewayServiceNode(node) || node.parentId !== vpcId) {
       return insets;
     }
 
@@ -860,8 +939,12 @@ export function redistributeVpcInnerLayout(vpcId: string, nodes: AppNode[]) {
   const vpc = nodes.find((node) => node.id === vpcId);
   if (!vpc || !isVpcNode(vpc)) return nodes;
 
+  // Glue border gateways to the current VPC size BEFORE measuring insets, so
+  // the inset calculation sees the settled 50/50 positions and stays constant.
+  const pinnedNodes = repinVpcEdgeGateways(vpcId, nodes);
+
   const { width, height } = getNodeSize(vpc);
-  let result = redistributeAzNodes(vpcId, width, height, nodes);
+  let result = redistributeAzNodes(vpcId, width, height, pinnedNodes);
   result = redistributeSubnetNodes(vpcId, width, height, result);
 
   const azChildren = result.filter(
@@ -986,6 +1069,7 @@ export function resizeContainerNode(
   }
 
   if (containerType === "vpc") {
+    result = repinVpcEdgeGateways(nodeId, result);
     result = redistributeAzNodes(nodeId, width, height, result);
     result = redistributeSubnetNodes(nodeId, width, height, result);
 

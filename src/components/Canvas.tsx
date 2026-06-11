@@ -103,6 +103,7 @@ import {
   DEFAULT_NODE_HEIGHT,
   VISUAL_NODE_SIZE,
   avoidNodeOverlap,
+  deriveGatewayBorderSide,
   getGatewayNodeSize,
   snapGatewayNodeToVpcBorder,
   isVpcNode,
@@ -1483,7 +1484,10 @@ export default function Canvas() {
                   parentId: allowedAncestor.id,
                   position: borderPos,
                 };
-                // No bandSide — gateway nodes are positioned at the VPC border, not the band.
+                // No bandSide — gateway nodes are positioned at the VPC border, not
+                // the band. gatewayBorderSide keeps the node glued to that border
+                // across VPC resizes (repinVpcEdgeGateways).
+                extraData = { gatewayBorderSide: side };
               } else {
                 // Regular vpc/regional-scope service nodes go into the band.
                 // Click-to-add centers in the band; drag drops stay where the
@@ -2346,6 +2350,7 @@ export default function Canvas() {
                 ...draggedNode,
                 parentId: undefined,
                 position: { x: absRect.x, y: absRect.y },
+                data: { ...draggedNode.data, gatewayBorderSide: undefined },
               });
             }
             continue;
@@ -2366,11 +2371,22 @@ export default function Canvas() {
             vpcW,
             vpcH,
           );
+          const borderSide = deriveGatewayBorderSide(
+            snapped,
+            nodeW,
+            nodeH,
+            vpcW,
+            vpcH,
+          );
 
           updates.set(draggedNode.id, {
             ...draggedNode,
             parentId: parentVpc.id,
             position: snapped,
+            data: {
+              ...draggedNode.data,
+              gatewayBorderSide: borderSide ?? undefined,
+            },
           });
         }
 

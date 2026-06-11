@@ -1,5 +1,11 @@
 import type { AppNode } from "@/types/flow";
 import type { AwsServiceNodeData } from "@/components/nodes/AwsServiceNode";
+import {
+  deriveGatewayBorderSide,
+  getGatewayNodeSize,
+  getNodeSize,
+  isVpcNode,
+} from "@/lib/graph-utils";
 
 /**
  * Migrates nodes from saved diagrams to the current node model. Runs once per
@@ -7,7 +13,9 @@ import type { AwsServiceNodeData } from "@/components/nodes/AwsServiceNode";
  * keeps working without persisting a migration.
  */
 export function normalizeLoadedNodes(nodes: AppNode[]): AppNode[] {
-  return nodes.map(normalizeNatGatewayNode);
+  const migrated = nodes.map(normalizeNatGatewayNode);
+  const nodesById = new Map(migrated.map((node) => [node.id, node]));
+  return migrated.map((node) => normalizeGatewayBorderSide(node, nodesById));
 }
 
 /**
@@ -28,4 +36,29 @@ function normalizeNatGatewayNode(node: AppNode): AppNode {
       meta: { ...data.meta, shape: "circular" },
     },
   } as AppNode;
+}
+
+/**
+ * Border gateways saved before `gatewayBorderSide` existed get their side
+ * derived from the saved position, so repinVpcEdgeGateways can keep them
+ * glued to the VPC border across resizes.
+ */
+function normalizeGatewayBorderSide(
+  node: AppNode,
+  nodesById: Map<string, AppNode>,
+): AppNode {
+  if (node.type !== "gatewayService" || !node.parentId) return node;
+
+  const data = node.data as AwsServiceNodeData;
+  if (data.gatewayBorderSide) return node;
+
+  const parent = nodesById.get(node.parentId);
+  if (!parent || !isVpcNode(parent)) return node;
+
+  const { width: nodeW, height: nodeH } = getGatewayNodeSize(node);
+  const { width: vpcW, height: vpcH } = getNodeSize(parent);
+  const side = deriveGatewayBorderSide(node.position, nodeW, nodeH, vpcW, vpcH);
+  if (!side) return node;
+
+  return { ...node, data: { ...data, gatewayBorderSide: side } } as AppNode;
 }
