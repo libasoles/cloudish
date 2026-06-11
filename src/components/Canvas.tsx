@@ -2528,6 +2528,17 @@ export default function Canvas() {
         return;
       }
 
+      const childType = getNetworkContainerType(node);
+
+      // ASG and generic containers are free: they never snap into the
+      // hierarchy layout on drop, so hovering them must not light dropzones.
+      if (childType === "asg" || childType === "generic") {
+        if (dropTargetNodeId !== null) setDropTargetNodeId(null);
+        setDropBandSide(null);
+        setDropPreview(null);
+        return;
+      }
+
       const { nodesById, containerNodes } = useFlowStore.getState();
 
       const nodeRect = getNodeRect(node, nodesById);
@@ -2537,7 +2548,6 @@ export default function Canvas() {
         nodesById,
         node,
       );
-      const childType = getNetworkContainerType(node);
       const isNewParent = target && target.id !== node.parentId;
 
       setDropTargetNodeId(isNewParent ? target.id : null);
