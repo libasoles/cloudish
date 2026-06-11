@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import ChildCountSlider from "@/components/network-containers/ChildCountSlider";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { UI_TEXT, getBrowserLocale } from "@/i18n";
-import { toggleAzSyncState } from "@/lib/az-sync";
+import { getSyncReferenceAz, toggleAzSyncState } from "@/lib/az-sync";
 import { isSubnetNode } from "@/lib/graph-utils";
 import { setManagedChildCount } from "@/lib/network-topology/managed-children";
 import { useFlowStore } from "@/store/flowStore";
@@ -31,8 +31,14 @@ export function AzInspectorPanel({ node }: AzInspectorPanelProps) {
   const onChildCountChange = useCallback(
     (count: number) => {
       commitGraphChange((state) => {
+        // The sync rebuild clones everything from the reference AZ, so on a
+        // synced AZ the count change must land there — applied to any other
+        // sibling it would be discarded by the rebuild (slider snaps back).
+        const targetAzId = azSynced
+          ? (getSyncReferenceAz(node.id, state.nodes)?.id ?? node.id)
+          : node.id;
         const next = setManagedChildCount(
-          node.id,
+          targetAzId,
           count,
           state.nodes,
           state.edges,
@@ -40,7 +46,7 @@ export function AzInspectorPanel({ node }: AzInspectorPanelProps) {
         );
 
         if (!azSynced) return next;
-        return toggleAzSyncState(node.id, true, next.nodes, next.edges);
+        return toggleAzSyncState(targetAzId, true, next.nodes, next.edges);
       });
     },
     [azSynced, commitGraphChange, node.id, t.subnetLabel],

@@ -125,6 +125,16 @@ function getSyncedSiblingAzs(az: AppNode, nodes: AppNode[]) {
   );
 }
 
+// The AZ whose content wins when a sync group is (re)built — enableAzSync
+// always clones from the leftmost sibling. Callers that mutate synced content
+// through a non-reference AZ (e.g. the subnet-count slider) must apply their
+// change to this AZ or the rebuild discards it.
+export function getSyncReferenceAz(azId: string, nodes: AppNode[]) {
+  const az = nodes.find((node) => node.id === azId && isAzNode(node));
+  if (!az) return null;
+  return getSiblingAzs(az, nodes)[0] ?? null;
+}
+
 function getAzContentNodeIds(azId: string, nodes: AppNode[]) {
   const nodesById = new Map(nodes.map((node) => [node.id, node]));
   const ids = new Set<string>();

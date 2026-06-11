@@ -78,6 +78,7 @@ When count changes in Inspector:
 - **Removing a synced AZ deletes its sync-tracked content** (nodes with `syncGroupId` whose AZ ancestor is the removed AZ, plus edges touching them) instead of re-parenting it. Re-parenting mirrors to the VPC duplicates the subnets and the final redistribute pass blows them up to full-VPC width on top of the surviving AZs.
 - If **no synced AZ survives** (count → 0), the copy holding the sync `source` nodes is kept, re-parented like regular children, and its node/edge sync metadata is stripped.
 - After the resize pass, if any surviving AZ child is synced, the sync group is **rebuilt** via `toggleAzSyncState`: appended AZs join the group and receive mirrored content/edges on the final geometry; with a single AZ left the group is dissolved (`synced: false`, metadata stripped).
+- The sync rebuild always clones from the **reference AZ** — the leftmost sibling (`getSyncReferenceAz` in `src/lib/az-sync.ts`). Any flow that mutates synced content and then re-syncs (e.g. the AZ subnet-count slider in `AzInspectorPanel`) must apply its change to the reference AZ, regardless of which AZ is selected — applied to another sibling, the rebuild discards it and the change silently reverts.
 
 ## Position Model
 
