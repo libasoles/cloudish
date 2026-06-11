@@ -31,6 +31,8 @@ export type AwsServiceNodeData = {
   placementScope?: PlacementScope;
   /** Which band side of its container this node lives on (set when expelled). */
   bandSide?: BandSide;
+  /** For border gateways: which VPC border the node is pinned to (50% in / 50% out). */
+  gatewayBorderSide?: BandSide;
 };
 
 export type AwsServiceNodeType = Node<AwsServiceNodeData, "awsService">;

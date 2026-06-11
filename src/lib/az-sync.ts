@@ -14,6 +14,8 @@ import {
   isSubnetNode,
   orderNodesForSubflows,
 } from "@/lib/graph-utils";
+import { getNodePlacementScope } from "@/lib/node-utils";
+import type { AwsServiceNodeType } from "@/components/nodes/AwsServiceNode";
 
 type FlowState = {
   nodes: AppNode[];
@@ -81,7 +83,12 @@ function edgeSyncGroupId(edge: AppEdge) {
 }
 
 function isSyncableNode(node: AppNode) {
-  return !isNetworkContainerNode(node) || isSubnetNode(node);
+  if (isNetworkContainerNode(node)) return isSubnetNode(node);
+  // Only services that can hierarchically live inside an AZ get mirrored.
+  // Regional/vpc/global-scoped services (S3, Internet Gateway, CloudFront…)
+  // exist once per region/VPC, never once per AZ.
+  const scope = getNodePlacementScope(node as AwsServiceNodeType);
+  return scope === "az" || scope === "subnet";
 }
 
 export function findAzAncestor(
@@ -416,6 +423,10 @@ export function disableAzSync(azId: string, nodes: AppNode[], edges: AppEdge[]) 
 }
 
 export function addNodeWithAzSync(newNode: AppNode, nodes: AppNode[]) {
+  if (!isSyncableNode(newNode)) {
+    return orderNodesForSubflows([...nodes, newNode]);
+  }
+
   const nodesById = new Map(nodes.map((node) => [node.id, node]));
   const az = findAzAncestor(newNode, nodesById);
 

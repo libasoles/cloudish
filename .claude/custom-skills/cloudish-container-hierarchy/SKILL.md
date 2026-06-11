@@ -128,6 +128,20 @@ While dragging a scope-restricted service (sidebar tool OR existing node), Canva
 
 Position update: `node.position = absoluteNodePosition - absoluteParentPosition`.
 
+## Border Gateways (VPC-edge services)
+
+Only `GATEWAY_SERVICE_IDS` (`src/lib/node-utils.ts`: internet-gateway, vpn-gateway, customer-gateway) are border gateways — node type `gatewayService`, snapped 50% in / 50% out on a VPC border on drop/drag-stop. **NAT Gateway is NOT one**: it is a regular subnet-scoped circular `awsService` that lives in a public subnet (and is mirrored per-AZ by AZ sync).
+
+Rules that keep the gateway-inset layout a fixed point (no infinite resize loops):
+
+- Gateways count toward `getVpcGatewayLayoutInsets` / `getRegionGatewayOuterInsets` **only when parented directly to a VPC**. A gateway nested in an AZ/subnet must never feed insets — its container moves with the very redistribution it would trigger.
+- Each border gateway stores its border in `data.gatewayBorderSide` (set on drop, on drag-stop snap, and derived at load by `normalizeLoadedNodes`). `repinVpcEdgeGateways` re-glues VPC-child gateways to that border before every inset measurement (`redistributeVpcInnerLayout`, `resizeContainerNode`), so insets stay constant across VPC resizes.
+- Legacy saved diagrams are migrated in `src/lib/flow-normalization.ts` (called from `flowStore.loadArchitecture`): old NAT `gatewayService` nodes become circular `awsService`, and border gateways without a stored side get one derived from their saved position.
+
+## AZ Sync Scope Filter
+
+`isSyncableNode` in `src/lib/az-sync.ts` mirrors only subnets and nodes whose placement scope is `"az"` or `"subnet"`. Regional/vpc/global services (S3, Internet Gateway, CloudFront…) are never duplicated across synced AZs; `addNodeWithAzSync` applies the same filter for newly added nodes.
+
 ## Dropzone Visual
 
 During drag, `onNodeDrag` computes the potential parent via `findIntersectingContainer()` and sets `dropTargetNodeId` in Zustand. `NetworkContainerNode` reads this to render a green ring highlight.

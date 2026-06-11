@@ -29,6 +29,7 @@ import {
   ALL_SERVICES,
 } from "@/lib/node-utils";
 import { duplicateSelectedGraph } from "@/lib/node-duplication";
+import { normalizeLoadedNodes } from "@/lib/flow-normalization";
 import type { BandSide } from "@/lib/placement";
 import type {
   AppNode,
@@ -288,17 +289,20 @@ export const useFlowStore = create<FlowStore>()((set) => ({
     })),
 
   loadArchitecture: (nodes, edges, metadata) =>
-    set((s) => ({
-      currentArchitectureId: metadata?.architectureId,
-      projectName: metadata?.name ?? null,
-      viewport: metadata?.viewport ?? null,
-      viewportRestoreKey: s.viewportRestoreKey + 1,
-      nodes,
-      ...getNodeDerivatives(nodes),
-      edges,
-      history: [],
-      isDirty: false,
-    })),
+    set((s) => {
+      const normalizedNodes = normalizeLoadedNodes(nodes);
+      return {
+        currentArchitectureId: metadata?.architectureId,
+        projectName: metadata?.name ?? null,
+        viewport: metadata?.viewport ?? null,
+        viewportRestoreKey: s.viewportRestoreKey + 1,
+        nodes: normalizedNodes,
+        ...getNodeDerivatives(normalizedNodes),
+        edges,
+        history: [],
+        isDirty: false,
+      };
+    }),
 
   setCurrentArchitectureId: (architectureId) =>
     set({ currentArchitectureId: architectureId }),
