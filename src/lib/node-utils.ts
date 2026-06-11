@@ -16,9 +16,10 @@ import { getServicePlacementScope } from "@/lib/placement";
 
 export type FieldValue = string | boolean | number;
 
+// Gateways that live on a VPC border (50% in / 50% out). NAT Gateway is NOT
+// here: it lives inside a public subnet like a regular subnet-scoped service.
 export const GATEWAY_SERVICE_IDS = new Set([
   "internet-gateway",
-  "nat-gateway",
   "vpn-gateway",
   "customer-gateway",
 ]);
@@ -51,7 +52,12 @@ export function getMiscNodeData(
   return { label, fields: { label } };
 }
 
-export const CIRCULAR_SERVICE_IDS = new Set(["elb", "nacl", "gateway-endpoint"]);
+export const CIRCULAR_SERVICE_IDS = new Set([
+  "elb",
+  "nacl",
+  "gateway-endpoint",
+  "nat-gateway",
+]);
 
 export function getServiceId(node: AwsServiceNodeType) {
   return node.data.serviceId ?? node.id;
