@@ -1,4 +1,5 @@
 import type { AppEdge, AppNode, NetworkContainerType } from "@/types/flow";
+import { findAzAncestor, toggleAzSyncState } from "@/lib/az-sync";
 import {
   isVpcNode,
   isAzNode,
@@ -128,6 +129,7 @@ export function setManagedChildCount(
   if (target === existing.length) return { nodes: prevNodes, edges };
 
   let result: AppNode[];
+  let nextEdges = edges;
 
   if (target > existing.length) {
     const appended = buildAppendedChildren(
@@ -167,22 +169,86 @@ export function setManagedChildCount(
     const nodesById = new Map(prevNodes.map((n) => [n.id, n]));
     const parentAbsPos = getAbsolutePosition(parent, nodesById);
 
+    // Synced AZs hold copies of the same content, so a removed synced AZ's
+    // sync-tracked nodes are deleted with it — re-parenting them to the VPC
+    // would duplicate the subnets and the redistribute pass below would blow
+    // them up to full-VPC width on top of the surviving AZs. Only when no
+    // synced AZ survives is one copy kept (the one holding the sync sources),
+    // re-parented like regular children so the content isn't lost.
+    const isSyncedAz = (n: AppNode | undefined) =>
+      !!n && isAzNode(n) && Boolean((n.data as { synced?: boolean }).synced);
+    const azAncestorId = (n: AppNode) => findAzAncestor(n, nodesById)?.id;
+    const removedSyncedAzIds = [...removedIds].filter((id) =>
+      isSyncedAz(nodesById.get(id)),
+    );
+    const syncedAzSurvives = existing.some(
+      (n) => !removedIds.has(n.id) && isSyncedAz(n),
+    );
+    let keptSyncedAzId: string | undefined;
+    if (!syncedAzSurvives && removedSyncedAzIds.length) {
+      const removedSyncedAzIdSet = new Set(removedSyncedAzIds);
+      const sourceNode = prevNodes.find((n) => {
+        if ((n.data as { syncRole?: string }).syncRole !== "source") return false;
+        const azId = azAncestorId(n);
+        return azId !== undefined && removedSyncedAzIdSet.has(azId);
+      });
+      keptSyncedAzId = (sourceNode && azAncestorId(sourceNode)) ?? removedSyncedAzIds[0];
+    }
+    const deletableAzIds = new Set(
+      removedSyncedAzIds.filter((id) => id !== keptSyncedAzId),
+    );
+    const deletedContentIds = new Set<string>();
+    const keptContentIds = new Set<string>();
+    for (const n of prevNodes) {
+      if (!(n.data as { syncGroupId?: string }).syncGroupId) continue;
+      const azId = azAncestorId(n);
+      if (azId === undefined) continue;
+      if (deletableAzIds.has(azId)) deletedContentIds.add(n.id);
+      else if (azId === keptSyncedAzId) keptContentIds.add(n.id);
+    }
+    const goneIds = new Set([...removedIds, ...deletedContentIds]);
+
+    nextEdges = edges
+      .filter(
+        (e) =>
+          !deletedContentIds.has(e.source) && !deletedContentIds.has(e.target),
+      )
+      .map((e) => {
+        if (!keptContentIds.has(e.source) || !keptContentIds.has(e.target)) {
+          return e;
+        }
+        const { syncGroupId, syncSourceAzId, syncRole, ...data } = (e.data ??
+          {}) as Record<string, unknown>;
+        void syncGroupId;
+        void syncSourceAzId;
+        void syncRole;
+        return { ...e, data: Object.keys(data).length ? data : undefined };
+      });
+
     result = prevNodes
-      .filter((n) => !removedIds.has(n.id))
+      .filter((n) => !goneIds.has(n.id))
       .map((n) => {
-        if (!n.parentId || !removedIds.has(n.parentId)) return n;
-        const childAbsPos = getAbsolutePosition(
-          nodesById.get(n.parentId)!,
-          nodesById,
-        );
-        return {
-          ...n,
-          parentId: parent.id,
-          position: {
-            x: childAbsPos.x + n.position.x - parentAbsPos.x,
-            y: childAbsPos.y + n.position.y - parentAbsPos.y,
-          },
-        };
+        let next = n;
+        if (n.parentId && goneIds.has(n.parentId)) {
+          const absPos = getAbsolutePosition(n, nodesById);
+          next = {
+            ...n,
+            parentId: parent.id,
+            position: {
+              x: absPos.x - parentAbsPos.x,
+              y: absPos.y - parentAbsPos.y,
+            },
+          };
+        }
+        if (keptContentIds.has(n.id)) {
+          const { syncGroupId, syncSourceAzId, syncRole, ...data } =
+            next.data as Record<string, unknown>;
+          void syncGroupId;
+          void syncSourceAzId;
+          void syncRole;
+          next = { ...next, data } as AppNode;
+        }
+        return next;
       });
   }
 
@@ -205,5 +271,27 @@ export function setManagedChildCount(
   // a single remaining child always expands to fill the parent's content box.
   result = resizeContainerNode(parent.id, parentW, parentH, result);
 
-  return { nodes: orderNodesForSubflows(result), edges };
+  // When a VPC's AZ set changes while its AZs are synced, rebuild the sync
+  // group on the redistributed geometry: appended AZs join the group and get
+  // their mirrored content; with a single AZ left the group is dissolved.
+  if (containerType === "vpc") {
+    const azChildren = result.filter(
+      (n) => n.parentId === parent.id && isAzNode(n),
+    );
+    const syncedAz = azChildren.find((n) =>
+      Boolean((n.data as { synced?: boolean }).synced),
+    );
+    if (syncedAz) {
+      const resynced = toggleAzSyncState(
+        syncedAz.id,
+        azChildren.length > 1,
+        result,
+        nextEdges,
+      );
+      result = resynced.nodes;
+      nextEdges = resynced.edges;
+    }
+  }
+
+  return { nodes: orderNodesForSubflows(result), edges: nextEdges };
 }
