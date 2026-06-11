@@ -68,12 +68,25 @@ const SCOPE_DEFAULT_SIDE: Record<PlacementScope, BandSide> = {
 // Edge-service ids that should prefer the left side when in the central zone
 const EDGE_SERVICE_IDS = new Set(["api-gateway", "cloudfront", "route53", "waf"]);
 
-export function resolveBandSide(
-  dropAbsCenter: { x: number; y: number },
-  allowedParentRect: Rect,
+// The side a service lands on when no drop position expresses a preference
+// (click-to-add, search add). Entry-point services go left (diagrams flow
+// left → right); storage/data services go right.
+export function getPreferredBandSide(
   scope: PlacementScope,
   serviceId?: string,
 ): BandSide {
+  if (serviceId && EDGE_SERVICE_IDS.has(serviceId)) return "left";
+  return SCOPE_DEFAULT_SIDE[scope];
+}
+
+// Border-proximity component of side resolution: returns the side whose 18%
+// edge zone contains the point, or null when the point is in the central zone.
+// Callers that must distinguish "user pointed at an edge" from "fall back to
+// the service preference" use this directly.
+export function resolveBorderSide(
+  dropAbsCenter: { x: number; y: number },
+  allowedParentRect: Rect,
+): BandSide | null {
   const { x, y, width, height } = allowedParentRect;
 
   const thresholdX = width * BORDER_THRESHOLD;
@@ -82,15 +95,24 @@ export function resolveBandSide(
   const relX = dropAbsCenter.x - x;
   const relY = dropAbsCenter.y - y;
 
-  // Border proximity wins — check in priority order: top, bottom, left, right
+  // Check in priority order: top, bottom, left, right
   if (relY < thresholdY) return "top";
   if (relY > height - thresholdY) return "bottom";
   if (relX < thresholdX) return "left";
   if (relX > width - thresholdX) return "right";
+  return null;
+}
 
-  // Central zone: use scope + service default
-  if (serviceId && EDGE_SERVICE_IDS.has(serviceId)) return "left";
-  return SCOPE_DEFAULT_SIDE[scope];
+export function resolveBandSide(
+  dropAbsCenter: { x: number; y: number },
+  allowedParentRect: Rect,
+  scope: PlacementScope,
+  serviceId?: string,
+): BandSide {
+  return (
+    resolveBorderSide(dropAbsCenter, allowedParentRect) ??
+    getPreferredBandSide(scope, serviceId)
+  );
 }
 
 // ─── Band insets computation ──────────────────────────────────────────────────
@@ -273,52 +295,336 @@ export function getBandSide(node: AppNode): BandSide | undefined {
   return undefined;
 }
 
-// ─── Band position computation ────────────────────────────────────────────────
+export function areInsetsEqual(
+  a: ContainerInsets | undefined,
+  b: ContainerInsets,
+): boolean {
+  return (
+    (a?.top ?? 0) === b.top &&
+    (a?.right ?? 0) === b.right &&
+    (a?.bottom ?? 0) === b.bottom &&
+    (a?.left ?? 0) === b.left
+  );
+}
 
-// Returns the position (relative to the container) for a new band node.
-// Stacks along the perpendicular axis (band=right/left → stack vertically,
-// band=top/bottom → stack horizontally). slotIndex = number of existing nodes on that side.
-export function getBandNodePosition(
+// ─── Container inset frame ────────────────────────────────────────────────────
+
+const ZERO_INSETS: ContainerInsets = { top: 0, right: 0, bottom: 0, left: 0 };
+
+// Derived container-relative geometry shared by all band placement helpers.
+type ContainerInsetFrame = {
+  cW: number;
+  cH: number;
+  si: ContainerInsets;
+  gi: ContainerInsets;
+  contentLeft: number;
+  contentTop: number;
+  contentRight: number;
+  contentBottom: number;
+  contentW: number;
+  contentH: number;
+};
+
+function getContainerInsetFrame(container: AppNode): ContainerInsetFrame {
+  const { width: cW, height: cH } = getNodeSize(container);
+  const data = container.data as NetworkContainerNodeData;
+  const si: ContainerInsets = data.scopeInsets ?? ZERO_INSETS;
+  const gi: ContainerInsets = data.gatewayInsets ?? ZERO_INSETS;
+  const contentLeft = si.left + gi.left;
+  const contentTop = si.top + gi.top;
+  const contentW = cW - contentLeft - (si.right + gi.right);
+  const contentH = cH - contentTop - (si.bottom + gi.bottom);
+  return {
+    cW,
+    cH,
+    si,
+    gi,
+    contentLeft,
+    contentTop,
+    contentRight: contentLeft + contentW,
+    contentBottom: contentTop + contentH,
+    contentW,
+    contentH,
+  };
+}
+
+// Absolute rect of the container's content box (container minus scope + gateway
+// insets). Use this — not the full container rect — to resolve the band side
+// during drag: applyInsetResizeOnly keeps the content box absolutely fixed while
+// bands grow, so the 18% border thresholds don't move with the growth they
+// themselves triggered (which would make the resolved side oscillate).
+export function getContentBoxRect(
+  container: AppNode,
+  nodesById: Map<string, AppNode>,
+): Rect {
+  const abs = getAbsolutePosition(container, nodesById);
+  const frame = getContainerInsetFrame(container);
+  return {
+    x: abs.x + frame.contentLeft,
+    y: abs.y + frame.contentTop,
+    width: frame.contentW,
+    height: frame.contentH,
+  };
+}
+
+// ─── Virtual band membership (live growth during drag) ──────────────────────
+
+export const BAND_DRAG_GHOST_ID = "__band-drag-ghost__";
+
+export type VirtualBandMember = {
+  // Existing node being dragged; omit for a sidebar-drag ghost.
+  nodeId?: string;
+  // Service id of the dragged tool — getBandNodeVisualSize reads it (API Gateway width).
+  serviceId?: string;
+  // Live pointer-derived node top-left in absolute flow coordinates.
+  absTopLeft: { x: number; y: number };
+  side: BandSide;
+};
+
+// Returns a copy of the node list where the dragged node is VIRTUALLY a band
+// child of the container: reparented with bandSide set to the hovered side,
+// or — when no nodeId is given — an appended ghost node. The virtual position
+// is where the node WOULD land if dropped now (clampPositionToBand), not the
+// raw pointer position: feeding raw pointer coordinates would make the band
+// chase the node outward indefinitely, growing the container under it and
+// never letting it escape. Feed the result to getScopeBandInsets only; never
+// store it.
+export function withVirtualBandMember(
+  nodes: AppNode[],
+  containerId: string,
+  member: VirtualBandMember,
+): AppNode[] {
+  const nodesById = new Map(nodes.map((n) => [n.id, n]));
+  const container = nodesById.get(containerId);
+  if (!container) return nodes;
+
+  // Size source must match what getScopeBandInsets will measure: the real
+  // node when dragging an existing one, the serviceId default for a ghost.
+  const existing = member.nodeId ? nodesById.get(member.nodeId) : undefined;
+  const { position } = clampPositionToBand(
+    container,
+    member.side,
+    member.absTopLeft,
+    nodes,
+    existing ?? member.serviceId,
+  );
+
+  if (existing) {
+    return nodes.map((n) =>
+      n.id === member.nodeId
+        ? {
+            ...n,
+            parentId: containerId,
+            position,
+            data: { ...n.data, bandSide: member.side },
+          }
+        : n,
+    );
+  }
+
+  const ghost = {
+    id: BAND_DRAG_GHOST_ID,
+    type: "awsService",
+    parentId: containerId,
+    position,
+    data: { serviceId: member.serviceId, bandSide: member.side },
+  } as AppNode;
+  return [...nodes, ghost];
+}
+
+// ─── Placing a node into the band by drop position ───────────────────────────
+
+// Clamp within the range that extends from `anchor` toward `limit` in direction
+// `dir`. When the band is at (or below) its minimum one-column width the range
+// is degenerate and the anchor — the settled column/row position — wins.
+function clampFromAnchor(
+  value: number,
+  anchor: number,
+  limit: number,
+  dir: 1 | -1,
+): number {
+  if (dir === 1) {
+    return Math.min(Math.max(value, anchor), Math.max(anchor, limit));
+  }
+  return Math.max(Math.min(value, anchor), Math.min(anchor, limit));
+}
+
+// Keeps the node where the user dropped it, projected into the band strip of
+// the resolved side. The cross-axis anchor sits just outside the content edge —
+// the position getScopeBandInsets treats as the settled single column/row — so
+// the follow-up redistribute wraps the band around the node without moving it.
+//
+// `nodeOrServiceId` MUST be the same source getScopeBandInsets will measure
+// (pass the AppNode for existing nodes): a size mismatch between the clamped
+// position and the inset computation makes live growth diverge by the
+// difference on every drag frame.
+export function clampPositionToBand(
+  container: AppNode,
   side: BandSide,
-  slotIndex: number,
-  containerW: number,
-  containerH: number,
-  nodeSize: BandNodeSize = { width: BAND_NODE_SIZE, height: BAND_NODE_H },
-  previousNodeSizes: BandNodeSize[] = [],
-): { x: number; y: number } {
-  const previousHorizontalSpan =
-    previousNodeSizes.length > 0
-      ? previousNodeSizes.reduce((sum, size) => sum + size.width, 0) +
-        previousNodeSizes.length * BAND_PAD
-      : slotIndex * (BAND_NODE_SIZE + BAND_PAD);
-  const previousVerticalSpan =
-    previousNodeSizes.length > 0
-      ? previousNodeSizes.reduce((sum, size) => sum + size.height, 0) +
-        previousNodeSizes.length * BAND_PAD
-      : slotIndex * (BAND_NODE_H + BAND_PAD);
+  absTopLeft: { x: number; y: number },
+  nodes: AppNode[],
+  nodeOrServiceId?: AppNode | string,
+): { parentId: string; position: { x: number; y: number } } {
+  const nodesById = new Map(nodes.map((n) => [n.id, n]));
+  const frame = getContainerInsetFrame(container);
+  const { width: w, height: h } = getBandNodeVisualSize(nodeOrServiceId);
 
+  const containerAbs = getAbsolutePosition(container, nodesById);
+  const rel = {
+    x: absTopLeft.x - containerAbs.x,
+    y: absTopLeft.y - containerAbs.y,
+  };
+
+  const clampMainY = (v: number) =>
+    Math.min(
+      Math.max(v, frame.contentTop + BAND_PAD),
+      Math.max(frame.contentTop + BAND_PAD, frame.contentBottom - BAND_PAD - h),
+    );
+  const clampMainX = (v: number) =>
+    Math.min(
+      Math.max(v, frame.contentLeft + BAND_PAD),
+      Math.max(frame.contentLeft + BAND_PAD, frame.contentRight - BAND_PAD - w),
+    );
+
+  let position: { x: number; y: number };
   switch (side) {
     case "right":
-      return {
-        x: containerW + BAND_PAD,
-        y: BAND_PAD + previousVerticalSpan,
+      position = {
+        x: clampFromAnchor(rel.x, frame.contentRight + BAND_PAD, frame.cW - BAND_PAD - w, 1),
+        y: clampMainY(rel.y),
       };
+      break;
     case "left":
-      return {
-        x: -(nodeSize.width + BAND_PAD),
-        y: BAND_PAD + previousVerticalSpan,
+      position = {
+        x: clampFromAnchor(rel.x, frame.contentLeft - BAND_PAD - w, frame.gi.left + BAND_PAD, -1),
+        y: clampMainY(rel.y),
       };
+      break;
     case "top":
-      return {
-        x: BAND_PAD + previousHorizontalSpan,
-        y: -(nodeSize.height + BAND_PAD),
+      position = {
+        x: clampMainX(rel.x),
+        y: clampFromAnchor(rel.y, frame.contentTop - BAND_PAD - h, frame.gi.top + BAND_PAD, -1),
       };
+      break;
     case "bottom":
-      return {
-        x: BAND_PAD + previousHorizontalSpan,
-        y: containerH + BAND_PAD,
+      position = {
+        x: clampMainX(rel.x),
+        y: clampFromAnchor(rel.y, frame.contentBottom + BAND_PAD, frame.cH - BAND_PAD - h, 1),
       };
+      break;
   }
+
+  return { parentId: container.id, position };
+}
+
+// ─── Centered band placement (click-to-add, no drop position) ────────────────
+
+// Places a new band node centered along the container's content edge. If the
+// center slot overlaps an existing band node, searches outward alternately
+// (above/below or left/right) in node-size + BAND_PAD steps for the nearest
+// free slot, falling back to one step past the occupied extent.
+export function computeCenteredBandPlacement(
+  container: AppNode,
+  side: BandSide,
+  nodes: AppNode[],
+  serviceId?: string,
+): { parentId: string; position: { x: number; y: number } } {
+  const frame = getContainerInsetFrame(container);
+  const { width: w, height: h } = getBandNodeVisualSize(serviceId);
+  const vertical = side === "left" || side === "right";
+
+  // Cross-axis: just outside the content edge — the settled column/row position.
+  const cross =
+    side === "right"  ? frame.contentRight + BAND_PAD :
+    side === "left"   ? frame.contentLeft - BAND_PAD - w :
+    side === "top"    ? frame.contentTop - BAND_PAD - h :
+                        frame.contentBottom + BAND_PAD;
+
+  const extent = vertical ? h : w;
+  const mainLo = (vertical ? frame.contentTop : frame.contentLeft) + BAND_PAD;
+  const mainHi = Math.max(
+    mainLo,
+    (vertical ? frame.contentBottom : frame.contentRight) - BAND_PAD - extent,
+  );
+  const center = vertical
+    ? frame.contentTop + (frame.contentH - h) / 2
+    : frame.contentLeft + (frame.contentW - w) / 2;
+
+  const occupied = nodes
+    .filter((n) => n.parentId === container.id && getBandSide(n) === side)
+    .map((n) => {
+      const size = getBandNodeVisualSize(n);
+      const lo = vertical ? n.position.y : n.position.x;
+      return { lo, hi: lo + (vertical ? size.height : size.width) };
+    });
+
+  const isFree = (v: number) =>
+    v >= mainLo &&
+    v <= mainHi &&
+    occupied.every((iv) => v + extent <= iv.lo || v >= iv.hi);
+
+  let main = Math.min(Math.max(center, mainLo), mainHi);
+  if (!isFree(main)) {
+    const step = extent + BAND_PAD;
+    let found = false;
+    for (let i = 1; i <= 50 && !found; i++) {
+      for (const dir of [-1, 1]) {
+        const candidate = main + dir * i * step;
+        if (isFree(candidate)) {
+          main = candidate;
+          found = true;
+          break;
+        }
+      }
+    }
+    if (!found) {
+      // Band is packed: extend past the occupied extent; getScopeBandInsets'
+      // overflow terms grow the container on the follow-up redistribute.
+      main = Math.max(mainLo, ...occupied.map((iv) => iv.hi)) + BAND_PAD;
+    }
+  }
+
+  return {
+    parentId: container.id,
+    position: vertical ? { x: cross, y: main } : { x: main, y: cross },
+  };
+}
+
+// ─── Band strip hit-testing at drop time ──────────────────────────────────────
+
+// Returns the band side whose strip contains the given absolute point, or null
+// when the point is in the content area (or outside the container). Strips only
+// exist where scopeInsets are non-zero — live growth during drag guarantees that
+// while hovering a band. On corner overlap the deepest penetration wins.
+export function detectBandSideAtPosition(
+  container: AppNode,
+  absCenter: { x: number; y: number },
+  nodes: AppNode[],
+): BandSide | null {
+  const nodesById = new Map(nodes.map((n) => [n.id, n]));
+  const abs = getAbsolutePosition(container, nodesById);
+  const { cW, cH, si } = getContainerInsetFrame(container);
+  const relX = absCenter.x - abs.x;
+  const relY = absCenter.y - abs.y;
+  if (relX < 0 || relX > cW || relY < 0 || relY > cH) return null;
+
+  const candidates: Array<{ side: BandSide; depth: number }> = [];
+  if (si.left > 0 && relX <= si.left) {
+    candidates.push({ side: "left", depth: si.left - relX });
+  }
+  if (si.right > 0 && relX >= cW - si.right) {
+    candidates.push({ side: "right", depth: relX - (cW - si.right) });
+  }
+  if (si.top > 0 && relY <= si.top) {
+    candidates.push({ side: "top", depth: si.top - relY });
+  }
+  if (si.bottom > 0 && relY >= cH - si.bottom) {
+    candidates.push({ side: "bottom", depth: relY - (cH - si.bottom) });
+  }
+  if (!candidates.length) return null;
+
+  candidates.sort((a, b) => b.depth - a.depth);
+  return candidates[0].side;
 }
 
 // ─── Container growing for scope bands ───────────────────────────────────────
@@ -570,57 +876,6 @@ export function redistributeScopeAffectedLayoutsWithPropagation(nodes: AppNode[]
     result = propagateBandGrowthToAncestors(id, result);
   }
   return result;
-}
-
-// ─── Placing a node into the band ────────────────────────────────────────────
-
-// Given a container node and a scope/serviceId, returns the { parentId, position, data }
-// patch to place a new node in the appropriate band slot.
-export function computeBandPlacement(
-  container: AppNode,
-  side: BandSide,
-  nodes: AppNode[],
-  serviceId?: string,
-): { parentId: string; position: { x: number; y: number } } {
-  const { width: cW, height: cH } = getNodeSize(container);
-  const data = container.data as NetworkContainerNodeData;
-  const si: ContainerInsets = data.scopeInsets   ?? { top: 0, right: 0, bottom: 0, left: 0 };
-  const gi: ContainerInsets = data.gatewayInsets ?? { top: 0, right: 0, bottom: 0, left: 0 };
-
-  const leftInset = si.left + gi.left;
-  const topInset  = si.top  + gi.top;
-  const contentW = cW - leftInset - (si.right  + gi.right);
-  const contentH = cH - topInset  - (si.bottom + gi.bottom);
-
-  const existingSideNodes = nodes.filter(
-    (n) => n.parentId === container.id && getBandSide(n) === side,
-  );
-  const slotIndex = existingSideNodes.length;
-  const nodeSize = getBandNodeVisualSize(serviceId);
-  const previousNodeSizes = existingSideNodes.map(getBandNodeVisualSize);
-
-  // Pass the content-area edge coordinates in container space so getBandNodePosition
-  // produces correct absolute-relative positions regardless of opposite-side insets.
-  // right band needs x = leftInset + contentW + BAND_PAD (not just contentW + BAND_PAD).
-  // bottom band needs y = topInset + contentH + BAND_PAD (not just contentH + BAND_PAD).
-  const rawPos = getBandNodePosition(
-    side,
-    slotIndex,
-    leftInset + contentW,
-    topInset + contentH,
-    nodeSize,
-    previousNodeSizes,
-  );
-
-  // Stacking origin for top/bottom bands (horizontal) must start at the content left edge.
-  // Stacking origin for left/right bands (vertical) must start at the content top edge.
-  const x = (side === "top" || side === "bottom") ? rawPos.x + leftInset : rawPos.x;
-  const y = (side === "left" || side === "right") ? rawPos.y + topInset  : rawPos.y;
-
-  return {
-    parentId: container.id,
-    position: { x, y },
-  };
 }
 
 // ─── Find the correct allowed ancestor ───────────────────────────────────────

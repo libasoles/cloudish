@@ -88,15 +88,31 @@ When a node is **added** (sidebar/search click or drop), it must not land on top
 
 ## Scope Bands (non-subnet-scope services)
 
-Services with `placementScope: "regional"` or `"vpc"` (e.g., S3, RDS, CloudFront) live in a **band** around their allowed ancestor container rather than inside the content area.
+Services with `placementScope: "regional"` or `"vpc"` (e.g., S3, RDS, API Gateway) live in a **band** around their allowed ancestor container rather than inside the content area.
 
-- Implementation: `src/lib/placement.ts` — `computeBandPlacement`, `getBandNodePosition`, `getScopeBandInsets`, `redistributeScopeBandForContainer`.
-- Band sides: `"top" | "right" | "bottom" | "left"`. Determined by `resolveBandSide()` based on drop position relative to container bounds.
+- Implementation: `src/lib/placement.ts` — `getScopeBandInsets`, `redistributeScopeBandForContainer`, `clampPositionToBand`, `computeCenteredBandPlacement`, `detectBandSideAtPosition`, `withVirtualBandMember`. (The old slot-stacking `computeBandPlacement`/`getBandNodePosition` were removed — band nodes keep the user's drop position.)
+- Band sides: `"top" | "right" | "bottom" | "left"`.
+  - **Sidebar drag drops**: `resolveBandSide()` = `resolveBorderSide()` (18% edge zone) `?? getPreferredBandSide()`. During drag, ALWAYS resolve against `getContentBoxRect()` (container minus insets), never the full container rect: the content box stays absolutely fixed while bands grow, so the resolved side can't oscillate from the growth it triggered.
+  - **Existing-node drags** (`onNodeDrag` + the within-ancestor path of `syncNodeSubnet`) share one intent formula: `detectBandSideAtPosition()` (strip hit — precise on corners) `?? resolveBorderSide()` (18% zone of the content box) `?? (incoming ? getPreferredBandSide() : null)`. `incoming` = `node.parentId !== ancestor.id`. A `null` side means free repositioning: no highlight, no growth, drop keeps the node free-floating. Same-parent nodes can therefore only be banded via the strips/border zones — the central content area is free placement (drag gives explicit control).
+  - **Click-to-add (no drag)**: `getPreferredBandSide(scope, serviceId)` only — no border proximity. Entry-point services (`EDGE_SERVICE_IDS`: api-gateway, cloudfront, route53, waf) → left; everything else → scope default (right; global → top).
 - Band nodes have `data.bandSide` set; absent means free-floating inside the container.
 - `BAND_NODE_SIZE = BAND_NODE_H = 80` — matches the AwsServiceNode visual dimensions (`min-w-20`, `≈80px tall`). Do NOT set this to `DEFAULT_NODE_WIDTH` (150) — that's the hit-test size, not the visual size.
-- **Initial drop**: `addToolAtPosition` in Canvas.tsx always uses band placement for non-subnet-scope nodes when an allowed ancestor is found — regardless of whether the drop landed inside a deeper container. Free placement inside the ancestor is intentionally disallowed on initial drop.
-- **Drag reparenting**: `syncNodeSubnet` allows a user to drag a band node directly inside the allowed ancestor (removing `bandSide`). This is intentional: drag gives explicit control, initial drop does not.
+- **Placement keeps the drop point**: drag drops use `clampPositionToBand()` — the drop position projected into the strip of the resolved side (cross-axis anchored just outside the content edge, the position `getScopeBandInsets` treats as the settled column). Click-to-add uses `computeCenteredBandPlacement()` — centered along the content edge, alternating outward search for a free slot (no overlap).
 - Container grows outward via `redistributeScopeAffectedLayouts` after each band placement.
+
+### Live band growth during drag
+
+While dragging a scope-restricted service (sidebar tool OR existing node), Canvas grows the hovered container's band live so the node fits where the pointer is:
+
+- `applyLiveBandGrowth(containerId, member, draggedNodeId?)` in Canvas.tsx: builds a patched node list via `withVirtualBandMember()` — the dragged node virtually reparented to the target container with `bandSide` = hovered side, or an appended ghost for sidebar drags — then `getScopeBandInsets` → `applyInsetResizeOnly` → `propagateBandGrowthToAncestors`. The virtual reparent is what makes growth work when the node comes from another parent / another side (its real `parentId`/`position`/`bandSide` would otherwise contribute nothing or the wrong side).
+- **Bounded growth — two invariants that prevent runaway feedback loops:**
+  1. The virtual member's position is the **clamped landing position** (`clampPositionToBand`), never the raw pointer position. Raw coordinates make the band chase the node outward indefinitely (the container grows under the node, the node keeps intersecting, repeat).
+  2. The size source fed to the clamp MUST match what `getScopeBandInsets` measures (the `AppNode` for existing nodes, the serviceId default for ghosts). A mismatch (e.g. measured 90px vs catalog 80px) diverges by the difference on every frame.
+- `releaseLiveBandGrowth(keepContainerId?, draggedNodeId?)`: shrinks the previously grown container via `redistributeScopeBandForContainer`. It first strips the dragged node's `bandSide` — the node is "in hand", and counting its live far-away position as a band member would grow the container after it instead of letting it escape. Called on every non-band exit of `onDragOver`/`onNodeDrag`, on `handleToolDragEnd` (cancelled sidebar drag), and in `onDrop` BEFORE `commitGraphChange` so the undo snapshot doesn't capture a grown empty band.
+- `onNodeDragStop` does NOT release — `detectBandSideAtPosition` in `syncNodeSubnet` needs the grown insets at drop time; the final `redistributeScopeAffectedLayoutsWithPropagation` is the settle.
+- `onDrop` captures `{dropTargetNodeId, dropBandSide}` as a `bandHint` before clearing highlight state and passes it to `addToolAtPosition` — after the release-shrink the drop point may fall outside the shrunk container rect.
+- All live growth runs through `useFlowStore.getState().setNodes` (event path): no undo history entries.
+- Testing note: `dataTransfer.getData()` is protected (returns `""`) during `dragover` even for synthetic events — sidebar drag-over relies on the `activeDragToolRef` fallback set by the button's `dragstart`. Playwright scripts must dispatch a real `dragstart` on the sidebar button before synthetic `dragover`s.
 
 ## Drag-and-Drop Reparenting
 

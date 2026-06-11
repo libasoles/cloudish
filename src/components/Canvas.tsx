@@ -123,16 +123,36 @@ import {
 } from "@/lib/node-utils";
 import {
   findAllowedAncestorForScope,
-  computeBandPlacement,
+  isContainerAllowedForScope,
   resolveBandSide,
+  resolveBorderSide,
+  getPreferredBandSide,
+  getContentBoxRect,
   redistributeScopeAffectedLayouts,
   redistributeScopeAffectedLayoutsWithPropagation,
+  redistributeScopeBandForContainer,
   expelGlobalNodePosition,
   getBandSide,
   getScopeBandInsets,
   applyInsetResizeOnly,
   propagateBandGrowthToAncestors,
+  areInsetsEqual,
+  withVirtualBandMember,
+  clampPositionToBand,
+  computeCenteredBandPlacement,
+  detectBandSideAtPosition,
 } from "@/lib/placement";
+import type { BandSide, VirtualBandMember } from "@/lib/placement";
+
+type AddToolOptions = {
+  pulseKey?: string;
+  // Click-to-add (no drag): use the service's preferred band side and centered
+  // placement instead of the drop-position rules.
+  viaClick?: boolean;
+  // Band target resolved during the drag preview, captured before the highlight
+  // state is cleared in onDrop.
+  bandHint?: { containerId: string; side: BandSide };
+};
 import { EDGE_STYLE } from "@/lib/edge-tools";
 import { resolveVpnGatewayEdgeLabel } from "@/lib/vpn-gateway-edges";
 import type { ExportFormat } from "@/lib/export/types";
@@ -441,6 +461,8 @@ export default function Canvas() {
   const suppressNextClickRef = useRef(false);
   const nodesRef = useRef(nodes);
   const dragOverRafRef = useRef<number | null>(null);
+  // Container currently grown to preview a band drop (live growth during drag).
+  const liveBandGrowthRef = useRef<string | null>(null);
   useEffect(() => {
     nodesRef.current = nodes;
   }, [nodes]);
@@ -968,6 +990,59 @@ export default function Canvas() {
     [commitGraphChange],
   );
 
+  // Shrinks the previously hover-grown container back to what its real band
+  // children require (the virtual/ghost contribution disappears). When a node
+  // drag is in flight, its bandSide must be stripped first: the node is "in
+  // hand", and letting its live (possibly far-away) position count as a band
+  // member would make the container chase it instead of letting it escape.
+  const releaseLiveBandGrowth = useCallback(
+    (keepContainerId?: string, draggedNodeId?: string) => {
+      const prev = liveBandGrowthRef.current;
+      if (!prev || prev === keepContainerId) return;
+      liveBandGrowthRef.current = null;
+      useFlowStore.getState().setNodes((nodes) => {
+        const base = draggedNodeId
+          ? nodes.map((n) =>
+              n.id === draggedNodeId &&
+              (n.data as { bandSide?: string }).bandSide
+                ? { ...n, data: { ...n.data, bandSide: undefined } }
+                : n,
+            )
+          : nodes;
+        return redistributeScopeBandForContainer(prev, base);
+      });
+    },
+    [],
+  );
+
+  // Grows the hovered container's band live so the dragged node — existing or
+  // a sidebar ghost — fits where the pointer is. Runs on the event path via
+  // getState().setNodes: no undo history entries.
+  const applyLiveBandGrowth = useCallback(
+    (containerId: string, member: VirtualBandMember, draggedNodeId?: string) => {
+      releaseLiveBandGrowth(containerId, draggedNodeId);
+      const { nodes, nodesById } = useFlowStore.getState();
+      const container = nodesById.get(containerId);
+      if (!container) return;
+      liveBandGrowthRef.current = containerId;
+      const newInsets = getScopeBandInsets(
+        containerId,
+        withVirtualBandMember(nodes, containerId, member),
+      );
+      const prevInsets = (
+        container.data as import("@/types/flow").NetworkContainerNodeData
+      ).scopeInsets;
+      if (areInsetsEqual(prevInsets, newInsets)) return;
+      useFlowStore.getState().setNodes((prev) =>
+        propagateBandGrowthToAncestors(
+          containerId,
+          applyInsetResizeOnly(containerId, newInsets, prev, draggedNodeId),
+        ),
+      );
+    },
+    [releaseLiveBandGrowth],
+  );
+
   const onDragOver = useCallback(
     (event: DragEvent) => {
       event.preventDefault();
@@ -1017,6 +1092,7 @@ export default function Canvas() {
             },
           );
 
+          releaseLiveBandGrowth();
           setDropTargetNodeId(target?.id ?? null);
           setDropPreview(
             target ? { parentId: target.id, childType: "vpc" } : null,
@@ -1042,6 +1118,7 @@ export default function Canvas() {
             },
           );
 
+          releaseLiveBandGrowth();
           setDropTargetNodeId(target?.id ?? null);
           setDropPreview(
             target ? { parentId: target.id, childType: "az" } : null,
@@ -1071,6 +1148,7 @@ export default function Canvas() {
             },
           );
 
+          releaseLiveBandGrowth();
           setDropTargetNodeId(target?.id ?? null);
           setDropPreview(
             target ? { parentId: target.id, childType: "subnet" } : null,
@@ -1080,6 +1158,7 @@ export default function Canvas() {
         }
 
         if (droppedTool.type === "asg") {
+          releaseLiveBandGrowth();
           setDropTargetNodeId(null);
           setDropPreview(null);
           setDropBandSide(null);
@@ -1107,25 +1186,38 @@ export default function Canvas() {
             );
             if (allowedAncestor) {
               if (scope === "az") {
+                releaseLiveBandGrowth();
                 setDropTargetNodeId(allowedAncestor.id);
                 setDropBandSide(null);
                 setDropPreview(null);
                 return;
               }
 
-              const ancPos = getAbsolutePosition(allowedAncestor, nodesById);
-              const { width: ancW, height: ancH } =
-                getNodeSize(allowedAncestor);
-              const ancRect = { ...ancPos, width: ancW, height: ancH };
+              // Resolve against the content box (fixed during band growth),
+              // not the full container rect — avoids side oscillation.
               const side = resolveBandSide(
                 { x: position.x, y: position.y },
-                ancRect,
+                getContentBoxRect(allowedAncestor, nodesById),
                 scope,
                 service?.id,
               );
               setDropTargetNodeId(allowedAncestor.id);
               setDropBandSide(side);
+
+              if (
+                service &&
+                getServiceNodeType(service.id) !== "gatewayService"
+              ) {
+                applyLiveBandGrowth(allowedAncestor.id, {
+                  serviceId: service.id,
+                  absTopLeft: { x: nodeRect.x, y: nodeRect.y },
+                  side,
+                });
+              } else {
+                releaseLiveBandGrowth();
+              }
             } else {
+              releaseLiveBandGrowth();
               setDropTargetNodeId(null);
               setDropBandSide(null);
             }
@@ -1145,19 +1237,23 @@ export default function Canvas() {
             currentNodes,
             nodesById,
           );
+          releaseLiveBandGrowth();
           setDropTargetNodeId(target?.id ?? null);
           setDropPreview(null);
           setDropBandSide(null);
           return;
         }
 
+        releaseLiveBandGrowth();
         setDropTargetNodeId(null);
         setDropPreview(null);
         setDropBandSide(null);
       }); // end rAF
     },
     [
+      applyLiveBandGrowth,
       reactFlowInstance,
+      releaseLiveBandGrowth,
       setDropBandSide,
       setDropPreview,
       setDropTargetNodeId,
@@ -1167,8 +1263,12 @@ export default function Canvas() {
   );
 
   const addToolAtPosition = useCallback(
-    (tool: DragTool, position: { x: number; y: number }, pulseKey?: string) => {
-      const pulseData = pulseKey ? { pulseKey } : {};
+    (
+      tool: DragTool,
+      position: { x: number; y: number },
+      options?: AddToolOptions,
+    ) => {
+      const pulseData = options?.pulseKey ? { pulseKey: options.pulseKey } : {};
       setInspectorOpen(true);
 
       if (tool.type === AWS_SERVICE_NODE_TYPE) {
@@ -1298,11 +1398,15 @@ export default function Canvas() {
             );
           } else {
             const nodesById = new Map(nodes.map((n) => [n.id, n]));
-            const allowedAncestor = findAllowedAncestorForScope(
-              nodeRect,
-              scope,
-              nodes,
-            );
+            const hinted = options?.bandHint
+              ? nodesById.get(options.bandHint.containerId)
+              : undefined;
+            const allowedAncestor =
+              hinted &&
+              isNetworkContainerNode(hinted) &&
+              isContainerAllowedForScope(hinted, scope)
+                ? hinted
+                : findAllowedAncestorForScope(nodeRect, scope, nodes);
 
             if (!allowedAncestor) {
               // global scope or no valid ancestor — place at canvas top-level, expelled from any region
@@ -1339,23 +1443,19 @@ export default function Canvas() {
                 x: nodePosition.x + DEFAULT_NODE_WIDTH / 2,
                 y: nodePosition.y + DEFAULT_NODE_HEIGHT / 2,
               };
-              const ancRect = {
-                ...getAbsolutePosition(allowedAncestor, nodesById),
-                width:
-                  (allowedAncestor.style as { width?: number })?.width ??
-                  allowedAncestor.width ??
-                  720,
-                height:
-                  (allowedAncestor.style as { height?: number })?.height ??
-                  allowedAncestor.height ??
-                  480,
-              };
-              const side = resolveBandSide(
-                dropAbsCenter,
-                ancRect,
-                scope,
-                service.id,
-              );
+              // Click-to-add has no meaningful drop position: the service's
+              // preferred side rules (S3 → right, API Gateway → left), without
+              // border proximity. Drag drops keep the previewed side when the
+              // hint is available.
+              const side = options?.viaClick
+                ? getPreferredBandSide(scope, service.id)
+                : (options?.bandHint?.side ??
+                  resolveBandSide(
+                    dropAbsCenter,
+                    getContentBoxRect(allowedAncestor, nodesById),
+                    scope,
+                    service.id,
+                  ));
 
               if (getServiceNodeType(service.id) === "gatewayService") {
                 // Gateway nodes live on a VPC border (50% in / 50% out), not in the band.
@@ -1381,13 +1481,22 @@ export default function Canvas() {
                 // No bandSide — gateway nodes are positioned at the VPC border, not the band.
               } else {
                 // Regular vpc/regional-scope service nodes go into the band.
-                const bandPos = computeBandPlacement(
-                  allowedAncestor,
-                  side,
-                  nodes,
-                  service.id,
-                );
-                parentedPosition = bandPos;
+                // Click-to-add centers in the band; drag drops stay where the
+                // user dropped, projected into the strip.
+                parentedPosition = options?.viaClick
+                  ? computeCenteredBandPlacement(
+                      allowedAncestor,
+                      side,
+                      nodes,
+                      service.id,
+                    )
+                  : clampPositionToBand(
+                      allowedAncestor,
+                      side,
+                      nodePosition,
+                      nodes,
+                      service.id,
+                    );
                 extraData = { bandSide: side };
               }
             }
@@ -1933,10 +2042,23 @@ export default function Canvas() {
         cancelAnimationFrame(dragOverRafRef.current);
         dragOverRafRef.current = null;
       }
+      // Capture the previewed band target before clearing the highlight state.
+      // After releaseLiveBandGrowth the drop point may fall outside the shrunk
+      // container rect, so addToolAtPosition needs this hint to keep the
+      // container + side the preview promised.
+      const { dropTargetNodeId: hintId, dropBandSide: hintSide } =
+        useFlowStore.getState();
+      const bandHint =
+        hintId && hintSide
+          ? { containerId: hintId, side: hintSide }
+          : undefined;
       activeDragToolRef.current = null;
       setDropTargetNodeId(null);
       setDropPreview(null);
       setDropBandSide(null);
+      // Shrink the hover growth BEFORE commitGraphChange so the undo snapshot
+      // doesn't capture a grown, empty band.
+      releaseLiveBandGrowth();
 
       const droppedTool =
         decodeDragTool(event.dataTransfer.getData(DND_MIME_TYPE)) ??
@@ -1952,6 +2074,7 @@ export default function Canvas() {
           x: event.clientX,
           y: event.clientY,
         }),
+        { bandHint },
       );
 
       // Pan to show expelled/out-of-view nodes after drop
@@ -1981,6 +2104,7 @@ export default function Canvas() {
     [
       addToolAtPosition,
       reactFlowInstance,
+      releaseLiveBandGrowth,
       setDropBandSide,
       setDropPreview,
       setDropTargetNodeId,
@@ -2000,7 +2124,10 @@ export default function Canvas() {
     setDropTargetNodeId(null);
     setDropPreview(null);
     setDropBandSide(null);
-  }, [setDropBandSide, setDropPreview, setDropTargetNodeId]);
+    // Cancelled sidebar drag (ESC / drop outside the canvas): shrink the band
+    // back. After a successful drop onDrop already released, so this no-ops.
+    releaseLiveBandGrowth();
+  }, [releaseLiveBandGrowth, setDropBandSide, setDropPreview, setDropTargetNodeId]);
 
   const handlePasteImages = useCallback(
     (event: ClipboardEvent) => {
@@ -2031,11 +2158,10 @@ export default function Canvas() {
         return;
       }
 
-      addToolAtPosition(
-        tool,
-        position,
-        `${CLICK_PULSE_PREFIX}-${pulseIdRef.current++}`,
-      );
+      addToolAtPosition(tool, position, {
+        pulseKey: `${CLICK_PULSE_PREFIX}-${pulseIdRef.current++}`,
+        viaClick: true,
+      });
     },
     [addToolAtPosition, getCanvasCenterFlowPosition],
   );
@@ -2138,34 +2264,26 @@ export default function Canvas() {
               const isExpelled =
                 deepestContainer && deepestContainer.id !== allowedAncestor.id;
 
+              const dropAbsCenter = {
+                x: nodeRect.x + nodeRect.width / 2,
+                y: nodeRect.y + nodeRect.height / 2,
+              };
+
               if (isExpelled) {
-                const dropAbsCenter = {
-                  x: nodeRect.x + nodeRect.width / 2,
-                  y: nodeRect.y + nodeRect.height / 2,
-                };
-                const ancRect = {
-                  ...getAbsolutePosition(allowedAncestor, nodesById),
-                  width:
-                    (allowedAncestor.style as { width?: number })?.width ??
-                    allowedAncestor.width ??
-                    720,
-                  height:
-                    (allowedAncestor.style as { height?: number })?.height ??
-                    allowedAncestor.height ??
-                    480,
-                };
                 const side = resolveBandSide(
                   dropAbsCenter,
-                  ancRect,
+                  getContentBoxRect(allowedAncestor, nodesById),
                   scope,
                   awsNode.data.serviceId,
                 );
-                const existingNodes = nodes.filter((n) => n.id !== node.id);
-                const bandPlacement = computeBandPlacement(
+                // Keep the node where the user dropped it, projected into the
+                // band strip of the resolved side.
+                const bandPlacement = clampPositionToBand(
                   allowedAncestor,
                   side,
-                  existingNodes,
-                  awsNode.data.serviceId,
+                  { x: nodeRect.x, y: nodeRect.y },
+                  nodes,
+                  node,
                 );
                 updates.set(node.id, {
                   ...node,
@@ -2176,18 +2294,52 @@ export default function Canvas() {
                 return;
               }
 
-              // Drop is within the allowed ancestor — normal parent assignment
-              if (node.parentId !== allowedAncestor.id) {
-                const ancPos = getAbsolutePosition(allowedAncestor, nodesById);
-                updates.set(node.id, {
-                  ...node,
-                  parentId: allowedAncestor.id,
-                  data: { ...node.data, bandSide: undefined },
-                  position: {
-                    x: nodeRect.x - ancPos.x,
-                    y: nodeRect.y - ancPos.y,
-                  },
-                });
+              // Drop is within the allowed ancestor. Mirror the drag-preview
+              // intent: strip hit or 18% border zone → band on that side;
+              // incoming nodes default to the preferred side; same-parent
+              // nodes dropped in the central content area stay/become free
+              // (drag gives explicit control).
+              const incoming = node.parentId !== allowedAncestor.id;
+              const dropSide =
+                detectBandSideAtPosition(allowedAncestor, dropAbsCenter, nodes) ??
+                resolveBorderSide(
+                  dropAbsCenter,
+                  getContentBoxRect(allowedAncestor, nodesById),
+                ) ??
+                (incoming
+                  ? getPreferredBandSide(scope, awsNode.data.serviceId)
+                  : null);
+              const currentSide = getBandSide(node) ?? null;
+              if (incoming || dropSide !== currentSide) {
+                if (dropSide) {
+                  const bandPlacement = clampPositionToBand(
+                    allowedAncestor,
+                    dropSide,
+                    { x: nodeRect.x, y: nodeRect.y },
+                    nodes,
+                    node,
+                  );
+                  updates.set(node.id, {
+                    ...node,
+                    parentId: allowedAncestor.id,
+                    data: { ...node.data, bandSide: dropSide },
+                    position: bandPlacement.position,
+                  });
+                } else {
+                  const ancPos = getAbsolutePosition(
+                    allowedAncestor,
+                    nodesById,
+                  );
+                  updates.set(node.id, {
+                    ...node,
+                    parentId: allowedAncestor.id,
+                    data: { ...node.data, bandSide: undefined },
+                    position: {
+                      x: nodeRect.x - ancPos.x,
+                      y: nodeRect.y - ancPos.y,
+                    },
+                  });
+                }
               }
               return;
             }
@@ -2403,74 +2555,69 @@ export default function Canvas() {
 
             if (allowedAncestor) {
               if (scope === "az") {
+                releaseLiveBandGrowth();
                 setDropTargetNodeId(allowedAncestor.id);
                 setDropBandSide(null);
                 setDropPreview(null);
                 return;
               }
 
-              const ancPos = getAbsolutePosition(allowedAncestor, nodesById);
-              const { width: ancW, height: ancH } =
-                getNodeSize(allowedAncestor);
-              const side = resolveBandSide(
-                {
-                  x: nodeRect.x + nodeRect.width / 2,
-                  y: nodeRect.y + nodeRect.height / 2,
-                },
-                { ...ancPos, width: ancW, height: ancH },
-                scope,
-                awsNode.data.serviceId,
-              );
+              // Band intent. Strip hit (precise on corners) wins, then the 18%
+              // border zone of the content box (fixed during growth — avoids
+              // side oscillation). Incoming nodes always band (preferred side
+              // in the central zone); same-parent nodes in the central zone
+              // are free repositioning — no band, no highlight.
+              const dropCenter = {
+                x: nodeRect.x + nodeRect.width / 2,
+                y: nodeRect.y + nodeRect.height / 2,
+              };
+              const incoming = node.parentId !== allowedAncestor.id;
+              const side =
+                detectBandSideAtPosition(allowedAncestor, dropCenter, currentNodes) ??
+                resolveBorderSide(
+                  dropCenter,
+                  getContentBoxRect(allowedAncestor, nodesById),
+                ) ??
+                (incoming
+                  ? getPreferredBandSide(scope, awsNode.data.serviceId)
+                  : null);
 
-              // Fix 1: suppress amber highlight when the node is already on this band
-              const currentBandSide = getBandSide(node as AppNode);
-              const isSameBand =
-                node.parentId === allowedAncestor.id &&
-                currentBandSide === side;
-              if (!isSameBand) {
-                setDropTargetNodeId(allowedAncestor.id);
-                setDropBandSide(side);
+              if (side) {
+                // Suppress amber highlight when the node is already on this band
+                const isSameBand =
+                  !incoming && getBandSide(node as AppNode) === side;
+                if (!isSameBand) {
+                  setDropTargetNodeId(allowedAncestor.id);
+                  setDropBandSide(side);
+                } else {
+                  if (dropTargetNodeId !== null) setDropTargetNodeId(null);
+                  setDropBandSide(null);
+                }
+
+                // Live-resize the band to fit the dragged node at the pointer.
+                // The virtual reparent inside makes this work even when the
+                // node comes from another parent or a different band side.
+                applyLiveBandGrowth(
+                  allowedAncestor.id,
+                  {
+                    nodeId: node.id,
+                    serviceId: awsNode.data.serviceId,
+                    absTopLeft: { x: nodeRect.x, y: nodeRect.y },
+                    side,
+                  },
+                  node.id,
+                );
               } else {
+                releaseLiveBandGrowth(undefined, node.id);
                 if (dropTargetNodeId !== null) setDropTargetNodeId(null);
                 setDropBandSide(null);
-              }
-
-              // Fix 2B: live-resize the band container using current drag position
-              const patchedNodes = currentNodes.map((n) =>
-                n.id === node.id ? { ...n, position: node.position } : n,
-              );
-              const newInsets = getScopeBandInsets(
-                allowedAncestor.id,
-                patchedNodes,
-              );
-              const prevInsets = (
-                allowedAncestor.data as import("@/types/flow").NetworkContainerNodeData
-              ).scopeInsets;
-              if (
-                newInsets.top !== (prevInsets?.top ?? 0) ||
-                newInsets.right !== (prevInsets?.right ?? 0) ||
-                newInsets.bottom !== (prevInsets?.bottom ?? 0) ||
-                newInsets.left !== (prevInsets?.left ?? 0)
-              ) {
-                useFlowStore
-                  .getState()
-                  .setNodes((prev) =>
-                    propagateBandGrowthToAncestors(
-                      allowedAncestor.id,
-                      applyInsetResizeOnly(
-                        allowedAncestor.id,
-                        newInsets,
-                        prev,
-                        node.id,
-                      ),
-                    ),
-                  );
               }
 
               setDropPreview(null);
               return;
             }
 
+            releaseLiveBandGrowth(undefined, node.id);
             setDropBandSide(null);
           }
         }
@@ -2489,11 +2636,13 @@ export default function Canvas() {
           } else if (dropTargetNodeId !== null) {
             setDropTargetNodeId(null);
           }
+          releaseLiveBandGrowth();
           setDropBandSide(null);
           setDropPreview(null);
           return;
         }
 
+        releaseLiveBandGrowth();
         if (dropTargetNodeId !== null) setDropTargetNodeId(null);
         setDropPreview(null);
         return;
@@ -2517,7 +2666,14 @@ export default function Canvas() {
         isNewParent && childType ? { parentId: target.id, childType } : null,
       );
     },
-    [dropTargetNodeId, setDropBandSide, setDropPreview, setDropTargetNodeId],
+    [
+      applyLiveBandGrowth,
+      dropTargetNodeId,
+      releaseLiveBandGrowth,
+      setDropBandSide,
+      setDropPreview,
+      setDropTargetNodeId,
+    ],
   );
 
   const onNodeDragStop: OnNodeDrag<AppNode> = useCallback(
@@ -2529,6 +2685,10 @@ export default function Canvas() {
       setDropTargetNodeId(null);
       setDropPreview(null);
       setDropBandSide(null);
+      // Don't shrink the hover-grown band here: detectBandSideAtPosition in
+      // syncNodeSubnet needs the grown insets at drop time. The final
+      // redistributeScopeAffectedLayoutsWithPropagation is the settle step.
+      liveBandGrowthRef.current = null;
       syncNodeSubnet(
         draggedNodes.length ? draggedNodes.map((n) => n.id) : [node.id],
         hintTargetId,
