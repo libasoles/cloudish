@@ -1019,7 +1019,11 @@ export default function Canvas() {
   // a sidebar ghost — fits where the pointer is. Runs on the event path via
   // getState().setNodes: no undo history entries.
   const applyLiveBandGrowth = useCallback(
-    (containerId: string, member: VirtualBandMember, draggedNodeId?: string) => {
+    (
+      containerId: string,
+      member: VirtualBandMember,
+      draggedNodeId?: string,
+    ) => {
       releaseLiveBandGrowth(containerId, draggedNodeId);
       const { nodes, nodesById } = useFlowStore.getState();
       const container = nodesById.get(containerId);
@@ -1033,12 +1037,14 @@ export default function Canvas() {
         container.data as import("@/types/flow").NetworkContainerNodeData
       ).scopeInsets;
       if (areInsetsEqual(prevInsets, newInsets)) return;
-      useFlowStore.getState().setNodes((prev) =>
-        propagateBandGrowthToAncestors(
-          containerId,
-          applyInsetResizeOnly(containerId, newInsets, prev, draggedNodeId),
-        ),
-      );
+      useFlowStore
+        .getState()
+        .setNodes((prev) =>
+          propagateBandGrowthToAncestors(
+            containerId,
+            applyInsetResizeOnly(containerId, newInsets, prev, draggedNodeId),
+          ),
+        );
     },
     [releaseLiveBandGrowth],
   );
@@ -1416,10 +1422,15 @@ export default function Canvas() {
                 DEFAULT_NODE_HEIGHT,
                 nodes,
               );
-              if (safePos.x !== nodePosition.x || safePos.y !== nodePosition.y) {
+              if (
+                safePos.x !== nodePosition.x ||
+                safePos.y !== nodePosition.y
+              ) {
                 placementToastScope = scope;
               }
-              parentedPosition = { position: avoidNodeOverlap(safePos, VISUAL_NODE_SIZE, nodes) };
+              parentedPosition = {
+                position: avoidNodeOverlap(safePos, VISUAL_NODE_SIZE, nodes),
+              };
             } else if (scope === "az") {
               const ancestorPosition = getAbsolutePosition(
                 allowedAncestor,
@@ -1983,7 +1994,12 @@ export default function Canvas() {
     // Cancelled sidebar drag (ESC / drop outside the canvas): shrink the band
     // back. After a successful drop onDrop already released, so this no-ops.
     releaseLiveBandGrowth();
-  }, [releaseLiveBandGrowth, setDropBandSide, setDropPreview, setDropTargetNodeId]);
+  }, [
+    releaseLiveBandGrowth,
+    setDropBandSide,
+    setDropPreview,
+    setDropTargetNodeId,
+  ]);
 
   const handlePasteImages = useCallback(
     (event: ClipboardEvent) => {
@@ -2157,7 +2173,11 @@ export default function Canvas() {
               // (drag gives explicit control).
               const incoming = node.parentId !== allowedAncestor.id;
               const dropSide =
-                detectBandSideAtPosition(allowedAncestor, dropAbsCenter, nodes) ??
+                detectBandSideAtPosition(
+                  allowedAncestor,
+                  dropAbsCenter,
+                  nodes,
+                ) ??
                 resolveBorderSide(
                   dropAbsCenter,
                   getContentBoxRect(allowedAncestor, nodesById),
@@ -2429,7 +2449,11 @@ export default function Canvas() {
               };
               const incoming = node.parentId !== allowedAncestor.id;
               const side =
-                detectBandSideAtPosition(allowedAncestor, dropCenter, currentNodes) ??
+                detectBandSideAtPosition(
+                  allowedAncestor,
+                  dropCenter,
+                  currentNodes,
+                ) ??
                 resolveBorderSide(
                   dropCenter,
                   getContentBoxRect(allowedAncestor, nodesById),
