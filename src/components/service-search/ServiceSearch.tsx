@@ -136,7 +136,6 @@ export default function ServiceSearch({ onToolClick }: ServiceSearchProps) {
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(-1);
   const [open, setOpen] = useState(false);
-  const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -145,9 +144,13 @@ export default function ServiceSearch({ onToolClick }: ServiceSearchProps) {
   const results = getSearchResults(query, locale, infraItems);
   const contextItems = getContextItems(nodes, infraItems);
 
-  const contextMode = isFocused && query.length === 0 && contextItems.length > 0;
+  // When query is empty, show related services for selected nodes; otherwise show search results.
   const displayItems = query.length > 0 ? results : contextItems;
-  const showDropdown = (open && query.length > 0 && results.length > 0) || contextMode;
+  // open is set on focus (if items exist) and cleared on blur via setTimeout, matching the
+  // same pattern search mode uses. This keeps the dropdown mounted during the pointerdown
+  // event cycle so addItem can fire even when the canvas's capture handler steals focus.
+  const showDropdown = open && displayItems.length > 0;
+  const showContextLabel = open && query.length === 0 && contextItems.length > 0;
 
   useEffect(() => {
     function handleMouseDown(e: MouseEvent) {
@@ -192,13 +195,19 @@ export default function ServiceSearch({ onToolClick }: ServiceSearchProps) {
 
     setQuery(value);
     setActiveIndex(-1);
-    setOpen(nextResults.length > 0);
+    if (value.length > 0) {
+      setOpen(nextResults.length > 0);
+    } else {
+      // Query cleared — reopen context items if nodes are still selected.
+      setOpen(contextItems.length > 0);
+    }
   }
 
   function clearSearch() {
     setQuery("");
-    setOpen(false);
     setActiveIndex(-1);
+    // Stay open if context items are available (user cleared text, nodes still selected).
+    setOpen(contextItems.length > 0);
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -214,7 +223,9 @@ export default function ServiceSearch({ onToolClick }: ServiceSearchProps) {
       if (activeIndex >= 0) addItem(displayItems[activeIndex]);
     } else if (e.key === "Escape") {
       e.preventDefault();
-      clearSearch();
+      setQuery("");
+      setOpen(false);
+      setActiveIndex(-1);
       inputRef.current?.blur();
     }
   }
@@ -232,11 +243,9 @@ export default function ServiceSearch({ onToolClick }: ServiceSearchProps) {
             value={query}
             onChange={(e) => handleQueryChange(e.target.value)}
             onFocus={() => {
-              setIsFocused(true);
-              if (results.length > 0) setOpen(true);
+              if (displayItems.length > 0) setOpen(true);
             }}
             onBlur={() => {
-              setIsFocused(false);
               window.setTimeout(() => setOpen(false), 0);
             }}
             onKeyDown={handleKeyDown}
@@ -253,8 +262,13 @@ export default function ServiceSearch({ onToolClick }: ServiceSearchProps) {
           )}
         </div>
 
-        {showDropdown && displayItems.length > 0 && (
+        {showDropdown && (
           <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-lg">
+            {showContextLabel && (
+              <p className="px-3 pt-2 pb-1 text-xs text-muted-foreground">
+                {t.searchRelatedServices}
+              </p>
+            )}
             <ul className="max-h-64 overflow-y-auto">
               {displayItems.map((item, i) => (
                 <li

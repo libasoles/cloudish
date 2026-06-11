@@ -1416,16 +1416,11 @@ export default function Canvas() {
                 DEFAULT_NODE_HEIGHT,
                 nodes,
               );
-              if (
-                scope === "global" ||
-                safePos.x !== nodePosition.x ||
-                safePos.y !== nodePosition.y
-              ) {
+              if (safePos.x !== nodePosition.x || safePos.y !== nodePosition.y) {
                 placementToastScope = scope;
               }
               parentedPosition = { position: avoidNodeOverlap(safePos, VISUAL_NODE_SIZE, nodes) };
             } else if (scope === "az") {
-              placementToastScope = scope;
               const ancestorPosition = getAbsolutePosition(
                 allowedAncestor,
                 nodesById,
@@ -1438,7 +1433,6 @@ export default function Canvas() {
                 },
               };
             } else {
-              placementToastScope = scope;
               const dropAbsCenter = {
                 x: nodePosition.x + DEFAULT_NODE_WIDTH / 2,
                 y: nodePosition.y + DEFAULT_NODE_HEIGHT / 2,
