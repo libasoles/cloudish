@@ -294,6 +294,16 @@ export const AWS_SERVICES: AwsService[] = [
     aliases: "time series serie temporal",
     placementScope: "regional",
   },
+  {
+    id: "redis",
+    name: "Redis",
+    category: AWS_CATEGORIES.DATABASE,
+    slug: "redis",
+    description:
+      "Almacen de datos en memoria usado como cache, cola de trabajos y base clave-valor.",
+    aliases:
+      "cache memoria in-memory clave valor key value store sesiones pub sub cola broker Valkey",
+  },
   // Networking
   {
     id: "vpc",
