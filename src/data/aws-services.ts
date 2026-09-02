@@ -948,6 +948,17 @@ export const AWS_SERVICES: AwsService[] = [
     aliases: "catalogo productos aprobados self-service",
     placementScope: "regional",
   },
+  {
+    id: "datadog",
+    name: "Datadog",
+    category: AWS_CATEGORIES.MANAGEMENT,
+    slug: "datadog",
+    description:
+      "Plataforma externa de observabilidad que centraliza metricas, logs, trazas y alertas.",
+    aliases:
+      "DataDog monitoreo monitoring observabilidad observability APM metricas logs trazas tracing alertas dashboards SaaS",
+    placementScope: "global",
+  },
   // Messaging
   {
     id: "sqs",
