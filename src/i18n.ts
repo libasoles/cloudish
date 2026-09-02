@@ -581,6 +581,8 @@ const EN_SERVICE_DESCRIPTIONS: Record<string, string> = {
     "Mobile client consuming applications, APIs, or backend services.",
   "web-client":
     "Web client running in a browser to consume applications, APIs, or backend services.",
+  nginx:
+    "High-performance web server and reverse proxy, also used as a load balancer and cache.",
   "python-language": "Runtime or component implemented with Python.",
   "java-language": "Runtime or component implemented with Java.",
   "csharp-language": "Runtime or component implemented with C# and .NET.",

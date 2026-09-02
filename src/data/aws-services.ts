@@ -460,6 +460,16 @@ export const AWS_SERVICES: AwsService[] = [
       "Network Access Control List lista control acceso red subred firewall stateless",
     placementScope: "vpc",
   },
+  {
+    id: "nginx",
+    name: "Nginx",
+    category: AWS_CATEGORIES.NETWORKING,
+    slug: "nginx",
+    description:
+      "Servidor web y proxy inverso de alto rendimiento, usado tambien como balanceador de carga y cache.",
+    aliases:
+      "nginx web server servidor web reverse proxy proxy inverso load balancer balanceador ingress cache",
+  },
   // Security
   {
     id: "iam",
