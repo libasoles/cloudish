@@ -3,6 +3,12 @@ import { User, Cloud } from "lucide-react";
 import { getIconUrl, type AwsCategory } from "@/data/aws-services";
 import { AWS_CATEGORY_STYLES } from "@/config/aws-category-styles";
 
+/**
+ * Logos published only as a dark monochrome SVG. They disappear against the
+ * app's dark surfaces, so they render on a light chip.
+ */
+const DARK_MONOCHROME_SLUGS = new Set(["kafka"]);
+
 const LUCIDE_ICON_MAP: Record<
   string,
   React.ComponentType<{ className?: string }>
@@ -58,7 +64,7 @@ export function AwsServiceIcon({
     );
   }
 
-  return (
+  const icon = (
     <img
       src={getIconUrl(slug)}
       alt={name}
@@ -66,4 +72,14 @@ export function AwsServiceIcon({
       onError={() => setError(true)}
     />
   );
+
+  if (DARK_MONOCHROME_SLUGS.has(slug)) {
+    return (
+      <div className="flex shrink-0 items-center justify-center rounded-md bg-white p-0.5">
+        {icon}
+      </div>
+    );
+  }
+
+  return icon;
 }
