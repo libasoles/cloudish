@@ -1007,6 +1007,16 @@ export const AWS_SERVICES: AwsService[] = [
     aliases:
       "Apache Kafka broker streaming eventos event streaming topico topic particion partition cola mensajeria pub sub",
   },
+  {
+    id: "graphql",
+    name: "GraphQL",
+    category: AWS_CATEGORIES.MESSAGING,
+    slug: "graphql",
+    description:
+      "API con lenguaje de consulta tipado donde el cliente pide exactamente los datos que necesita.",
+    aliases:
+      "API query language lenguaje consulta schema esquema resolver query mutation subscription Apollo",
+  },
   // Clients
   {
     id: "user",
