@@ -1,44 +1,44 @@
 # AWS Architecture Drafts
 
-Herramienta visual para hacer drafts de arquitecturas en AWS. Sirve para bajar rapidamente una idea a un canvas, y exportar un primer scaffold de infraestructura.
+Herramienta visual para hacer drafts de arquitecturas en AWS. Sirve para bajar rápidamente una idea a un canvas, y exportar un primer scaffold de infraestructura.
 
 Demo: <https://cloudish.com.ar/>
 
-Este proyecto fue construido como un experimento de **vibe coding** con agentes de IA, principalmente **Codex** y **Claude**. La intencion no es presentar una herramienta de produccion terminada, sino explorar que tan lejos se puede llegar iterando con agentes sobre una app real: UI, estado, drag-and-drop, reglas de jerarquia, exportadores y documentacion.
+No es un repo para juzgar la calidad del código 🙏. Este proyecto fue construido como un experimento de **vibe coding** con agentes de IA, principalmente **Codex** y **Claude**. La intención no es presentar una herramienta de producción terminada, sino explorar qué tan lejos se puede llegar iterando con agentes sobre una app real: UI, estado, drag-and-drop, reglas de jerarquía, exportadores y documentación. El foco esta puesto en la UI/UX y harnessing de agentes, no en la calidad del código.
 
 ![Canvas de drafts de arquitectura AWS](public/screenshots/app-canvas.png)
 
-## Para Que Sirve
+## Para Qué Sirve
 
-AWS Architecture Drafts esta pensado para etapas tempranas de diseño:
+AWS Architecture Drafts está pensado para etapas tempranas de diseño:
 
 - Bocetar una arquitectura antes de escribir IaC.
 - Probar distribuciones de servicios dentro de Region, VPC, AZ y Subnet.
-- Explicar flujos entre servicios AWS con nodos y conexiones.
-- Armar diagramas livianos para conversar decisiones tecnicas.
+- Explicar flujos entre servicios de AWS con nodos y conexiones.
+- Armar diagramas livianos para conversar sobre decisiones técnicas.
 - Generar un punto de partida en Terraform o CloudFormation para revisar y completar.
 
-No reemplaza una herramienta formal de diagramacion, discovery cloud o gestion de infraestructura. Es una herramienta para pensar arquitecturas con rapidez.
+No reemplaza una herramienta formal de diagramación, discovery cloud o gestión de infraestructura. Es una herramienta para pensar arquitecturas con rapidez.
 
 ## Features
 
 - Canvas interactivo construido con React Flow.
 - Nodos para servicios AWS frecuentes como S3, EC2, Lambda, RDS, DynamoDB, CloudFront, API Gateway, IAM, CloudWatch y SQS.
 - Herramientas para agregar usuario externo, regiones, VPCs, zonas de disponibilidad, subredes y notas de texto.
-- Sidebar drag-and-drop y tambien click-to-add para sumar elementos al canvas.
-- Buscador de servicios AWS para agregar componentes sin recorrer toda la lista.
-- Inspector lateral para editar propiedades del nodo o conexion seleccionada.
-- Edicion de labels en nodos, notas de texto y edges.
-- Jerarquia de red modelada como `Region -> VPC -> AZ -> Subnet -> servicios`.
-- Reparenting automatico al arrastrar nodos dentro de contenedores validos.
+- Sidebar drag-and-drop y también click-to-add para sumar elementos al canvas.
+- Buscador de servicios de AWS para agregar componentes sin recorrer toda la lista.
+- Inspector lateral para editar propiedades del nodo o conexión seleccionada.
+- Edición de labels en nodos, notas de texto y edges.
+- Jerarquía de red modelada como `Region -> VPC -> AZ -> Subnet -> servicios`.
+- Reparenting automático al arrastrar nodos dentro de contenedores válidos.
 - Dropzone visual para indicar cuando un contenedor puede recibir un nodo.
 - Auto-subdivision de contenedores: regiones en VPCs, VPCs en AZs y AZs en subredes.
-- Recalculo de tamanos cuando se redimensionan contenedores padre.
-- Sincronizacion de AZs para replicar subredes y servicios entre zonas hermanas.
+- Recálculo de tamaños cuando se redimensionan contenedores padre.
+- Sincronización de AZs para replicar subredes y servicios entre zonas hermanas.
 - MiniMap, zoom, pan y controles nativos de React Flow.
-- Exportacion a Terraform (`.tf`) y CloudFormation (`.yaml`) como scaffolds.
-- Interfaz internacionalizada en ingles y espanol.
-- Tema visual con variables CSS y modo oscuro automatico.
+- Exportación a Terraform (`.tf`) y CloudFormation (`.yaml`) como scaffolds.
+- Interfaz internacionalizada en inglés y español.
+- Tema visual con variables CSS y modo oscuro automático.
 
 ## Instalacion
 
@@ -82,9 +82,9 @@ Copiar `.env.example` a `.env.local` y completar los valores:
 cp .env.example .env.local
 ```
 
-| Variable                               | Descripcion                                                 |
+| Variable                               | Descripción                                                 |
 | -------------------------------------- | ----------------------------------------------------------- |
-| `VITE_FIREBASE_*`                      | Configuracion del SDK de Firebase para el cliente           |
+| `VITE_FIREBASE_*`                      | Configuración del SDK de Firebase para el cliente           |
 | `FIREBASE_SERVICE_ACCOUNT_JSON_BASE64` | Service account de Firebase Admin en base64 (solo servidor) |
 
 ### Desarrollo local
@@ -103,7 +103,7 @@ Si solo se trabaja en el canvas sin necesitar las funciones del servidor, se pue
 npm run dev
 ```
 
-Vite mostrara una URL local, normalmente `http://localhost:5173/`. Las llamadas a `/api/architectures` daran 404 en este modo.
+Vite mostrará una URL local, normalmente `http://localhost:5173/`. Las llamadas a `/api/architectures` daran 404 en este modo.
 
 ## Scripts
 
@@ -143,20 +143,20 @@ Sirve localmente el build generado.
 2. Conecta nodos usando los handles de React Flow.
 3. Selecciona un nodo o edge para editarlo desde el inspector.
 4. Usa contenedores de red para ordenar la arquitectura por Region, VPC, AZ y Subnet.
-5. Ajusta el numero de VPCs, AZs o subredes desde el inspector cuando corresponda.
+5. Ajusta el número de VPCs, AZs o subredes desde el inspector cuando corresponda.
 6. Exporta el draft a Terraform o CloudFormation cuando quieras un scaffold inicial.
 
 ## Modelo De Red
 
-La app usa una jerarquia inspirada en topologias AWS:
+La app usa una jerarquía inspirada en topologías AWS:
 
 ```text
 Region -> VPC -> AZ -> Subnet -> servicios
 ```
 
-Los contenedores validan donde puede vivir cada elemento. Por ejemplo, una VPC puede estar dentro de una Region, una AZ puede estar dentro de una VPC o Region, y una Subnet puede estar dentro de una AZ o VPC. Los servicios pueden ubicarse dentro de cualquier contenedor.
+Los contenedores validan donde puede vivir cada elemento. Por ejemplo, una VPC puede estar dentro de una región, una AZ puede estar dentro de una VPC o Region, y una Subnet puede estar dentro de una AZ o VPC. Los servicios pueden ubicarse dentro de cualquier contenedor.
 
-Cuando se arrastra un nodo dentro de un contenedor valido, la app actualiza automaticamente su parent y recalcula la posicion relativa. Esto permite mover partes del diagrama sin corregir manualmente la estructura.
+Cuando se arrastra un nodo dentro de un contenedor válido, la app actualiza automáticamente su parent y recalcula la posición relativa. Esto permite mover partes del diagrama sin corregir manualmente la estructura.
 
 ## Exportacion
 
