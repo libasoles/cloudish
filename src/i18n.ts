@@ -589,6 +589,8 @@ const EN_SERVICE_DESCRIPTIONS: Record<string, string> = {
     "Distributed event streaming platform with topics, partitions, and consumers.",
   datadog:
     "External observability platform that centralizes metrics, logs, traces, and alerts.",
+  sentry:
+    "External error tracking platform that groups exceptions and traces their performance.",
   cloudflare:
     "External edge network providing CDN, DNS, WAF, and DDoS protection in front of the origin.",
   nginx:
