@@ -480,6 +480,17 @@ export const AWS_SERVICES: AwsService[] = [
     aliases:
       "nginx web server servidor web reverse proxy proxy inverso load balancer balanceador ingress cache",
   },
+  {
+    id: "cloudflare",
+    name: "Cloudflare",
+    category: AWS_CATEGORIES.NETWORKING,
+    slug: "cloudflare",
+    description:
+      "Red de borde externa que ofrece CDN, DNS, WAF y proteccion contra DDoS delante del origen.",
+    aliases:
+      "CloudFlare CDN DNS WAF firewall aplicaciones DDoS edge borde proxy inverso reverse proxy cache",
+    placementScope: "global",
+  },
   // Security
   {
     id: "iam",

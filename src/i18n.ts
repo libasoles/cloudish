@@ -587,6 +587,8 @@ const EN_SERVICE_DESCRIPTIONS: Record<string, string> = {
     "In-memory data store used as a cache, job queue, and key-value database.",
   kafka:
     "Distributed event streaming platform with topics, partitions, and consumers.",
+  cloudflare:
+    "External edge network providing CDN, DNS, WAF, and DDoS protection in front of the origin.",
   nginx:
     "High-performance web server and reverse proxy, also used as a load balancer and cache.",
   "python-language": "Runtime or component implemented with Python.",
