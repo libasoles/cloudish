@@ -959,6 +959,17 @@ export const AWS_SERVICES: AwsService[] = [
       "DataDog monitoreo monitoring observabilidad observability APM metricas logs trazas tracing alertas dashboards SaaS",
     placementScope: "global",
   },
+  {
+    id: "sentry",
+    name: "Sentry",
+    category: AWS_CATEGORIES.MANAGEMENT,
+    slug: "sentry",
+    description:
+      "Plataforma externa de seguimiento de errores que agrupa excepciones y traza su rendimiento.",
+    aliases:
+      "error tracking seguimiento errores excepciones exceptions crash reporting bugs monitoreo monitoring APM performance rendimiento trazas tracing alertas releases source maps SaaS",
+    placementScope: "global",
+  },
   // Messaging
   {
     id: "sqs",
