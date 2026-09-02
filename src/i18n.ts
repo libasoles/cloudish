@@ -583,6 +583,8 @@ const EN_SERVICE_DESCRIPTIONS: Record<string, string> = {
     "Web client running in a browser to consume applications, APIs, or backend services.",
   graphql:
     "API with a typed query language where the client asks for exactly the data it needs.",
+  redis:
+    "In-memory data store used as a cache, job queue, and key-value database.",
   kafka:
     "Distributed event streaming platform with topics, partitions, and consumers.",
   nginx:
