@@ -997,6 +997,16 @@ export const AWS_SERVICES: AwsService[] = [
     aliases: "GraphQL realtime subscripciones",
     placementScope: "regional",
   },
+  {
+    id: "kafka",
+    name: "Kafka",
+    category: AWS_CATEGORIES.MESSAGING,
+    slug: "kafka",
+    description:
+      "Plataforma distribuida de streaming de eventos con topicos, particiones y consumidores.",
+    aliases:
+      "Apache Kafka broker streaming eventos event streaming topico topic particion partition cola mensajeria pub sub",
+  },
   // Clients
   {
     id: "user",

@@ -581,6 +581,8 @@ const EN_SERVICE_DESCRIPTIONS: Record<string, string> = {
     "Mobile client consuming applications, APIs, or backend services.",
   "web-client":
     "Web client running in a browser to consume applications, APIs, or backend services.",
+  kafka:
+    "Distributed event streaming platform with topics, partitions, and consumers.",
   nginx:
     "High-performance web server and reverse proxy, also used as a load balancer and cache.",
   "python-language": "Runtime or component implemented with Python.",
