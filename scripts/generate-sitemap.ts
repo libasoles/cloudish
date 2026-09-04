@@ -12,6 +12,7 @@ type SitemapEntry = {
 
 const entries: SitemapEntry[] = [
   { path: '/', changefreq: 'weekly', priority: '1.0' },
+  { path: '/changelog', changefreq: 'weekly', priority: '0.6' },
   ...TUTORIALS.map((tutorial) => ({
     path: `/docs/${tutorial.id}`,
     changefreq: 'monthly' as const,
