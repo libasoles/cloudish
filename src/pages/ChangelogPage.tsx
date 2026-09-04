@@ -13,8 +13,24 @@ const ENTRIES: ChangelogEntry[] = [
   {
     date: "2026-09-04",
     items: {
-      en: ["Added WorkOS to the service catalog."],
-      es: ["Se agregó WorkOS al catálogo de servicios."],
+      en: [
+        "Added WorkOS to the service catalog.",
+        "Made plain text nodes connectable.",
+        "Added Stripe, Auth0, Okta, GitHub, MongoDB, New Relic, PagerDuty, Vercel, Slack, and Elasticsearch to the service catalog.",
+        "Added a changelog page to track product updates.",
+        "Added a custom 404 page for missing routes.",
+        "Added Jaeger, Flagsmith, and Temporal to the service catalog.",
+        "Improved search results to rank by relevance.",
+      ],
+      es: [
+        "Se agregó WorkOS al catálogo de servicios.",
+        "Los nodos de texto plano ahora se pueden conectar.",
+        "Se agregaron Stripe, Auth0, Okta, GitHub, MongoDB, New Relic, PagerDuty, Vercel, Slack y Elasticsearch al catálogo de servicios.",
+        "Se agregó una página de novedades para seguir las actualizaciones del producto.",
+        "Se agregó una página 404 personalizada para rutas inexistentes.",
+        "Se agregaron Jaeger, Flagsmith y Temporal al catálogo de servicios.",
+        "Se mejoraron los resultados de búsqueda para ordenarse por relevancia.",
+      ],
     },
   },
   {
