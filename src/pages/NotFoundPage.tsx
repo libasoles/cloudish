@@ -27,7 +27,7 @@ export default function NotFoundPage() {
         <img
           src="/cloudish-logo.png"
           alt="Cloudish"
-          className="mb-7 h-6 w-auto opacity-70"
+          className="mb-8 h-20 w-auto"
         />
 
         <div
