@@ -38,7 +38,7 @@ Any task that adds a feature or fixes a bug **must** add an entry to `src/pages/
 - Add a new item under today's date (create a new dated section if one doesn't already exist for today) in the `ENTRIES` array.
 - Provide both `en` and `es` text for the entry — see `cloudish-i18n` for translation conventions. The page reads the visitor's locale via `getBrowserLocale()`, so an entry missing one language will silently disappear for those users.
 - Keep entries short and user-facing (what changed, not implementation detail).
-- Purely internal changes (refactors, tooling, tests, skill/doc updates) do not need a changelog entry.
+- Only user-facing product changes belong in the changelog. **Never** add entries for internal agent/tooling work — changes to `AGENTS.md`, `.claude/`/`.agents/` skills, CI, scripts, or other agent scaffolding — nor for refactors, tests, or other changes with no visible effect on the app.
 
 ## Claude Code Configuration
 
