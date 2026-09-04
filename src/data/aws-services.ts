@@ -512,6 +512,17 @@ export const AWS_SERVICES: AwsService[] = [
     placementScope: "regional",
   },
   {
+    id: "workos",
+    name: "WorkOS",
+    category: AWS_CATEGORIES.SECURITY,
+    slug: "workos",
+    description:
+      "Plataforma externa de autenticacion e identidad con SSO, SCIM y gestion de usuarios para apps B2B.",
+    aliases:
+      "WorkOS SSO SAML SCIM directory sync directorio identidad identity autenticacion authentication login usuarios users B2B enterprise MFA magic link SaaS",
+    placementScope: "global",
+  },
+  {
     id: "acm",
     name: "ACM",
     category: AWS_CATEGORIES.SECURITY,

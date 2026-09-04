@@ -591,6 +591,8 @@ const EN_SERVICE_DESCRIPTIONS: Record<string, string> = {
     "External observability platform that centralizes metrics, logs, traces, and alerts.",
   sentry:
     "External error tracking platform that groups exceptions and traces their performance.",
+  workos:
+    "External authentication and identity platform with SSO, SCIM, and user management for B2B apps.",
   cloudflare:
     "External edge network providing CDN, DNS, WAF, and DDoS protection in front of the origin.",
   nginx:
