@@ -31,6 +31,15 @@ When creating or updating documentation, tutorials, docs screenshots, or the doc
 
 That skill defines the expected documentation architecture, screenshot workflow, Spanish content conventions, carousel/figure usage, and the pre-commit checklist for docs work.
 
+## Changelog Maintenance
+
+Any task that adds a feature or fixes a bug **must** add an entry to `src/pages/ChangelogPage.tsx` as part of that same task — not optional follow-up.
+
+- Add a new item under today's date (create a new dated section if one doesn't already exist for today) in the `ENTRIES` array.
+- Provide both `en` and `es` text for the entry — see `cloudish-i18n` for translation conventions. The page reads the visitor's locale via `getBrowserLocale()`, so an entry missing one language will silently disappear for those users.
+- Keep entries short and user-facing (what changed, not implementation detail).
+- Purely internal changes (refactors, tooling, tests, skill/doc updates) do not need a changelog entry.
+
 ## Claude Code Configuration
 
 When modifying `.claude/settings.json` (permissions, hooks, additional directories):
