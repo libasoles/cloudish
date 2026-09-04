@@ -133,6 +133,17 @@ export const AWS_SERVICES: AwsService[] = [
       "Extiende infraestructura y servicios de AWS a instalaciones locales.",
     placementScope: "regional",
   },
+  {
+    id: "vercel",
+    name: "Vercel",
+    category: AWS_CATEGORIES.COMPUTE,
+    slug: "vercel",
+    description:
+      "Plataforma externa de hosting y despliegue para aplicaciones frontend y serverless.",
+    aliases:
+      "Vercel hosting despliegue deployment frontend serverless edge functions Next.js SaaS",
+    placementScope: "global",
+  },
   // Storage
   {
     id: "s3",
@@ -303,6 +314,17 @@ export const AWS_SERVICES: AwsService[] = [
       "Almacen de datos en memoria usado como cache, cola de trabajos y base clave-valor.",
     aliases:
       "cache memoria in-memory clave valor key value store sesiones pub sub cola broker Valkey",
+  },
+  {
+    id: "mongodb",
+    name: "MongoDB",
+    category: AWS_CATEGORIES.DATABASE,
+    slug: "mongodb",
+    description:
+      "Base de datos documental externa NoSQL para datos flexibles y escalables.",
+    aliases:
+      "MongoDB NoSQL documental document database Atlas JSON BSON coleccion collection SaaS",
+    placementScope: "global",
   },
   // Networking
   {
@@ -523,6 +545,28 @@ export const AWS_SERVICES: AwsService[] = [
     placementScope: "global",
   },
   {
+    id: "auth0",
+    name: "Auth0",
+    category: AWS_CATEGORIES.SECURITY,
+    slug: "auth0",
+    description:
+      "Plataforma externa de autenticacion e identidad con SSO, MFA y login social.",
+    aliases:
+      "Auth0 autenticacion authentication identidad identity SSO SAML OAuth MFA login social usuarios users SaaS",
+    placementScope: "global",
+  },
+  {
+    id: "okta",
+    name: "Okta",
+    category: AWS_CATEGORIES.SECURITY,
+    slug: "okta",
+    description:
+      "Plataforma externa de gestion de identidad y acceso con SSO y MFA para empresas.",
+    aliases:
+      "Okta identidad identity access management IAM SSO SAML MFA autenticacion authentication enterprise SaaS",
+    placementScope: "global",
+  },
+  {
     id: "acm",
     name: "ACM",
     category: AWS_CATEGORIES.SECURITY,
@@ -690,6 +734,17 @@ export const AWS_SERVICES: AwsService[] = [
       "Busqueda, analitica de logs y observabilidad usando OpenSearch administrado.",
     aliases: "Elasticsearch busqueda logs Kibana",
     placementScope: "regional",
+  },
+  {
+    id: "elasticsearch",
+    name: "Elasticsearch",
+    category: AWS_CATEGORIES.ANALYTICS,
+    slug: "elasticsearch",
+    description:
+      "Motor externo de busqueda y analitica de texto completo, base del stack Elastic (ELK).",
+    aliases:
+      "Elasticsearch busqueda search full text Kibana Logstash ELK stack indice index cluster SaaS",
+    placementScope: "global",
   },
   {
     id: "data-exchange",
@@ -879,6 +934,17 @@ export const AWS_SERVICES: AwsService[] = [
     aliases: "terminal CLI consola bash",
     placementScope: "regional",
   },
+  {
+    id: "github",
+    name: "GitHub",
+    category: AWS_CATEGORIES.DEVELOPER_TOOLS,
+    slug: "github",
+    description:
+      "Plataforma externa de control de versiones, repositorios y CI/CD con Actions.",
+    aliases:
+      "GitHub Git repositorio repository control de versiones version control pull request CI CD Actions codigo code SaaS",
+    placementScope: "global",
+  },
   // Management
   {
     id: "cloudwatch",
@@ -981,6 +1047,39 @@ export const AWS_SERVICES: AwsService[] = [
       "error tracking seguimiento errores excepciones exceptions crash reporting bugs monitoreo monitoring APM performance rendimiento trazas tracing alertas releases source maps SaaS",
     placementScope: "global",
   },
+  {
+    id: "new-relic",
+    name: "New Relic",
+    category: AWS_CATEGORIES.MANAGEMENT,
+    slug: "new-relic",
+    description:
+      "Plataforma externa de observabilidad que centraliza metricas, logs, trazas y APM.",
+    aliases:
+      "New Relic observabilidad observability APM monitoreo monitoring metricas logs trazas tracing alertas dashboards SaaS",
+    placementScope: "global",
+  },
+  {
+    id: "pagerduty",
+    name: "PagerDuty",
+    category: AWS_CATEGORIES.MANAGEMENT,
+    slug: "pagerduty",
+    description:
+      "Plataforma externa de gestion de incidentes que enruta alertas y coordina guardias on-call.",
+    aliases:
+      "PagerDuty incidentes incident management alertas alerts on-call guardia escalamiento escalation SaaS",
+    placementScope: "global",
+  },
+  {
+    id: "stripe",
+    name: "Stripe",
+    category: AWS_CATEGORIES.MANAGEMENT,
+    slug: "stripe",
+    description:
+      "Plataforma externa de pagos que procesa cobros, suscripciones y facturacion.",
+    aliases:
+      "pagos payments cobros checkout suscripciones subscriptions billing facturacion tarjetas cards SaaS",
+    placementScope: "global",
+  },
   // Messaging
   {
     id: "sqs",
@@ -1070,6 +1169,17 @@ export const AWS_SERVICES: AwsService[] = [
       "API con lenguaje de consulta tipado donde el cliente pide exactamente los datos que necesita.",
     aliases:
       "API query language lenguaje consulta schema esquema resolver query mutation subscription Apollo",
+  },
+  {
+    id: "slack",
+    name: "Slack",
+    category: AWS_CATEGORIES.MESSAGING,
+    slug: "slack",
+    description:
+      "Plataforma externa de mensajeria y notificaciones para equipos, usada en integraciones y alertas.",
+    aliases:
+      "Slack mensajeria messaging notificaciones notifications chat webhook alertas alerts canal channel SaaS",
+    placementScope: "global",
   },
   // Clients
   {

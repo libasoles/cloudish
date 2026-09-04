@@ -593,6 +593,25 @@ const EN_SERVICE_DESCRIPTIONS: Record<string, string> = {
     "External error tracking platform that groups exceptions and traces their performance.",
   workos:
     "External authentication and identity platform with SSO, SCIM, and user management for B2B apps.",
+  auth0:
+    "External authentication and identity platform with SSO, MFA, and social login.",
+  okta:
+    "External identity and access management platform with SSO and MFA for enterprises.",
+  github:
+    "External version control platform hosting repositories and CI/CD via Actions.",
+  mongodb: "External NoSQL document database for flexible, scalable data.",
+  "new-relic":
+    "External observability platform that centralizes metrics, logs, traces, and APM.",
+  pagerduty:
+    "External incident management platform that routes alerts and coordinates on-call rotations.",
+  stripe:
+    "External payments platform that processes charges, subscriptions, and billing.",
+  vercel:
+    "External hosting and deployment platform for frontend and serverless applications.",
+  slack:
+    "External team messaging platform used for notifications and alert integrations.",
+  elasticsearch:
+    "External full-text search and analytics engine, the core of the Elastic (ELK) stack.",
   cloudflare:
     "External edge network providing CDN, DNS, WAF, and DDoS protection in front of the origin.",
   nginx:
