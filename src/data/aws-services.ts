@@ -945,6 +945,28 @@ export const AWS_SERVICES: AwsService[] = [
       "GitHub Git repositorio repository control de versiones version control pull request CI CD Actions codigo code SaaS",
     placementScope: "global",
   },
+  {
+    id: "jaeger",
+    name: "Jaeger",
+    category: AWS_CATEGORIES.DEVELOPER_TOOLS,
+    slug: "jaeger",
+    description:
+      "Sistema externo de trazado distribuido para monitorear y depurar microservicios.",
+    aliases:
+      "Jaeger distributed tracing trazado distribuido spans traza microservicios microservices observabilidad observability OpenTelemetry SaaS",
+    placementScope: "global",
+  },
+  {
+    id: "flagsmith",
+    name: "Flagsmith",
+    category: AWS_CATEGORIES.DEVELOPER_TOOLS,
+    slug: "flagsmith",
+    description:
+      "Plataforma externa de feature flags y segmentacion para lanzamientos controlados.",
+    aliases:
+      "Flagsmith feature flags banderas de funcionalidad toggles remote config segmentacion segmentation A/B testing lanzamientos rollout SaaS",
+    placementScope: "global",
+  },
   // Management
   {
     id: "cloudwatch",
@@ -1120,6 +1142,17 @@ export const AWS_SERVICES: AwsService[] = [
       "Orquesta flujos de trabajo visuales que coordinan servicios y tareas.",
     aliases: "SFN workflow flujo estado maquina",
     placementScope: "regional",
+  },
+  {
+    id: "temporal",
+    name: "Temporal",
+    category: AWS_CATEGORIES.MESSAGING,
+    slug: "temporal",
+    description:
+      "Motor externo de orquestacion de workflows duraderos y confiables para microservicios.",
+    aliases:
+      "Temporal workflow orchestration orquestacion durable execution ejecucion duradera microservicios microservices reintentos retries SaaS",
+    placementScope: "global",
   },
   {
     id: "ses",
