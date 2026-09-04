@@ -210,6 +210,12 @@ export const UI_TEXT = {
     addToTop: "Add above",
     addToBottom: "Add below",
     addToRight: "Add to the right",
+    changelogTitle: "What's New",
+    changelogDescription: "Recent changes in Cloudish.",
+    changelogSeoTitle: "What's New | Cloudish",
+    changelogSeoDescription:
+      "Cloudish changelog: new services and recent improvements.",
+    backToApp: "Back to app",
   },
   es: {
     dragAndDrop: APP_TITLE,
@@ -407,6 +413,12 @@ export const UI_TEXT = {
     addToTop: "Agregar arriba",
     addToBottom: "Agregar abajo",
     addToRight: "Agregar a la derecha",
+    changelogTitle: "Novedades",
+    changelogDescription: "Cambios recientes en Cloudish.",
+    changelogSeoTitle: "Novedades | Cloudish",
+    changelogSeoDescription:
+      "Registro de cambios de Cloudish: nuevos servicios y mejoras recientes.",
+    backToApp: "Volver a la app",
   },
 } as const;
 

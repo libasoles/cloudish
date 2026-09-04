@@ -2,40 +2,57 @@ import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ChevronLeftIcon } from "@/components/icons/ChevronLeftIcon";
 import { setSeoMeta } from "@/lib/seo";
+import { UI_TEXT, getBrowserLocale } from "@/i18n";
 
 type ChangelogEntry = {
   date: string;
-  items: string[];
+  items: Record<"en" | "es", string[]>;
 };
 
 const ENTRIES: ChangelogEntry[] = [
   {
     date: "2026-09-04",
-    items: ["Se agregó WorkOS al catálogo de servicios."],
+    items: {
+      en: ["Added WorkOS to the service catalog."],
+      es: ["Se agregó WorkOS al catálogo de servicios."],
+    },
   },
   {
     date: "2026-09-02",
-    items: [
-      "Se agregó Sentry al catálogo de servicios.",
-      "Se agregó Datadog al catálogo de servicios.",
-      "Se agregó Cloudflare al catálogo de servicios.",
-      "Se agregó Redis al catálogo de servicios.",
-      "Se agregó GraphQL al catálogo de servicios.",
-      "Se agregó Apache Kafka al catálogo de servicios.",
-      "Se agregó Nginx al catálogo de servicios.",
-    ],
+    items: {
+      en: [
+        "Added Sentry to the service catalog.",
+        "Added Datadog to the service catalog.",
+        "Added Cloudflare to the service catalog.",
+        "Added Redis to the service catalog.",
+        "Added GraphQL to the service catalog.",
+        "Added Apache Kafka to the service catalog.",
+        "Added Nginx to the service catalog.",
+      ],
+      es: [
+        "Se agregó Sentry al catálogo de servicios.",
+        "Se agregó Datadog al catálogo de servicios.",
+        "Se agregó Cloudflare al catálogo de servicios.",
+        "Se agregó Redis al catálogo de servicios.",
+        "Se agregó GraphQL al catálogo de servicios.",
+        "Se agregó Apache Kafka al catálogo de servicios.",
+        "Se agregó Nginx al catálogo de servicios.",
+      ],
+    },
   },
 ];
 
 export default function ChangelogPage() {
+  const locale = getBrowserLocale();
+  const t = UI_TEXT[locale];
+
   useEffect(() => {
     setSeoMeta({
-      title: "Novedades | Cloudish",
-      description:
-        "Registro de cambios de Cloudish: nuevos servicios y mejoras recientes.",
+      title: t.changelogSeoTitle,
+      description: t.changelogSeoDescription,
       path: "/changelog",
     });
-  }, []);
+  }, [t.changelogSeoTitle, t.changelogSeoDescription]);
 
   return (
     <div
@@ -53,13 +70,11 @@ export default function ChangelogPage() {
           style={{ color: "var(--text)" }}
         >
           <ChevronLeftIcon width="16" height="16" />
-          Volver a la app
+          {t.backToApp}
         </Link>
 
-        <h1 className="text-2xl font-semibold mb-2">Novedades</h1>
-        <p className="text-sm opacity-70 mb-10">
-          Cambios recientes en Cloudish.
-        </p>
+        <h1 className="text-2xl font-semibold mb-2">{t.changelogTitle}</h1>
+        <p className="text-sm opacity-70 mb-10">{t.changelogDescription}</p>
 
         <div className="space-y-8">
           {ENTRIES.map((entry) => (
@@ -71,7 +86,7 @@ export default function ChangelogPage() {
                 {entry.date}
               </h2>
               <ul className="space-y-1.5 list-disc list-inside text-sm">
-                {entry.items.map((item) => (
+                {entry.items[locale].map((item) => (
                   <li key={item}>{item}</li>
                 ))}
               </ul>
