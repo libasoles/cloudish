@@ -1,6 +1,8 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import {
+  Handle,
   NodeResizer,
+  Position,
   type Node,
   type NodeProps,
 } from "@xyflow/react";
@@ -70,6 +72,13 @@ export type PlainTextNodeData = {
 export type PlainTextNodeType = Node<PlainTextNodeData, "plainText">;
 
 const DEFAULT_TEXT_NODE_HEIGHT = 56;
+
+const HANDLE_CONFIGS: { id: "left" | "right" | "top" | "bottom"; position: Position; className?: string }[] = [
+  { id: "left", position: Position.Left },
+  { id: "right", position: Position.Right },
+  { id: "top", position: Position.Top, className: "handle-vertical" },
+  { id: "bottom", position: Position.Bottom, className: "handle-vertical" },
+];
 
 export default function PlainTextNode({
   id,
@@ -283,6 +292,16 @@ export default function PlainTextNode({
         if (isEditing) event.stopPropagation();
       }}
     >
+      {!isEditing &&
+        HANDLE_CONFIGS.map(({ id, position, className }) => (
+          <Handle
+            key={id}
+            type="source"
+            position={position}
+            id={id}
+            className={className}
+          />
+        ))}
       <NodeResizer
         isVisible={selected && !isEditing}
         minWidth={MIN_TEXT_NODE_WIDTH}
