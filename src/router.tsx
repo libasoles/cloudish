@@ -4,11 +4,20 @@ import { lazy, Suspense } from 'react'
 import App from './App'
 
 const DocsPage = lazy(() => import('./pages/DocsPage'))
+const ChangelogPage = lazy(() => import('./pages/ChangelogPage'))
 
 export const router = createBrowserRouter([
   {
     path: '/',
     element: <App />,
+  },
+  {
+    path: '/changelog',
+    element: (
+      <Suspense fallback={<div className="h-screen bg-background" />}>
+        <ChangelogPage />
+      </Suspense>
+    ),
   },
   {
     path: '/docs',
