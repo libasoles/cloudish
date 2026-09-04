@@ -50,6 +50,45 @@ function buildInfraSearchItems(t: (typeof UI_TEXT)[Locale]): InfraSearchItem[] {
   }));
 }
 
+// Lower is more relevant. A match on the service's own name always outranks
+// a match that only shows up in its category or description (e.g. "work"
+// matching "Networking" via the substring "net-work-ing", or "elastic"
+// matching EC2's "Elastic Compute Cloud" alias should not outrank WorkOS /
+// Elasticsearch, whose names contain the query directly).
+const MATCH_RANK_NAME_EXACT = 0;
+const MATCH_RANK_NAME_PREFIX = 1;
+const MATCH_RANK_NAME_INCLUDES = 2;
+const MATCH_RANK_ALIAS = 3;
+const MATCH_RANK_CATEGORY = 4;
+const MATCH_RANK_DESCRIPTION = 5;
+
+function matchRank(
+  normalizedQuery: string,
+  fields: {
+    name: string;
+    aliases?: string;
+    category?: string;
+    description?: string;
+  },
+): number | null {
+  const name = fields.name.toLowerCase();
+  if (name === normalizedQuery) return MATCH_RANK_NAME_EXACT;
+  if (name.startsWith(normalizedQuery)) return MATCH_RANK_NAME_PREFIX;
+  if (name.includes(normalizedQuery)) return MATCH_RANK_NAME_INCLUDES;
+  if (fields.aliases?.toLowerCase().includes(normalizedQuery)) {
+    return MATCH_RANK_ALIAS;
+  }
+  if (fields.category?.toLowerCase().includes(normalizedQuery)) {
+    return MATCH_RANK_CATEGORY;
+  }
+  if (fields.description?.toLowerCase().includes(normalizedQuery)) {
+    return MATCH_RANK_DESCRIPTION;
+  }
+  return null;
+}
+
+const MAX_SEARCH_RESULTS = 12;
+
 function getSearchResults(
   query: string,
   locale: Locale,
@@ -61,33 +100,40 @@ function getSearchResults(
     return [];
   }
 
-  const serviceResults: ServiceSearchItem[] = AWS_SERVICES.filter((service) => {
+  const rankedServiceResults = AWS_SERVICES.flatMap((service) => {
     // VPC and miscellaneous nodes (User, Internet, Web, Mobile, Database)
     // are offered as infrastructure items below — skip the catalog duplicates.
     if (service.id === VPC_SERVICE_ID || isMiscellaneousServiceId(service.id)) {
-      return false;
+      return [];
     }
 
-    const categoryLabel = getCategoryLabel(service.category, locale);
-    const description = getServiceDescription(service, locale);
-    return (
-      service.name.toLowerCase().includes(normalizedQuery) ||
-      service.category.toLowerCase().includes(normalizedQuery) ||
-      categoryLabel.toLowerCase().includes(normalizedQuery) ||
-      description.toLowerCase().includes(normalizedQuery) ||
-      (service.aliases?.toLowerCase().includes(normalizedQuery) ?? false)
-    );
-  }).map((s) => ({ kind: "service" as const, ...s }));
+    const rank = matchRank(normalizedQuery, {
+      name: service.name,
+      aliases: service.aliases,
+      category: getCategoryLabel(service.category, locale) + " " + service.category,
+      description: getServiceDescription(service, locale),
+    });
+    if (rank === null) return [];
 
-  const infraResults: InfraSearchItem[] = infraItems.filter(
-    (item) =>
-      item.name.toLowerCase().includes(normalizedQuery) ||
-      item.description.toLowerCase().includes(normalizedQuery) ||
-      item.categoryLabel.toLowerCase().includes(normalizedQuery) ||
-      (item.aliases?.toLowerCase().includes(normalizedQuery) ?? false),
-  );
+    const item: ServiceSearchItem = { kind: "service" as const, ...service };
+    return [{ item, rank }];
+  });
 
-  return [...serviceResults.slice(0, 12), ...infraResults];
+  const rankedInfraResults = infraItems.flatMap((item) => {
+    const rank = matchRank(normalizedQuery, {
+      name: item.name,
+      aliases: item.aliases,
+      category: item.categoryLabel,
+      description: item.description,
+    });
+    if (rank === null) return [];
+    return [{ item: item as SearchItem, rank }];
+  });
+
+  return [...rankedServiceResults, ...rankedInfraResults]
+    .sort((a, b) => a.rank - b.rank)
+    .slice(0, MAX_SEARCH_RESULTS)
+    .map(({ item }) => item);
 }
 
 function getContextItems(
