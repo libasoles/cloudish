@@ -7,7 +7,12 @@ import { AWS_CATEGORY_STYLES } from "@/config/aws-category-styles";
  * Logos published only as a dark monochrome SVG. They disappear against the
  * app's dark surfaces, so they render on a light chip.
  */
-const DARK_MONOCHROME_SLUGS = new Set(["kafka", "sentry", "github"]);
+const DARK_MONOCHROME_SLUGS = new Set([
+  "kafka",
+  "sentry",
+  "github",
+  "temporal",
+]);
 
 const LUCIDE_ICON_MAP: Record<
   string,

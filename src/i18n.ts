@@ -611,6 +611,12 @@ const EN_SERVICE_DESCRIPTIONS: Record<string, string> = {
     "External identity and access management platform with SSO and MFA for enterprises.",
   github:
     "External version control platform hosting repositories and CI/CD via Actions.",
+  jaeger:
+    "External distributed tracing system for monitoring and debugging microservices.",
+  flagsmith:
+    "External feature flag and segmentation platform for controlled rollouts.",
+  temporal:
+    "External durable workflow orchestration engine for reliable microservices.",
   mongodb: "External NoSQL document database for flexible, scalable data.",
   "new-relic":
     "External observability platform that centralizes metrics, logs, traces, and APM.",
