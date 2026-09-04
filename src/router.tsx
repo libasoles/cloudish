@@ -5,6 +5,7 @@ import App from './App'
 
 const DocsPage = lazy(() => import('./pages/DocsPage'))
 const ChangelogPage = lazy(() => import('./pages/ChangelogPage'))
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
 
 export const router = createBrowserRouter([
   {
@@ -28,6 +29,14 @@ export const router = createBrowserRouter([
     element: (
       <Suspense fallback={<div className="h-screen bg-background" />}>
         <DocsPage />
+      </Suspense>
+    ),
+  },
+  {
+    path: '*',
+    element: (
+      <Suspense fallback={<div className="h-screen bg-background" />}>
+        <NotFoundPage />
       </Suspense>
     ),
   },
