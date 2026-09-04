@@ -39,7 +39,7 @@ export default function NotFoundPage() {
         >
           <span
             className="absolute -top-[7px] left-1/2 h-3 w-3 -translate-x-1/2 rounded-full border-2"
-            style={{ background: "var(--bg)", borderColor: "#38bdf8" }}
+            style={{ background: "var(--bg)", borderColor: "#a1a1aa" }}
             aria-hidden="true"
           />
           <p
@@ -51,17 +51,34 @@ export default function NotFoundPage() {
           <p className="mt-3 text-sm" style={{ color: "var(--text)" }}>
             Página no encontrada.
           </p>
+          <span
+            className="absolute -bottom-[7px] left-1/2 h-3 w-3 -translate-x-1/2 rounded-full border-2"
+            style={{ background: "var(--bg)", borderColor: "#38bdf8" }}
+            aria-hidden="true"
+          />
         </div>
+
+        <div
+          className="h-9 w-[2.5px]"
+          style={{ background: "#ffffff" }}
+          aria-hidden="true"
+        />
 
         <Link
           to="/"
-          className="mt-9 inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+          className="relative inline-flex items-center gap-2 rounded-lg border px-5 py-3 text-sm font-medium transition-colors hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
           style={{
-            background: "#38bdf8",
-            color: "#0f1117",
+            borderColor: "rgba(56,189,248,0.5)",
+            background: "rgba(56,189,248,0.1)",
+            color: "var(--text-h)",
             outlineColor: "#38bdf8",
           }}
         >
+          <span
+            className="absolute -top-[7px] left-1/2 h-3 w-3 -translate-x-1/2 rounded-full border-2"
+            style={{ background: "var(--bg)", borderColor: "#38bdf8" }}
+            aria-hidden="true"
+          />
           <ChevronLeftIcon width="16" height="16" />
           Volver al canvas
         </Link>
