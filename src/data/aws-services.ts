@@ -1102,6 +1102,94 @@ export const AWS_SERVICES: AwsService[] = [
       "pagos payments cobros checkout suscripciones subscriptions billing facturacion tarjetas cards SaaS",
     placementScope: "global",
   },
+  {
+    id: "signoz",
+    name: "SigNoz",
+    category: AWS_CATEGORIES.MANAGEMENT,
+    slug: "signoz",
+    description:
+      "Plataforma externa de observabilidad open-source que unifica metricas, trazas y logs.",
+    aliases:
+      "SigNoz observabilidad observability open-source APM metricas logs trazas tracing dashboards SaaS",
+    placementScope: "global",
+  },
+  {
+    id: "opentelemetry",
+    name: "OpenTelemetry",
+    category: AWS_CATEGORIES.MANAGEMENT,
+    slug: "opentelemetry",
+    description:
+      "Estandar externo de instrumentacion que recolecta metricas, trazas y logs de aplicaciones.",
+    aliases:
+      "OTel OTEL instrumentacion instrumentation observabilidad observability metricas logs trazas tracing collector open-source",
+    placementScope: "global",
+  },
+  {
+    id: "grafana",
+    name: "Grafana",
+    category: AWS_CATEGORIES.MANAGEMENT,
+    slug: "grafana",
+    description:
+      "Plataforma externa de visualizacion que arma dashboards sobre metricas, logs y trazas.",
+    aliases:
+      "Grafana dashboards visualizacion visualization observabilidad observability metricas paneles alertas open-source",
+    placementScope: "global",
+  },
+  {
+    id: "prometheus",
+    name: "Prometheus",
+    category: AWS_CATEGORIES.MANAGEMENT,
+    slug: "prometheus",
+    description:
+      "Sistema externo de monitoreo que recolecta y consulta metricas de series temporales.",
+    aliases:
+      "Prometheus monitoreo monitoring metricas metrics series temporales time series alertas alerting open-source",
+    placementScope: "global",
+  },
+  {
+    id: "loki",
+    name: "Loki",
+    category: AWS_CATEGORIES.MANAGEMENT,
+    slug: "loki",
+    description:
+      "Sistema externo de agregacion de logs optimizado para integrarse con Grafana.",
+    aliases:
+      "Loki logs log aggregation agregacion observabilidad observability Grafana open-source",
+    placementScope: "global",
+  },
+  {
+    id: "mimir",
+    name: "Mimir",
+    category: AWS_CATEGORIES.MANAGEMENT,
+    slug: "mimir",
+    description:
+      "Backend externo de metricas de larga retencion compatible con Prometheus, escalable horizontalmente.",
+    aliases:
+      "Mimir metricas metrics Prometheus long-term storage almacenamiento largo plazo observabilidad open-source",
+    placementScope: "global",
+  },
+  {
+    id: "dynatrace",
+    name: "Dynatrace",
+    category: AWS_CATEGORIES.MANAGEMENT,
+    slug: "dynatrace",
+    description:
+      "Plataforma externa de observabilidad con IA que monitorea aplicaciones e infraestructura.",
+    aliases:
+      "Dynatrace observabilidad observability APM monitoreo monitoring IA AI metricas logs trazas tracing SaaS",
+    placementScope: "global",
+  },
+  {
+    id: "kibana",
+    name: "Kibana",
+    category: AWS_CATEGORIES.MANAGEMENT,
+    slug: "kibana",
+    description:
+      "Plataforma externa de visualizacion y analisis de datos para el stack Elastic.",
+    aliases:
+      "Kibana Elastic Elasticsearch ELK visualizacion visualization dashboards logs analitica analytics open-source",
+    placementScope: "global",
+  },
   // Messaging
   {
     id: "sqs",
